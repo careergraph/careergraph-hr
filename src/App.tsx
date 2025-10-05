@@ -12,7 +12,6 @@ import LineChart from "./pages/Charts/LineChart";
 import BarChart from "./pages/Charts/BarChart";
 import Calendar from "./pages/Calendar/Calendar";
 import BasicTables from "./pages/Job/BasicTables";
-import FormElements from "./pages/Candidate/FormElements";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
@@ -32,7 +31,6 @@ export default function App() {
             <Route path="/calendar" element={<Calendar />} />
 
             {/* Forms */}
-            <Route path="/form-elements" element={<FormElements />} />
 
             {/* Tables */}
             <Route path="/basic-tables" element={<BasicTables />} />

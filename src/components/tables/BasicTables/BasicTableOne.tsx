@@ -4,9 +4,9 @@ import {
   TableCell,
   TableHeader,
   TableRow,
-} from "../../ui/table";
+} from "../../custom/table";
 
-import Badge from "../../ui/badge/Badge";
+import Badge from "../../custom/badge/Badge";
 
 interface Order {
   id: number;
