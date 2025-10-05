@@ -49,7 +49,7 @@ const navItems: NavItem[] = [
     name: "Jobs",
     icon: <TableIcon />,
     // subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
-    path: "/basic-tables",
+    path: "/jobs",
   },
 ];
 
@@ -276,80 +276,75 @@ const AppSidebar: React.FC = () => {
   );
 
   return (
-    <aside
-      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
-        ${
-          isExpanded || isMobileOpen
-            ? "w-[290px]"
-            : isHovered
-            ? "w-[290px]"
-            : "w-[90px]"
-        }
-        ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
-        lg:translate-x-0`}
-      onMouseEnter={() => !isExpanded && setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className="flex items-center gap-3">
+    <>
+      {/* Overlay for mobile sidebar */}
+      {isMobileOpen && (
         <div
-          className={`py-8 flex ${
-            !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-          }`}
-        >
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+          onClick={() => setIsHovered(false)}
+        />
+      )}
+      <aside
+        className={`fixed top-0 left-0 flex flex-col h-full bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 transition-all duration-300 ease-in-out z-50 border-r border-gray-200
+          ${isExpanded || isMobileOpen ? "w-[290px]" : isHovered ? "w-[290px]" : "w-[80px]"}
+          ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:translate-x-0 px-4 sm:px-5 mt-0`}
+        onMouseEnter={() => !isExpanded && setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <div className="flex items-center gap-3 py-6">
           <Link to="/">
             <img
               className="dark:hidden w-10 h-10"
               src="/images/logo/logo.svg"
               alt="Logo"
-              width={150}
+              width={40}
               height={40}
             />
           </Link>
-        </div>
-        <div className="bg-gradient-to-r text-2xl font-semibold from-[#583DF2] to-[#F3359D] bg-clip-text text-transparent">
-          CareerGraph
-        </div>
-      </div>
-      <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
-        <nav className="mb-6">
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Menu"
-                ) : (
-                  <HorizontaLDots className="size-6" />
-                )}
-              </h2>
-              {renderMenuItems(navItems, "main")}
+          {(isExpanded || isHovered || isMobileOpen) && (
+            <div className="bg-gradient-to-r text-xl font-semibold from-[#583DF2] to-[#F3359D] bg-clip-text text-transparent ml-2">
+              CareerGraph
             </div>
-            <div className="">
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Others"
-                ) : (
-                  <HorizontaLDots />
-                )}
-              </h2>
-              {renderMenuItems(othersItems, "others")}
+          )}
+        </div>
+        <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
+          <nav className="mb-6">
+            <div className="flex flex-col gap-4">
+              <div>
+                <h2
+                  className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
+                    !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+                  }`}
+                >
+                  {isExpanded || isHovered || isMobileOpen ? (
+                    "Menu"
+                  ) : (
+                    <HorizontaLDots className="size-6" />
+                  )}
+                </h2>
+                {renderMenuItems(navItems, "main")}
+              </div>
+              <div className="">
+                <h2
+                  className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
+                    !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+                  }`}
+                >
+                  {isExpanded || isHovered || isMobileOpen ? (
+                    "Others"
+                  ) : (
+                    <HorizontaLDots />
+                  )}
+                </h2>
+                {renderMenuItems(othersItems, "others")}
+              </div>
             </div>
-          </div>
-        </nav>
-        {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null}
-      </div>
-    </aside>
+          </nav>
+          {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null}
+        </div>
+      </aside>
+    </>
   );
 };
 

@@ -76,28 +76,28 @@ export const Column = ({
       {/* Candidate list - droppable area */}
       <div
         ref={setNodeRef}
-        className={`space-y-3 p-2 rounded-b-2xl min-h-[80px] max-h-[70vh] overflow-y-auto 
-               transition-colors duration-200 ${
-                 isOver ? "ring-2 ring-primary/30 bg-white/60" : ""
-               }`}
+        className={`custom-scrollbar space-y-3 p-2 rounded-b-2xl min-h-[80px] max-h-[70vh] overflow-y-auto 
+    transition-colors duration-200 focus:outline-none ${
+      isOver ? `ring-2 ring-offset-2 ring-primary/40 bg-white/70` : ""
+    }`}
       >
-        <SortableContext
-          items={candidates.map((c) => c.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {candidates.map((candidate) => (
-            <CandidateCard
-              key={candidate.id}
-              candidate={candidate}
-              onViewDetails={onViewDetails}
-              compact
-            />
-          ))}
-        </SortableContext>
-
-        {candidates.length === 0 && (
+        {candidates.length > 0 ? (
+          <SortableContext
+            items={candidates.map((c) => c.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {candidates.map((candidate) => (
+              <CandidateCard
+                key={candidate.id}
+                candidate={candidate}
+                onViewDetails={onViewDetails}
+                compact
+              />
+            ))}
+          </SortableContext>
+        ) : (
           <div className="flex items-center justify-center h-23 text-gray-400 text-xs italic">
-            Chưa có ứng viên nào
+            Chưa có ứng viên nào
           </div>
         )}
       </div>

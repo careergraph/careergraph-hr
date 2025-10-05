@@ -62,6 +62,9 @@ export function CandidateCard({
       <Card
         className={`mb-2 border-0 shadow hover:shadow-lg cursor-pointer rounded-xl bg-white/90 hover:bg-white ${compact ? "p-3" : "p-4"}`}
         onClick={() => onViewDetails?.(candidate)}
+        tabIndex={0}
+        role="button"
+        aria-label={`Xem chi tiết ứng viên ${candidate.name}`}
       >
         <div className="flex items-center gap-3">
           <div

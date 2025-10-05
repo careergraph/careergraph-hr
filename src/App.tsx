@@ -11,12 +11,12 @@ import Buttons from "./pages/UiElements/Buttons";
 import LineChart from "./pages/Charts/LineChart";
 import BarChart from "./pages/Charts/BarChart";
 import Calendar from "./pages/Calendar/Calendar";
-import BasicTables from "./pages/Job/BasicTables";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import EmployeesTable from "./pages/Employees/EmployeesTable";
 import Candidates from "./pages/Candidate/Candidates";
+import JobsGrid from "./pages/Job/JobsGrid";
 
 export default function App() {
   return (
@@ -37,8 +37,8 @@ export default function App() {
             {/* Candidates */}
             <Route path="/candidates" element={<Candidates />} />
 
-            {/* Tables */}
-            <Route path="/basic-tables" element={<BasicTables />} />
+            {/* Jobs */}
+            <Route path="/jobs" element={<JobsGrid />} />
 
             {/* Employees */}
             <Route path="/employees" element={<EmployeesTable />} />
