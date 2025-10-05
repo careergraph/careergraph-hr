@@ -15,6 +15,8 @@ import BasicTables from "./pages/Job/BasicTables";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
+import EmployeesTable from "./pages/Employees/EmployeesTable";
+import Candidates from "./pages/Candidate/Candidates";
 
 export default function App() {
   return (
@@ -28,12 +30,18 @@ export default function App() {
 
             {/* Others Page */}
             <Route path="/profile" element={<UserProfiles />} />
+
+            {/* Calendar */}
             <Route path="/calendar" element={<Calendar />} />
 
-            {/* Forms */}
+            {/* Candidates */}
+            <Route path="/candidates" element={<Candidates />} />
 
             {/* Tables */}
             <Route path="/basic-tables" element={<BasicTables />} />
+
+            {/* Employees */}
+            <Route path="/employees" element={<EmployeesTable />} />
 
             {/* Ui Elements */}
             <Route path="/alerts" element={<Alerts />} />

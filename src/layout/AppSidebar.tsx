@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
   {
     name: "Candidates",
     icon: <ListIcon />,
-    path: "/form-elements",
+    path: "/candidates",
   },
   {
     icon: <CalenderIcon />,
