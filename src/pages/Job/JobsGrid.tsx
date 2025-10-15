@@ -4,6 +4,7 @@ import { Job } from "@/types/job";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import PageMeta from "@/components/common/PageMeta";
 import { useNavigate } from "react-router";
+import { Status } from "@/enums/commonEnum";
 
 const sampleJobs: Job[] = [
   {
@@ -11,9 +12,9 @@ const sampleJobs: Job[] = [
     title: "Senior Frontend Developer",
     type: "Full-time",
     department: "Engineering",
-    location: "Hà Nội, Việt Nam",
-    postedDate: "15/03/2024",
-    status: "active",
+    city: "Hà Nội",
+    postedDate: new Date(),
+    status: Status.ACTIVE,
     applicants: 5,
     views: 20,
     saved: 3,
@@ -25,9 +26,9 @@ const sampleJobs: Job[] = [
     title: "Product Designer",
     type: "Part-time",
     department: "Design",
-    location: "Remote",
-    postedDate: "10/03/2024",
-    status: "draft",
+    city: "Remote",
+    postedDate: new Date(),
+    status: Status.DRAFT,
     applicants: 2,
     views: 10,
     saved: 1,
@@ -39,9 +40,9 @@ const sampleJobs: Job[] = [
     title: "DevOps Engineer",
     type: "Contract",
     department: "Infrastructure",
-    location: "Hồ Chí Minh, Việt Nam",
-    postedDate: "05/03/2024",
-    status: "closed",
+    city: "Hồ Chí Minh",
+    postedDate: new Date(),
+    status: Status.CLOSED,
     applicants: 0,
     views: 5,
     saved: 0,

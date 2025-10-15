@@ -19,6 +19,12 @@ import useLocation from "@/hooks/useLocation";
 import { District, Province, Ward } from "@/types/location";
 import { SkillLookup } from "@/types/skill";
 import { lookup } from "@/api/skillApis";
+import {
+  JobFunction,
+  EmploymentType,
+  Education,
+  ExperienceLevel,
+} from "@/enums/workEnum";
 
 interface JobDetailsStepProps {
   jobData: Partial<Job>;
@@ -140,9 +146,8 @@ export const JobDetailsStep = ({
     if (!jobData.minExperience) err.minExperience = "Required";
     if (!jobData.maxExperience) err.maxExperience = "Required";
     if (!jobData.experienceLevel) err.experienceLevel = "Required";
+    if (!jobData.employmentType) err.employmentType = "Required";
     if (!jobData.jobFunction) err.jobFunction = "Required";
-    if (!jobData.type) err.type = "Required";
-    if (!jobData.country) err.country = "Required";
     return err;
   };
 
@@ -178,7 +183,7 @@ export const JobDetailsStep = ({
         <Label
           htmlFor="title"
           className={cn(
-            "text-sm font-semibold flex items-center gap-1",
+            "text-sm font-semibold flex items-center gap-1 mb-2",
             touched.title && error.title && "text-red-600"
           )}
         >
@@ -218,7 +223,7 @@ export const JobDetailsStep = ({
             }}
             onBlur={() => setTouched((t) => ({ ...t, description: true }))}
             touched={touched.description}
-            error={error.description}
+            // error={error.description}
             className="min-h-32"
           />
         </div>
@@ -339,7 +344,7 @@ export const JobDetailsStep = ({
         </Label>
         <div className="grid grid-cols-3 gap-4 mt-2">
           <Input
-            placeholder="Min Experience*"
+            placeholder="Min Experience"
             type="number"
             value={jobData.minExperience || ""}
             onChange={(e) => {
@@ -349,54 +354,33 @@ export const JobDetailsStep = ({
             onFocus={() =>
               setError((prev) => ({ ...prev, minExperience: undefined }))
             }
-            className={cn(
-              "",
-              touched.minExperience &&
-                error.minExperience &&
-                "border-red-500 focus-visible:ring-red-500"
-            )}
           />
           <Input
-            placeholder="Max Experience*"
+            placeholder="Max Experience"
             type="number"
             value={jobData.maxExperience || ""}
             onChange={(e) => {
               onUpdate({ ...jobData, maxExperience: parseInt(e.target.value) });
               setTouched((t) => ({ ...t, maxExperience: true }));
             }}
-            onFocus={() =>
-              setError((prev) => ({ ...prev, maxExperience: undefined }))
-            }
-            className={cn(
-              "",
-              touched.maxExperience &&
-                error.maxExperience &&
-                "border-red-500 focus-visible:ring-red-500"
-            )}
           />
           <Select
             value={jobData.experienceLevel || ""}
-            onValueChange={(value) => {
+            onValueChange={(value: ExperienceLevel) => {
               onUpdate({ ...jobData, experienceLevel: value });
               setTouched((t) => ({ ...t, experienceLevel: true }));
               setError((prev) => ({ ...prev, experienceLevel: undefined }));
             }}
           >
-            <SelectTrigger
-              className={cn(
-                "",
-                touched.experienceLevel &&
-                  error.experienceLevel &&
-                  "border-red-500 ring-1 ring-red-500"
-              )}
-            >
-              <SelectValue placeholder="Experience Level*" />
+            <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
+              <SelectValue placeholder="Experience Level" />
             </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-slate-900 z-50">
-              <SelectItem value="entry">Entry Level</SelectItem>
-              <SelectItem value="mid">Mid Level</SelectItem>
-              <SelectItem value="senior">Senior Level</SelectItem>
-              <SelectItem value="lead">Lead</SelectItem>
+            <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
+              {Object.entries(ExperienceLevel).map(([key, value]) => (
+                <SelectItem key={key} value={value}>
+                  {value}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -415,69 +399,66 @@ export const JobDetailsStep = ({
         >
           Listing Type<span className="text-destructive">*</span>
         </Label>
+
         <div className="grid grid-cols-3 gap-4 mt-2">
+          {/* Job Function */}
           <Select
             value={jobData.jobFunction || ""}
-            onValueChange={(value) => {
+            onValueChange={(value: JobFunction) => {
               onUpdate({ ...jobData, jobFunction: value });
               setTouched((t) => ({ ...t, jobFunction: true }));
-              setError((prev) => ({ ...prev, jobFunction: undefined }));
+              // setError((prev) => ({ ...prev, jobFunction: undefined }));
             }}
           >
-            <SelectTrigger
-              className={cn(
-                "",
-                touched.jobFunction &&
-                  error.jobFunction &&
-                  "border-red-500 ring-1 ring-red-500"
-              )}
-            >
-              <SelectValue placeholder="Job Function*" />
+            <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
+              <SelectValue placeholder="Job Function" />
             </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-slate-900 z-50">
-              <SelectItem value="engineering">Engineering</SelectItem>
-              <SelectItem value="design">Design</SelectItem>
-              <SelectItem value="product">Product</SelectItem>
-              <SelectItem value="marketing">Marketing</SelectItem>
+            <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
+              {Object.entries(JobFunction).map(([key, value]) => (
+                <SelectItem key={key} value={value}>
+                  {value}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
+
+          {/* Employment Type */}
           <Select
-            value={jobData.type || ""}
-            onValueChange={(value) => {
-              onUpdate({ ...jobData, type: value as Job["type"] });
-              setTouched((t) => ({ ...t, type: true }));
-              setError((prev) => ({ ...prev, type: undefined }));
+            value={jobData.employmentType || ""}
+            onValueChange={(value: EmploymentType) => {
+              onUpdate({ ...jobData, employmentType: value });
+              setTouched((t) => ({ ...t, employmentType: true }));
+              // setError((prev) => ({ ...prev, employmentType: undefined }));
             }}
           >
-            <SelectTrigger
-              className={cn(
-                "",
-                touched.type &&
-                  error.type &&
-                  "border-red-500 ring-1 ring-red-500"
-              )}
-            >
-              <SelectValue placeholder="Employment Type*" />
+            <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
+              <SelectValue placeholder="Employment Type" />
             </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-slate-900 z-50">
-              <SelectItem value="Full-time">Full-time</SelectItem>
-              <SelectItem value="Part-time">Part-time</SelectItem>
-              <SelectItem value="Contract">Contract</SelectItem>
+            <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
+              {Object.entries(EmploymentType).map(([key, value]) => (
+                <SelectItem key={key} value={value}>
+                  {value}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
+
+          {/* Education */}
           <Select
             value={jobData.education || ""}
-            onValueChange={(value) =>
+            onValueChange={(value: Education) =>
               onUpdate({ ...jobData, education: value })
             }
           >
-            <SelectTrigger>
+            <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
               <SelectValue placeholder="Education" />
             </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-slate-900 z-50">
-              <SelectItem value="bachelor">Bachelor's Degree</SelectItem>
-              <SelectItem value="master">Master's Degree</SelectItem>
-              <SelectItem value="phd">PhD</SelectItem>
+            <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
+              {Object.entries(Education).map(([key, value]) => (
+                <SelectItem key={key} value={value}>
+                  {value}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -512,21 +493,14 @@ export const JobDetailsStep = ({
             onValueChange={(value) => {
               onUpdate({ ...jobData, state: value, city: "", district: "" });
               setTouched((t) => ({ ...t, country: true }));
-              setError((prev) => ({ ...prev, country: undefined }));
+              // setError((prev) => ({ ...prev, country: undefined }));
 
               // Cập nhật mã tỉnh cho hook
               setSelectedProvinceCode(value);
               setSelectedDistrictCode(undefined);
             }}
           >
-            <SelectTrigger
-              className={cn(
-                "",
-                touched.country &&
-                  error.country &&
-                  "border-red-500 ring-1 ring-red-500"
-              )}
-            >
+            <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
               <SelectValue
                 placeholder={
                   loadingProvinces ? "Loading..." : "Select Province"
@@ -553,7 +527,7 @@ export const JobDetailsStep = ({
             }}
             disabled={!jobData.state || loadingDistricts}
           >
-            <SelectTrigger>
+            <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
               <SelectValue
                 placeholder={
                   loadingDistricts ? "Loading..." : "Select District"
@@ -577,7 +551,7 @@ export const JobDetailsStep = ({
             }}
             disabled={!jobData.city || loadingWards}
           >
-            <SelectTrigger>
+            <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
               <SelectValue
                 placeholder={loadingWards ? "Loading..." : "Select Ward"}
               />
@@ -597,7 +571,7 @@ export const JobDetailsStep = ({
             placeholder="Địa chỉ cụ thể"
             onFocus={() => setError((prev) => ({ ...prev, title: undefined }))}
             onBlur={() => setTouched((t) => ({ ...t, title: true }))}
-            className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto"
+            className="bg-white dark:bg-slate-900 max-h-[250px] overflow-y-auto"
             maxLength={500}
           />
         </div>

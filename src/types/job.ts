@@ -1,55 +1,66 @@
+import {
+  Education,
+  EmploymentType,
+  ExperienceLevel,
+  JobFunction,
+} from "@/enums/workEnum";
 import { SkillLookup } from "./skill";
+import { Status } from "@/enums/commonEnum";
 
-interface Job {
+type Job = {
   id: number;
+  postedDate: Date;
+  status?: Status;
   title: string;
-  department: string;
-  location: string;
-  type: "Full-time" | "Part-time" | "Contract";
-  postedDate: string;
-  status?: "draft" | "active" | "closed";
-  
   description?: string;
-  requirements?: string[];
+
+  // Array requirment
   responsibilities?: string[];
   qualifications?: string[];
   minimumQualifications?: string[];
-  skills?: SkillLookup[];
-  salaryRange?: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  timeline?: JobTimelineEvent[];
-  
+
   // Experience
   minExperience?: number;
   maxExperience?: number;
-  experienceLevel?: string;
-  
+  experienceLevel?: ExperienceLevel;
+
   // Listing details
-  jobFunction?: string;
-  employmentType?: string;
-  education?: string;
-  
+  jobFunction?: JobFunction;
+  employmentType?: EmploymentType;
+  education?: Education;
+
   // Location details
-  country?: string;
   state?: string;
   city?: string;
   district?: string;
+  specific?: string;
   remoteJob?: boolean;
-  
-  // Application requirements
-  applicationRequirements?: ApplicationRequirements;
-  
-  // Promotion
-  promotionType?: "free" | "paid";
-  
-  // Stats
+
+  // Field basic
+  type?: string;
+  department?: string;
+
+  // Stats: Show phân tích data
   views?: number;
   applicants?: number;
   saved?: number;
   likes?: number;
   shares?: number;
-}
+
+  // Lookup skill
+  skills?: SkillLookup[];
+
+  salaryRange?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  timeline?: JobTimelineEvent[];
+
+  // Application requirements
+  applicationRequirements?: ApplicationRequirements;
+
+  // Promotion
+  promotionType?: "free" | "paid";
+};
 
 interface JobTimelineEvent {
   date: string;
@@ -74,6 +85,7 @@ interface ScreeningQuestion {
   options?: string[];
 }
 
+// Type tương tác giao diện
 type Touched = {
   title?: boolean;
   description?: boolean;
@@ -91,9 +103,17 @@ type ErrorType = {
   minExperience?: string;
   maxExperience?: string;
   experienceLevel?: string;
+  employmentType?: string;
   jobFunction?: string;
   type?: string;
   country?: string;
 };
 
-export type { Job, JobTimelineEvent, ApplicationRequirements, ScreeningQuestion, Touched, ErrorType };
+export type {
+  Job,
+  JobTimelineEvent,
+  ApplicationRequirements,
+  ScreeningQuestion,
+  Touched,
+  ErrorType,
+};
