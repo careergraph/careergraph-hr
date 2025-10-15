@@ -46,6 +46,11 @@ const navItems: NavItem[] = [
     path: "/employees",
   },
   {
+    icon: <UserCircleIcon />,
+    name: "Suggestion",
+    path: "/suggestion",
+  },
+  {
     name: "Jobs",
     icon: <TableIcon />,
     // subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
@@ -286,7 +291,13 @@ const AppSidebar: React.FC = () => {
       )}
       <aside
         className={`fixed top-0 left-0 flex flex-col h-full bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 transition-all duration-300 ease-in-out z-50 border-r border-gray-200
-          ${isExpanded || isMobileOpen ? "w-[290px]" : isHovered ? "w-[290px]" : "w-[80px]"}
+          ${
+            isExpanded || isMobileOpen
+              ? "w-[290px]"
+              : isHovered
+              ? "w-[290px]"
+              : "w-[80px]"
+          }
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0 px-4 sm:px-5 mt-0`}
         onMouseEnter={() => !isExpanded && setIsHovered(true)}
@@ -314,7 +325,9 @@ const AppSidebar: React.FC = () => {
               <div>
                 <h2
                   className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                    !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+                    !isExpanded && !isHovered
+                      ? "lg:justify-center"
+                      : "justify-start"
                   }`}
                 >
                   {isExpanded || isHovered || isMobileOpen ? (
@@ -328,7 +341,9 @@ const AppSidebar: React.FC = () => {
               <div className="">
                 <h2
                   className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                    !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+                    !isExpanded && !isHovered
+                      ? "lg:justify-center"
+                      : "justify-start"
                   }`}
                 >
                   {isExpanded || isHovered || isMobileOpen ? (

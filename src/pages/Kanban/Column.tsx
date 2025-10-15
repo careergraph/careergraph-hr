@@ -5,7 +5,7 @@ import {
 } from "@dnd-kit/sortable";
 import { Briefcase, Users, CheckCircle, Star, UserCheck } from "lucide-react";
 import { CandidateCard } from "./CandidateCard";
-import { Candidate, Status } from "../../types/candidate";
+import { Candidate, Status } from "@/types/candidate";
 
 interface ColumnProps {
   id: Status;

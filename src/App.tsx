@@ -15,8 +15,10 @@ import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import EmployeesTable from "./pages/Employees/EmployeesTable";
-import Candidates from "./pages/Candidate/Candidates";
+import Candidates from "./pages/Kanban/Candidates";
 import JobsGrid from "./pages/Job/JobsGrid";
+import AddJob from "./pages/Job/AddJob";
+import SuggestionCandidates from "./pages/SuggestionCandidate/SuggestionCandidate";
 
 export default function App() {
   return (
@@ -39,9 +41,13 @@ export default function App() {
 
             {/* Jobs */}
             <Route path="/jobs" element={<JobsGrid />} />
+            <Route path="/jobs/new" element={<AddJob />} />
 
             {/* Employees */}
             <Route path="/employees" element={<EmployeesTable />} />
+
+            {/* Suggestion Candidates */}
+            <Route path="/suggestion" element={<SuggestionCandidates />} />
 
             {/* Ui Elements */}
             <Route path="/alerts" element={<Alerts />} />

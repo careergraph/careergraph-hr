@@ -1,7 +1,7 @@
-import PageBreadcrumb from "../../components/common/PageBreadCrumb";
-import ComponentCard from "../../components/common/ComponentCard";
-import Avatar from "../../components/custom/avatar/Avatar";
-import PageMeta from "../../components/common/PageMeta";
+import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import ComponentCard from "@/components/common/ComponentCard";
+import Avatar from "@/components/custom/avatar/Avatar";
+import PageMeta from "@/components/common/PageMeta";
 
 export default function Avatars() {
   return (

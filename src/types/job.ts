@@ -1,23 +1,99 @@
-export interface Job {
+import { SkillLookup } from "./skill";
+
+interface Job {
   id: number;
-  title: string;           // Tên công việc
-  department: string;      // Phòng ban
-  location: string;        // Địa điểm
-  type: "Full-time" | "Part-time" | "Contract"; // Loại hình
-  postedDate: string;      // Ngày đăng tuyển
-
-  description?: string;    // Mô tả chi tiết công việc
-  requirements?: string[]; // Yêu cầu/kỹ năng cần có
-  responsibilities?: string[]; // Trách nhiệm chính
-  salaryRange?: string;    // Mức lương
-  contactEmail?: string;   // Email liên hệ
-  contactPhone?: string;   // Số điện thoại liên hệ
-  timeline?: JobTimelineEvent[]; // Lịch sử tuyển dụng / trạng thái
+  title: string;
+  department: string;
+  location: string;
+  type: "Full-time" | "Part-time" | "Contract";
+  postedDate: string;
+  status?: "draft" | "active" | "closed";
+  
+  description?: string;
+  requirements?: string[];
+  responsibilities?: string[];
+  qualifications?: string[];
+  minimumQualifications?: string[];
+  skills?: SkillLookup[];
+  salaryRange?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  timeline?: JobTimelineEvent[];
+  
+  // Experience
+  minExperience?: number;
+  maxExperience?: number;
+  experienceLevel?: string;
+  
+  // Listing details
+  jobFunction?: string;
+  employmentType?: string;
+  education?: string;
+  
+  // Location details
+  country?: string;
+  state?: string;
+  city?: string;
+  district?: string;
+  remoteJob?: boolean;
+  
+  // Application requirements
+  applicationRequirements?: ApplicationRequirements;
+  
+  // Promotion
+  promotionType?: "free" | "paid";
+  
+  // Stats
+  views?: number;
+  applicants?: number;
+  saved?: number;
+  likes?: number;
+  shares?: number;
 }
 
-export interface JobTimelineEvent {
-  date: string;           // Ngày cập nhật
-  action: string;         // Hành động / trạng thái (VD: Đăng tuyển, Phỏng vấn, Chốt ứng viên)
-  description?: string;   // Mô tả chi tiết
-  user?: string;          // Ai thực hiện
+interface JobTimelineEvent {
+  date: string;
+  action: string;
+  description?: string;
+  user?: string;
 }
+
+interface ApplicationRequirements {
+  resume: boolean;
+  coverLetter: boolean;
+  photo: boolean;
+  desiredSalary: boolean;
+  screeningQuestions?: ScreeningQuestion[];
+}
+
+interface ScreeningQuestion {
+  id: string;
+  question: string;
+  type: "text" | "multiple-choice" | "yes-no";
+  required: boolean;
+  options?: string[];
+}
+
+type Touched = {
+  title?: boolean;
+  description?: boolean;
+  minExperience?: boolean;
+  maxExperience?: boolean;
+  experienceLevel?: boolean;
+  jobFunction?: boolean;
+  type?: boolean;
+  country?: boolean;
+};
+
+type ErrorType = {
+  title?: string;
+  description?: string;
+  minExperience?: string;
+  maxExperience?: string;
+  experienceLevel?: string;
+  jobFunction?: string;
+  type?: string;
+  country?: string;
+};
+
+export type { Job, JobTimelineEvent, ApplicationRequirements, ScreeningQuestion, Touched, ErrorType };

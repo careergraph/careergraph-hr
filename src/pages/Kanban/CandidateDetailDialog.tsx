@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import { Dialog, DialogContent } from "../../components/ui/dialog";
-import { Badge } from "../../components/ui/badge";
-import { Avatar, AvatarFallback } from "../../components/ui/avatar";
-import { Separator } from "../../components/ui/separator";
-import { Candidate } from "../../types/candidate";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { Candidate } from "@/types/candidate";
 import {
   Calendar,
   Mail,

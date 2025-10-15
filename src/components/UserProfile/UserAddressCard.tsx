@@ -1,4 +1,4 @@
-import { useModal } from "../../hooks/useModal";
+import { useModal } from "@/hooks/use-modal";
 import { Modal } from "../custom/modal";
 import Button from "../custom/button/Button";
 import Input from "../form/input/InputField";

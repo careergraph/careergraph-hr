@@ -1,6 +1,6 @@
 import { useState } from "react";
 // ...existing code...
-import { Candidate, Status } from "../../types/candidate";
+import { Candidate, Status } from "@/types/candidate";
 import { CandidateDetailDialog } from "./CandidateDetailDialog";
 import {
   DndContext,
@@ -17,7 +17,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { Column } from "./Column";
 import { CandidateCard } from "./CandidateCard";
 
-import { initialCandidates, columns } from "../../data/candidateData";
+import { initialCandidates, columns } from "@/data/candidateData";
 
 // Component quản lý toàn bộ Kanban board tuyển dụng
 export const KanbanBoard = () => {

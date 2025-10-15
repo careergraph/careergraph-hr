@@ -3,7 +3,7 @@ import {
   ArrowUpIcon,
   BoxIconLine,
   GroupIcon,
-} from "../../icons";
+} from "@/icons";
 import Badge from "../custom/badge/Badge";
 
 export default function EcommerceMetrics() {

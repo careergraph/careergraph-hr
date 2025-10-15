@@ -1,10 +1,10 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
-import { Card } from "../../components/ui/card";
-import { Avatar, AvatarFallback } from "../../components/ui/avatar";
-import { Badge } from "../../components/ui/badge";
-import { Candidate } from "../../types/candidate";
+import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Candidate } from "@/types/candidate";
 
 export interface CandidateCardProps {
   candidate: Candidate;
