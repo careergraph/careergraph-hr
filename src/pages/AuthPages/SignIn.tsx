@@ -6,8 +6,8 @@ export default function SignIn() {
   return (
     <>
       <PageMeta
-        title="React.js SignIn Dashboard | CareerGraph - Next.js Admin Dashboard Template"
-        description="This is React.js SignIn Tables Dashboard page for CareerGraph - React.js Tailwind CSS Admin Dashboard Template"
+        title="HR - CareerGraph"
+        description=""
       />
       <AuthLayout>
         <SignInForm />

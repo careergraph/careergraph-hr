@@ -8,7 +8,7 @@ import { SkillLookup } from "./skill";
 import { Status } from "@/enums/commonEnum";
 
 type Job = {
-  id: number;
+  id: string;
   postedDate: Date;
   status?: Status;
   title: string;
@@ -106,7 +106,7 @@ type ErrorType = {
   employmentType?: string;
   jobFunction?: string;
   type?: string;
-  country?: string;
+  location?: string;
 };
 
 export type {

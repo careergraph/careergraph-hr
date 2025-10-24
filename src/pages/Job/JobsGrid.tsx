@@ -8,7 +8,7 @@ import { Status } from "@/enums/commonEnum";
 
 const sampleJobs: Job[] = [
   {
-    id: 1,
+    id: "1",
     title: "Senior Frontend Developer",
     type: "Full-time",
     department: "Engineering",
@@ -22,7 +22,7 @@ const sampleJobs: Job[] = [
     shares: 2,
   },
   {
-    id: 2,
+    id: "2",
     title: "Product Designer",
     type: "Part-time",
     department: "Design",
@@ -36,7 +36,7 @@ const sampleJobs: Job[] = [
     shares: 0,
   },
   {
-    id: 3,
+    id: "3",
     title: "DevOps Engineer",
     type: "Contract",
     department: "Infrastructure",

@@ -5,8 +5,8 @@ export type Status = "apply" | "meeting" | "interview" | "trial" | "hired";
 export type ExperienceLevel = "intern" | "junior" | "mid" | "senior" | "lead";
 
 export interface Assignee {
-  id: string;
-  name: string;
+  id?: string;
+  name?: string;
 }
 
 export interface TimelineEvent {
@@ -67,6 +67,8 @@ export interface Candidate {
 
   // Status
   hasPurchased?: boolean;
+
+  educationLevel?: string;
 }
 
 export interface Column {

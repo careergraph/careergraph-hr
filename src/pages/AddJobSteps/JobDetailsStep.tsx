@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, X } from "lucide-react";
 import { Job } from "@/types/job";
 import { type Touched, type ErrorType } from "@/types/job";
-import useLocation from "@/hooks/useLocation";
+import useLocation from "@/hooks/use-location";
 import { District, Province, Ward } from "@/types/location";
 import { SkillLookup } from "@/types/skill";
 import { lookup } from "@/api/skillApis";
@@ -148,6 +148,8 @@ export const JobDetailsStep = ({
     if (!jobData.experienceLevel) err.experienceLevel = "Required";
     if (!jobData.employmentType) err.employmentType = "Required";
     if (!jobData.jobFunction) err.jobFunction = "Required";
+    if (!jobData.state || !jobData.city || !jobData.district)
+      err.location = "Required";
     return err;
   };
 
@@ -469,7 +471,7 @@ export const JobDetailsStep = ({
         <Label
           className={cn(
             "text-sm font-semibold flex items-center gap-1",
-            touched.country && error.country && "text-red-600"
+            touched.country && error.location && "text-red-600"
           )}
         >
           Location<span className="text-destructive">*</span>

@@ -21,12 +21,14 @@ export default function AuthLayout({
                 <img
                   width={231}
                   height={48}
-                  src="/images/logo/auth-logo.svg"
+                  src="/images/logo/logo.svg"
                   alt="Logo"
                 />
               </Link>
               <p className="text-center text-gray-400 dark:text-white/60">
-                Free and Open-Source Tailwind CSS Admin Dashboard Template
+                CareerGraph - HR <br />
+                Nền tảng tìm kiếm ứng viên với sự kết nối thông minh và quy
+                trình tiện lợi
               </p>
             </div>
           </div>
