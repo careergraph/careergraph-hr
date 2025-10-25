@@ -233,8 +233,8 @@ export const initialCandidates: Candidate[] = [
 
 export const columns = [
   { id: "apply" as Status, title: "Ứng tuyển" },
-  { id: "meeting" as Status, title: "Phỏng vấn sơ bộ" },
-  { id: "interview" as Status, title: "Phỏng vấn chính thức" },
+  { id: "meeting" as Status, title: "Liên hệ" },
+  { id: "interview" as Status, title: "Phỏng vấn" },
   { id: "trial" as Status, title: "Thử việc" },
   { id: "hired" as Status, title: "Nhận chính thức" },
 ];

@@ -1,8 +1,8 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { CalendarClock, GripVertical, MapPin } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Candidate } from "@/types/candidate";
 
@@ -10,12 +10,14 @@ export interface CandidateCardProps {
   candidate: Candidate;
   onViewDetails?: (candidate: Candidate) => void;
   compact?: boolean;
+  className?: string;
 }
 
 export function CandidateCard({
   candidate,
   onViewDetails,
   compact = false,
+  className,
 }: CandidateCardProps) {
   const {
     attributes,
@@ -31,85 +33,105 @@ export function CandidateCard({
     transition,
   };
 
-  const getInitials = (name: string) => {
-    return name
+  const getInitials = (name: string) =>
+    name
       .split(" ")
-      .map((n) => n[0])
+      .map((part) => part[0])
       .join("")
       .toUpperCase()
       .slice(0, 2);
+
+  const priorityMeta: Record<
+    Candidate["priority"],
+    { label: string; badge: string; indicator: string }
+  > = {
+    high: {
+      label: "Ưu tiên cao",
+      badge: "bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/30",
+      indicator: "from-rose-500/20 via-transparent to-transparent",
+    },
+    medium: {
+      label: "Ưu tiên",
+      badge: "bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/30",
+      indicator: "from-amber-500/20 via-transparent to-transparent",
+    },
+    low: {
+      label: "Theo dõi",
+      badge: "bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/30",
+      indicator: "from-sky-500/20 via-transparent to-transparent",
+    },
   };
 
-  const getPriorityConfig = () => {
-    switch (candidate.priority) {
-      case "high":
-        return { color: "bg-red-500 text-white", label: "Cao" };
-      case "medium":
-        return { color: "bg-orange-500 text-white", label: "Trung bình" };
-      case "low":
-        return { color: "bg-blue-500 text-white", label: "Thấp" };
-    }
-  };
-
-  const priorityConfig = getPriorityConfig();
+  const priority = priorityMeta[candidate.priority];
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`transition-all ${isDragging ? "opacity-50 cursor-grabbing" : ""}`}
+      className={`w-full transition ${isDragging ? "opacity-50 cursor-grabbing" : ""} ${className ?? ""}`}
     >
       <Card
-        className={`mb-2 border-0 shadow hover:shadow-lg cursor-pointer rounded-xl bg-white/90 hover:bg-white ${compact ? "p-3" : "p-4"}`}
+        className={`relative mb-3 flex w-full cursor-pointer items-start gap-4 overflow-hidden rounded-2xl border border-slate-200 bg-card shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+          compact ? "p-4" : "p-5"
+        }`}
         onClick={() => onViewDetails?.(candidate)}
         tabIndex={0}
         role="button"
         aria-label={`Xem chi tiết ứng viên ${candidate.name}`}
       >
-        <div className="flex items-center gap-3">
-          <div
-            {...attributes}
-            {...listeners}
-            className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-primary transition-colors"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <GripVertical className="h-5 w-5" />
+        <div className={`absolute inset-0 bg-gradient-to-br ${priority.indicator} opacity-10`} />
+        <div className="relative flex w-full items-start gap-4">
+          <div className="flex flex-col items-center gap-3">
+            <button
+              {...attributes}
+              {...listeners}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-background text-slate-400"
+              onClick={(event) => event.stopPropagation()}
+              type="button"
+              aria-label="Kéo thả ứng viên"
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+            <Avatar className="h-16 w-16 border border-slate-200 bg-muted">
+              {candidate.avatar ? (
+                <AvatarImage src={candidate.avatar} alt={candidate.name} />
+              ) : null}
+              <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-base font-semibold uppercase text-primary-foreground">
+                {getInitials(candidate.name)}
+              </AvatarFallback>
+            </Avatar>
           </div>
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-sm">
-              {getInitials(candidate.name)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-800 truncate text-sm">
-              {candidate.name}
-            </h3>
-            <p className="text-xs text-gray-500 truncate">
-              {candidate.position}
-            </p>
+
+          <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0 space-y-0.5">
+                <h3 className="truncate text-sm font-semibold text-foreground">
+                  {candidate.name}
+                </h3>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {candidate.position}
+                </span>
+              </div>
+              <Badge
+                className={`${priority.badge} px-2 py-0 text-[10px] font-semibold uppercase`}
+              >
+                {priority.label}
+              </Badge>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <CalendarClock className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                {candidate.appliedDate}
+              </span>
+              {candidate.location?.city ? (
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                  {candidate.location.city}
+                </span>
+              ) : null}
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2 mt-2">
-          <Badge className={`${priorityConfig.color} px-2 py-0 text-xs`}>{priorityConfig.label}</Badge>
-          <span className="text-xs text-gray-400 font-mono">{candidate.appliedDate}</span>
-          {candidate.labels.length > 0 && (
-            <span className="inline-flex gap-1 ml-auto">
-              {candidate.labels.slice(0, 1).map((label, index) => (
-                <Badge
-                  key={index}
-                  variant="outline"
-                  className="text-xs px-1.5 py-0 border-gray-300"
-                >
-                  {label}
-                </Badge>
-              ))}
-              {candidate.labels.length > 1 && (
-                <Badge variant="outline" className="text-xs px-1.5 py-0 border-gray-300">
-                  +{candidate.labels.length - 1}
-                </Badge>
-              )}
-            </span>
-          )}
         </div>
       </Card>
     </div>

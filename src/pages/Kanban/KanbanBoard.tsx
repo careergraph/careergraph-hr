@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 // ...existing code...
 import { Candidate, Status } from "@/types/candidate";
 import { CandidateDetailDialog } from "./CandidateDetailDialog";
@@ -16,6 +16,16 @@ import {
 import { arrayMove } from "@dnd-kit/sortable";
 import { Column } from "./Column";
 import { CandidateCard } from "./CandidateCard";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { initialCandidates, columns } from "@/data/candidateData";
 
@@ -23,11 +33,22 @@ import { initialCandidates, columns } from "@/data/candidateData";
 export const KanbanBoard = () => {
   const [candidates, setCandidates] = useState<Candidate[]>(initialCandidates);
   const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [dragSourceStatus, setDragSourceStatus] = useState<Status | null>(null);
+  const [moveRequest, setMoveRequest] = useState<
+    | {
+        candidateId: string;
+        targetStatus: Status;
+        targetCandidateId: string | null;
+      }
+    | null
+  >(null);
+  const dragSnapshotRef = useRef<Candidate[] | null>(null);
+  const didConfirmRef = useRef(false);
   // Xử lý khi click vào candidate để xem chi tiết
   const handleViewDetails = (candidate: Candidate) => {
     setActiveCandidate(candidate);
-    setDialogOpen(true);
+    setDetailOpen(true);
   };
 
   // Sensor config cho drag & drop
@@ -43,7 +64,11 @@ export const KanbanBoard = () => {
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const candidate = candidates.find((c) => c.id === active.id);
-    setActiveCandidate(candidate || null);
+    if (candidate) {
+      setActiveCandidate(candidate);
+      setDragSourceStatus(candidate.status);
+      dragSnapshotRef.current = candidates.map((item) => ({ ...item }));
+    }
   };
 
   // Khi kéo ứng viên qua column khác
@@ -56,32 +81,64 @@ export const KanbanBoard = () => {
 
     if (activeId === overId) return;
 
-    const activeCandidate = candidates.find((c) => c.id === activeId);
-    const overCandidate = candidates.find((c) => c.id === overId);
+    const overColumn = columns.find((column) => column.id === overId);
 
-    if (!activeCandidate) return;
+    setCandidates((prev) => {
+      const activeIndex = prev.findIndex((candidate) => candidate.id === activeId);
+      if (activeIndex === -1) return prev;
 
-    // Check if dragging over a column or a candidate
-    const overColumn = columns.find((c) => c.id === overId);
+      const activeCandidateData = prev[activeIndex];
+      const overCandidateData = prev.find((candidate) => candidate.id === overId);
 
-    if (overColumn) {
-      // Dragging over a column
-      setCandidates((candidates) => {
-        return candidates.map((c) =>
-          c.id === activeId ? { ...c, status: overColumn.id } : c
+      const targetStatus = (overColumn?.id ??
+        overCandidateData?.status ??
+        (over.data?.current?.sortable?.containerId as Status | undefined)) as
+        | Status
+        | undefined;
+
+      if (!targetStatus) return prev;
+
+      const updatedActiveCandidate: Candidate = {
+        ...activeCandidateData,
+        status: targetStatus,
+      };
+
+      const withoutActive = prev.filter((candidate) => candidate.id !== activeId);
+
+      if (overCandidateData && overCandidateData.id !== activeId) {
+        const overIndex = withoutActive.findIndex(
+          (candidate) => candidate.id === overCandidateData.id
         );
-      });
-    } else if (
-      overCandidate &&
-      activeCandidate.status !== overCandidate.status
-    ) {
-      // Dragging over a candidate in different column
-      setCandidates((candidates) => {
-        return candidates.map((c) =>
-          c.id === activeId ? { ...c, status: overCandidate.status } : c
-        );
-      });
-    }
+        if (overIndex === -1) return prev;
+        const next = [...withoutActive];
+        next.splice(overIndex, 0, updatedActiveCandidate);
+        return next;
+      }
+
+      if (overColumn) {
+        const next = [...withoutActive];
+        const lastIndexInColumn = next.reduce((last, candidate, index) => {
+          return candidate.status === targetStatus ? index : last;
+        }, -1);
+        if (lastIndexInColumn >= 0) {
+          next.splice(lastIndexInColumn + 1, 0, updatedActiveCandidate);
+        } else {
+          next.push(updatedActiveCandidate);
+        }
+        return next;
+      }
+
+      const next = [...withoutActive];
+      const fallbackIndex = next.reduce((last, candidate, index) => {
+        return candidate.status === targetStatus ? index : last;
+      }, -1);
+      if (fallbackIndex >= 0) {
+        next.splice(fallbackIndex + 1, 0, updatedActiveCandidate);
+      } else {
+        next.push(updatedActiveCandidate);
+      }
+      return next;
+    });
   };
 
   // Khi kết thúc kéo ứng viên
@@ -89,36 +146,135 @@ export const KanbanBoard = () => {
     const { active, over } = event;
     setActiveCandidate(null);
 
-    if (!over) return;
+    if (!over) {
+      if (dragSnapshotRef.current) {
+        setCandidates(dragSnapshotRef.current);
+        dragSnapshotRef.current = null;
+      }
+      setDragSourceStatus(null);
+      return;
+    }
 
     const activeId = active.id;
     const overId = over.id;
 
-    if (activeId === overId) return;
+    if (activeId === overId) {
+      setDragSourceStatus(null);
+      return;
+    }
 
-    const activeCandidate = candidates.find((c) => c.id === activeId);
+    const activeCandidateData = candidates.find((c) => c.id === activeId);
+    if (!activeCandidateData) {
+      setDragSourceStatus(null);
+      return;
+    }
+
+    const overColumn = columns.find((column) => column.id === overId);
     const overCandidate = candidates.find((c) => c.id === overId);
 
-    if (!activeCandidate || !overCandidate) return;
+    let targetStatus: Status | null = null;
+    let targetCandidateId: string | null = null;
 
-    // Reorder candidates in the same column
-    if (activeCandidate.status === overCandidate.status) {
-      setCandidates((candidates) => {
-        const activeIndex = candidates.findIndex((c) => c.id === activeId);
-        const overIndex = candidates.findIndex((c) => c.id === overId);
-        return arrayMove(candidates, activeIndex, overIndex);
-      });
+    if (overColumn) {
+      targetStatus = overColumn.id;
+    } else if (overCandidate) {
+      targetStatus = overCandidate.status;
+      targetCandidateId = overCandidate.id;
     }
+
+    if (!targetStatus) {
+      if (dragSnapshotRef.current) {
+        setCandidates(dragSnapshotRef.current);
+        dragSnapshotRef.current = null;
+      }
+      setDragSourceStatus(null);
+      return;
+    }
+
+    if (dragSourceStatus && dragSourceStatus === targetStatus) {
+      if (!targetCandidateId) {
+        dragSnapshotRef.current = null;
+        setDragSourceStatus(null);
+        return;
+      }
+      setCandidates((prev) => {
+        const activeIndex = prev.findIndex((c) => c.id === activeId);
+        const overIndex = prev.findIndex((c) => c.id === targetCandidateId);
+        if (activeIndex === -1 || overIndex === -1) return prev;
+        return arrayMove(prev, activeIndex, overIndex);
+      });
+      dragSnapshotRef.current = null;
+      setDragSourceStatus(null);
+      return;
+    }
+
+    setMoveRequest({
+      candidateId: activeCandidateData.id,
+      targetStatus,
+      targetCandidateId,
+    });
+    setDragSourceStatus(null);
   };
 
   // Filter candidates by status
-  const getCandidatesByStatus = (status: Status) => {
-    return candidates.filter((candidate) => candidate.status === status);
+  const getCandidatesByStatus = useCallback(
+    (status: Status) => candidates.filter((candidate) => candidate.status === status),
+    [candidates]
+  );
+
+  const pendingCandidate = useMemo(
+    () =>
+      moveRequest
+        ? candidates.find((candidate) => candidate.id === moveRequest.candidateId) ?? null
+        : null,
+    [candidates, moveRequest]
+  );
+
+  const handleConfirmMove = () => {
+    if (!moveRequest) return;
+    setCandidates((prev) => {
+      const current = prev.find((c) => c.id === moveRequest.candidateId);
+      if (!current) return prev;
+      const filtered = prev.filter((c) => c.id !== moveRequest.candidateId);
+      const updatedCandidate = { ...current, status: moveRequest.targetStatus };
+
+      if (moveRequest.targetCandidateId) {
+        const targetIndex = filtered.findIndex(
+          (c) => c.id === moveRequest.targetCandidateId
+        );
+        if (targetIndex >= 0) {
+          filtered.splice(targetIndex, 0, updatedCandidate);
+        } else {
+          filtered.push(updatedCandidate);
+        }
+      } else {
+        filtered.push(updatedCandidate);
+      }
+
+      return filtered;
+    });
+    dragSnapshotRef.current = null;
+    didConfirmRef.current = true;
+    setMoveRequest(null);
+  };
+
+  const handleCancelMove = () => {
+    if (dragSnapshotRef.current) {
+      setCandidates(dragSnapshotRef.current);
+      dragSnapshotRef.current = null;
+    }
+    setMoveRequest(null);
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-[1600px] mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100/60 p-6">
+      <div className="mx-auto max-w-[1640px] space-y-6">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-semibold text-slate-800">Bảng tuyển dụng</h1>
+          <p className="text-sm text-slate-500">
+            Theo dõi tiến trình tuyển dụng và quản lý tương tác với ứng viên trong thời gian thực.
+          </p>
+        </div>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -126,7 +282,7 @@ export const KanbanBoard = () => {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-4 items-start overflow-x-auto">
+          <div className="flex items-start gap-5 overflow-x-auto pb-4">
             {columns.map((column) => (
               <Column
                 key={column.id}
@@ -145,12 +301,45 @@ export const KanbanBoard = () => {
         </DndContext>
         {/* Dialog chi tiết ứng viên */}
         <CandidateDetailDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
           candidate={activeCandidate}
           setHeaderBlur={() => {}}
         />
       </div>
+
+      <AlertDialog
+        open={Boolean(moveRequest)}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (didConfirmRef.current) {
+              didConfirmRef.current = false;
+              return;
+            }
+            handleCancelMove();
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-lg rounded-2xl border border-slate-200 bg-white shadow-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận chuyển trạng thái</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingCandidate
+                ? `Bạn có chắc chắn muốn chuyển ${pendingCandidate.name} sang cột "${
+                    columns.find((col) => col.id === moveRequest?.targetStatus)?.title ??
+                    moveRequest?.targetStatus
+                  }"?`
+                : "Bạn có chắc chắn muốn chuyển ứng viên sang cột mới?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelMove}>Huỷ</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmMove}>
+              Xác nhận
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
