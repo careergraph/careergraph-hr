@@ -10,68 +10,115 @@ import { Badge } from "@/components/ui/badge";
 import { Job } from "@/types/job";
 import { Status } from "@/enums/commonEnum";
 import { EmploymentType } from "@/enums/workEnum";
+import { KeyboardEvent } from "react";
 
 interface JobCardProps {
   job: Job;
+  onSelectJob?: () => void;
 }
 
-export const JobCard = ({ job }: JobCardProps) => {
+export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
   // Màu cho từng loại công việc
   const typeColors = {
     [EmploymentType.FULL_TIME]: {
       badge: "text-cyan-700 bg-cyan-100 dark:text-cyan-300 dark:bg-cyan-950/30",
       icon: "text-cyan-600 dark:text-cyan-400",
       bg: "bg-cyan-100 dark:bg-cyan-950/30",
+      gradient: "from-cyan-500/20 via-transparent to-transparent dark:from-cyan-400/15 dark:via-transparent dark:to-transparent",
     },
     [EmploymentType.PART_TIME]: {
       badge: "text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-950/30",
       icon: "text-blue-600 dark:text-blue-400",
       bg: "bg-blue-100 dark:bg-blue-950/30",
+      gradient: "from-sky-500/20 via-transparent to-transparent dark:from-sky-400/15 dark:via-transparent dark:to-transparent",
     },
     [EmploymentType.CONTRACT]: {
       badge:
         "text-violet-700 bg-violet-100 dark:text-violet-300 dark:bg-violet-950/30",
       icon: "text-violet-600 dark:text-violet-400",
       bg: "bg-violet-100 dark:bg-violet-950/30",
+      gradient: "from-violet-500/20 via-transparent to-transparent dark:from-violet-500/15 dark:via-transparent dark:to-transparent",
     },
     [EmploymentType.INTERNSHIP]: {
       badge:
         "text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-950/30",
       icon: "text-green-600 dark:text-green-400",
       bg: "bg-green-100 dark:bg-green-950/30",
+      gradient: "from-emerald-500/20 via-transparent to-transparent dark:from-emerald-400/15 dark:via-transparent dark:to-transparent",
     },
     [EmploymentType.FREELANCE]: {
       badge:
         "text-orange-700 bg-orange-100 dark:text-orange-300 dark:bg-orange-950/30",
       icon: "text-orange-600 dark:text-orange-400",
       bg: "bg-orange-100 dark:bg-orange-950/30",
+      gradient: "from-amber-500/20 via-transparent to-transparent dark:from-amber-400/15 dark:via-transparent dark:to-transparent",
     },
     [EmploymentType.TEMPORARY]: {
       badge: "text-pink-700 bg-pink-100 dark:text-pink-300 dark:bg-pink-950/30",
       icon: "text-pink-600 dark:text-pink-400",
       bg: "bg-pink-100 dark:bg-pink-950/30",
+      gradient: "from-pink-500/20 via-transparent to-transparent dark:from-pink-400/15 dark:via-transparent dark:to-transparent",
     },
   } as const;
 
-  const color = typeColors[job.type as keyof typeof typeColors];
+  const color =
+    typeColors[job.type as keyof typeof typeColors] ||
+    typeColors[EmploymentType.FULL_TIME];
+
+  const currentStatus = job.status ?? Status.ACTIVE;
+
+  const typeLabelMap: Partial<Record<EmploymentType, string>> = {
+    [EmploymentType.FULL_TIME]: "Toàn thời gian",
+    [EmploymentType.PART_TIME]: "Bán thời gian",
+    [EmploymentType.CONTRACT]: "Hợp đồng",
+    [EmploymentType.INTERNSHIP]: "Thực tập",
+    [EmploymentType.FREELANCE]: "Tự do",
+    [EmploymentType.TEMPORARY]: "Tạm thời",
+  };
+
+  const statusLabelMap: Record<Status, string> = {
+    [Status.ACTIVE]: "Đang tuyển",
+    [Status.INACTIVE]: "Tạm dừng",
+    [Status.DRAFT]: "Bản nháp",
+    [Status.CLOSED]: "Đã đóng",
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!onSelectJob) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onSelectJob();
+    }
+  };
 
   // Màu cho trạng thái
   const statusColor =
-    job.status === Status.ACTIVE
+    currentStatus === Status.ACTIVE
       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
-      : job.status === Status.DRAFT
+      : currentStatus === Status.DRAFT
       ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-300"
+      : currentStatus === Status.INACTIVE
+      ? "bg-slate-200 text-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
       : "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-300";
 
   return (
-    <div className="group p-6 rounded-2xl border border-border bg-card dark:bg-slate-900 hover:bg-accent/50 dark:hover:bg-slate-800/70 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] flex flex-col justify-between">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onSelectJob}
+      onKeyDown={handleKeyDown}
+      className="group relative overflow-hidden p-6 rounded-2xl border border-border bg-card dark:bg-slate-900 hover:bg-accent/50 dark:hover:bg-slate-800/70 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] flex flex-col justify-between cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 focus:ring-offset-background"
+    >
+      <div
+        className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${color.gradient} opacity-60 transition-opacity duration-300 group-hover:opacity-80`}
+      />
       {/* Header: type icon + type badge */}
       <div className="flex items-center justify-between mb-3">
         <div className={`p-2.5 rounded-xl ${color.bg}`}>
           <Briefcase className={`w-5 h-5 ${color.icon}`} />
         </div>
         <Badge className={`rounded-full px-2 py-1 text-sm ${color.badge}`}>
-          {job.type}
+          {typeLabelMap[job.type as EmploymentType] ?? job.type}
         </Badge>
       </div>
 
@@ -89,11 +136,7 @@ export const JobCard = ({ job }: JobCardProps) => {
           </p>
         </div>
         <Badge className={`ml-3 rounded-full px-2 py-1 text-sm ${statusColor}`}>
-          {job.status === Status.ACTIVE
-            ? Status.ACTIVE
-            : job.status === Status.DRAFT
-            ? Status.DRAFT
-            : Status.CLOSED}
+          {statusLabelMap[currentStatus]}
         </Badge>
       </div>
 
@@ -103,7 +146,11 @@ export const JobCard = ({ job }: JobCardProps) => {
           <MapPin className="w-3 h-3" />
           {job.city}
         </span>
-        <span>{job.postedDate.toDateString()}</span>
+        <span>
+          {job.postedDate instanceof Date
+            ? job.postedDate.toLocaleDateString("vi-VN")
+            : job.postedDate}
+        </span>
       </div>
 
       {/* Action icons trải đều */}

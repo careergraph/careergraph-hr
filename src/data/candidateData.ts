@@ -1,11 +1,11 @@
 // Mock data - danh sách ứng viên mẫu
-import { Candidate } from "@/types/candidate";
-import { Status } from "@/enums/commonEnum";
+import { Candidate, Status as CandidateStatus } from "@/types/candidate";
 
 export const initialCandidates: Candidate[] = [
   {
     id: "1",
     ticketId: "TCK-001",
+    jobId: "1",
     name: "Nguyễn Duy Long",
     position: "Nhân Viên Công Nghệ Thông Tin",
     email: "nguyenlong@email.com",
@@ -56,6 +56,7 @@ export const initialCandidates: Candidate[] = [
   {
     id: "2",
     ticketId: "TCK-002",
+    jobId: "1",
     name: "Văn Thiệp",
     position: "Kỹ Thuật Viên CNC",
     email: "vanthiep@email.com",
@@ -98,6 +99,7 @@ export const initialCandidates: Candidate[] = [
   {
     id: "3",
     ticketId: "TCK-003",
+    jobId: "2",
     name: "Kim Kim",
     position: "Nhân Viên Tư Vấn Bán Hàng",
     email: "kimkim@email.com",
@@ -108,7 +110,7 @@ export const initialCandidates: Candidate[] = [
     experienceLevel: "junior",
     salaryExpectation: "8,000,000 - 12,000,000 (VND)",
     assignee: { name: "Nguyễn Văn D" },
-    labels: ["Bán hàng", "Tư vấn", "Chăm sóc khách hàng"],
+    labels: ["Bán hàng", "Tư vấn", "CSKH"],
     description:
       "Nhiệt tình, năng động, có khả năng giao tiếp tốt và đạt chỉ tiêu bán hàng.",
     timeline: [
@@ -141,6 +143,7 @@ export const initialCandidates: Candidate[] = [
   {
     id: "4",
     ticketId: "TCK-004",
+    jobId: "2",
     name: "Nguyễn Thị Thùy Linh",
     position: "Nhân Viên Hành Chính, Thư ký, trợ lý",
     email: "thuylinh@email.com",
@@ -190,6 +193,7 @@ export const initialCandidates: Candidate[] = [
   {
     id: "5",
     ticketId: "TCK-005",
+    jobId: "3",
     name: "Minh Thu",
     position: "Nhân Viên Kho Vận",
     email: "minhthu@email.com",
@@ -231,10 +235,10 @@ export const initialCandidates: Candidate[] = [
   },
 ];
 
-export const columns = [
-  { id: "apply" as Status, title: "Ứng tuyển" },
-  { id: "meeting" as Status, title: "Liên hệ" },
-  { id: "interview" as Status, title: "Phỏng vấn" },
-  { id: "trial" as Status, title: "Thử việc" },
-  { id: "hired" as Status, title: "Nhận chính thức" },
+export const columns: Array<{ id: CandidateStatus; title: string }> = [
+  { id: "apply", title: "Ứng tuyển" },
+  { id: "meeting", title: "Liên hệ" },
+  { id: "interview", title: "Phỏng vấn" },
+  { id: "trial", title: "Thử việc" },
+  { id: "hired", title: "Nhận chính thức" },
 ];

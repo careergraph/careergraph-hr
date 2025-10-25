@@ -20,6 +20,7 @@ export interface TimelineEvent {
 export interface Candidate {
   id: string;
   ticketId: string;
+  jobId: string;
   name: string;
   position: string;
   email: string;

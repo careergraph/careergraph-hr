@@ -37,7 +37,7 @@ type Job = {
   remoteJob?: boolean;
 
   // Field basic
-  type?: string;
+  type?: EmploymentType;
   department?: string;
 
   // Stats: Show phân tích data

@@ -5,10 +5,10 @@ import {
 } from "@dnd-kit/sortable";
 import { Briefcase, Users, CheckCircle, Star, UserCheck } from "lucide-react";
 import { CandidateCard } from "./CandidateCard";
-import { Candidate, Status } from "@/types/candidate";
+import { Candidate, Status as CandidateStatus } from "@/types/candidate";
 
 interface ColumnProps {
-  id: Status;
+  id: CandidateStatus;
   title: string;
   candidates: Candidate[];
   onViewDetails?: (candidate: Candidate) => void;
@@ -16,7 +16,7 @@ interface ColumnProps {
 
 // Column màu sắc riêng, icon riêng cho từng trạng thái
 const COLUMN_STYLES: Record<
-  Status,
+  CandidateStatus,
   {
     accent: string;
     border: string;

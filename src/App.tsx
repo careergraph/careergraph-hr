@@ -39,7 +39,8 @@ export default function App() {
             <Route path="/calendar" element={<Calendar />} />
 
             {/* Candidates */}
-            <Route path="/candidates" element={<Candidates />} />
+            <Route path="/kanbans" element={<Candidates />} />
+            <Route path="/kanbans/:jobId" element={<Candidates />} />
 
             {/* Jobs */}
             <Route path="/jobs" element={<JobsGrid />} />
@@ -49,7 +50,7 @@ export default function App() {
             <Route path="/employees" element={<EmployeesTable />} />
 
             {/* Suggestion Candidates */}
-            <Route path="/suggestion" element={<SuggestionCandidates />} />
+            <Route path="/candidates" element={<SuggestionCandidates />} />
 
             {/* Ui Elements */}
             <Route path="/alerts" element={<Alerts />} />

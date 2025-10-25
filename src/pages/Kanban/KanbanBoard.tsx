@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // ...existing code...
-import { Candidate, Status } from "@/types/candidate";
+import { Candidate, Status as CandidateStatus } from "@/types/candidate";
 import { CandidateDetailDialog } from "./CandidateDetailDialog";
 import {
   DndContext,
@@ -29,22 +29,39 @@ import {
 
 import { initialCandidates, columns } from "@/data/candidateData";
 
+interface KanbanBoardProps {
+  jobId?: string;
+}
+
 // Component quản lý toàn bộ Kanban board tuyển dụng
-export const KanbanBoard = () => {
-  const [candidates, setCandidates] = useState<Candidate[]>(initialCandidates);
+export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
+  const filterByJob = useCallback(
+    (items: Candidate[]) =>
+      items.filter((candidate) => (jobId ? candidate.jobId === jobId : true)),
+    [jobId]
+  );
+
+  const [candidates, setCandidates] = useState<Candidate[]>(() => filterByJob(initialCandidates));
   const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [dragSourceStatus, setDragSourceStatus] = useState<Status | null>(null);
+  const [dragSourceStatus, setDragSourceStatus] = useState<CandidateStatus | null>(null);
   const [moveRequest, setMoveRequest] = useState<
     | {
         candidateId: string;
-        targetStatus: Status;
-        targetCandidateId: string | null;
+        targetStatus: CandidateStatus;
+        targetCandidateId?: string;
       }
     | null
   >(null);
   const dragSnapshotRef = useRef<Candidate[] | null>(null);
   const didConfirmRef = useRef(false);
+
+  useEffect(() => {
+    setCandidates(filterByJob(initialCandidates));
+    setActiveCandidate(null);
+    setMoveRequest(null);
+    dragSnapshotRef.current = null;
+  }, [filterByJob]);
   // Xử lý khi click vào candidate để xem chi tiết
   const handleViewDetails = (candidate: Candidate) => {
     setActiveCandidate(candidate);
@@ -82,6 +99,7 @@ export const KanbanBoard = () => {
     if (activeId === overId) return;
 
     const overColumn = columns.find((column) => column.id === overId);
+    const containerId = over.data?.current?.sortable?.containerId;
 
     setCandidates((prev) => {
       const activeIndex = prev.findIndex((candidate) => candidate.id === activeId);
@@ -90,11 +108,10 @@ export const KanbanBoard = () => {
       const activeCandidateData = prev[activeIndex];
       const overCandidateData = prev.find((candidate) => candidate.id === overId);
 
-      const targetStatus = (overColumn?.id ??
-        overCandidateData?.status ??
-        (over.data?.current?.sortable?.containerId as Status | undefined)) as
-        | Status
-        | undefined;
+      const inferredStatus =
+        typeof containerId === "string" ? (containerId as CandidateStatus) : undefined;
+
+      const targetStatus = overColumn?.id ?? overCandidateData?.status ?? inferredStatus;
 
       if (!targetStatus) return prev;
 
@@ -172,8 +189,8 @@ export const KanbanBoard = () => {
     const overColumn = columns.find((column) => column.id === overId);
     const overCandidate = candidates.find((c) => c.id === overId);
 
-    let targetStatus: Status | null = null;
-    let targetCandidateId: string | null = null;
+    let targetStatus: CandidateStatus | null = null;
+    let targetCandidateId: string | undefined;
 
     if (overColumn) {
       targetStatus = overColumn.id;
@@ -218,7 +235,7 @@ export const KanbanBoard = () => {
 
   // Filter candidates by status
   const getCandidatesByStatus = useCallback(
-    (status: Status) => candidates.filter((candidate) => candidate.status === status),
+    (status: CandidateStatus) => candidates.filter((candidate) => candidate.status === status),
     [candidates]
   );
 
@@ -229,6 +246,14 @@ export const KanbanBoard = () => {
         : null,
     [candidates, moveRequest]
   );
+
+  const targetColumnTitle = useMemo(() => {
+    if (!moveRequest) return "";
+    return (
+      columns.find((col) => col.id === moveRequest.targetStatus)?.title ??
+      moveRequest.targetStatus
+    );
+  }, [moveRequest]);
 
   const handleConfirmMove = () => {
     if (!moveRequest) return;
@@ -270,7 +295,6 @@ export const KanbanBoard = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100/60 p-6">
       <div className="mx-auto max-w-[1640px] space-y-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold text-slate-800">Bảng tuyển dụng</h1>
           <p className="text-sm text-slate-500">
             Theo dõi tiến trình tuyển dụng và quản lý tương tác với ứng viên trong thời gian thực.
           </p>
@@ -325,10 +349,7 @@ export const KanbanBoard = () => {
             <AlertDialogTitle>Xác nhận chuyển trạng thái</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingCandidate
-                ? `Bạn có chắc chắn muốn chuyển ${pendingCandidate.name} sang cột "${
-                    columns.find((col) => col.id === moveRequest?.targetStatus)?.title ??
-                    moveRequest?.targetStatus
-                  }"?`
+                ? `Bạn có chắc chắn muốn chuyển ${pendingCandidate.name} sang cột "${targetColumnTitle}"?`
                 : "Bạn có chắc chắn muốn chuyển ứng viên sang cột mới?"}
             </AlertDialogDescription>
           </AlertDialogHeader>

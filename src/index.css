@@ -29,12 +29,12 @@ layer(base);
   --text-title-md--line-height: 44px;
   --text-title-sm: 30px;
   --text-title-sm--line-height: 38px;
-  --text-theme-xl: 20px;
-  --text-theme-xl--line-height: 30px;
-  --text-theme-sm: 14px;
-  --text-theme-sm--line-height: 20px;
-  --text-theme-xs: 12px;
-  --text-theme-xs--line-height: 18px;
+  --text-theme-xl: 21px;
+  --text-theme-xl--line-height: 32px;
+  --text-theme-sm: 15px;
+  --text-theme-sm--line-height: 22px;
+  --text-theme-xs: 13px;
+  --text-theme-xs--line-height: 19px;
 
   --color-current: currentColor;
   --color-transparent: transparent;
@@ -174,6 +174,17 @@ layer(base);
   color utility to any element that depends on these defaults.
 */
 @layer base {
+  html {
+    font-size: 17px;
+    color-scheme: light;
+  }
+
+  @media (max-width: 640px) {
+    html {
+      font-size: 16px;
+    }
+  }
+
   *,
   ::after,
   ::before,
@@ -186,7 +197,11 @@ layer(base);
     cursor: pointer;
   }
   body {
-    @apply relative font-normal font-outfit z-1 bg-gray-50;
+    @apply relative font-normal font-outfit z-1 bg-gray-50 text-gray-900 transition-colors duration-300 dark:bg-gray-950 dark:text-gray-100;
+  }
+
+  .dark {
+    color-scheme: dark;
   }
 }
 

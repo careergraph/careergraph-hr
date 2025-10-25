@@ -1,55 +1,9 @@
 import { Plus } from "lucide-react";
 import { JobCard } from "./JobCard";
-import { Job } from "@/types/job";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import PageMeta from "@/components/common/PageMeta";
 import { useNavigate } from "react-router";
-import { Status } from "@/enums/commonEnum";
-
-const sampleJobs: Job[] = [
-  {
-    id: "1",
-    title: "Senior Frontend Developer",
-    type: "Full-time",
-    department: "Engineering",
-    city: "Hà Nội",
-    postedDate: new Date(),
-    status: Status.ACTIVE,
-    applicants: 5,
-    views: 20,
-    saved: 3,
-    likes: 4,
-    shares: 2,
-  },
-  {
-    id: "2",
-    title: "Product Designer",
-    type: "Part-time",
-    department: "Design",
-    city: "Remote",
-    postedDate: new Date(),
-    status: Status.DRAFT,
-    applicants: 2,
-    views: 10,
-    saved: 1,
-    likes: 2,
-    shares: 0,
-  },
-  {
-    id: "3",
-    title: "DevOps Engineer",
-    type: "Contract",
-    department: "Infrastructure",
-    city: "Hồ Chí Minh",
-    postedDate: new Date(),
-    status: Status.CLOSED,
-    applicants: 0,
-    views: 5,
-    saved: 0,
-    likes: 0,
-    shares: 0,
-  },
-];
+import { jobsData } from "@/data/jobsData";
 
 export default function JobsGrid() {
 
@@ -62,12 +16,12 @@ export default function JobsGrid() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background">
       <PageMeta title="HR - CareerGraph" description="HR - CareerGraph" />
-      <PageBreadcrumb pageTitle="Jobs" />
+      <PageBreadcrumb pageTitle="Công việc" />
       <div className="container mx-auto px-4">
         <div className="max-w-5xl mx-auto space-y-8">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {sampleJobs.map((job) => (
-              <JobCard key={job.id} job={job} />
+            {jobsData.map((job) => (
+              <JobCard key={job.id} job={job} onSelectJob={() => navigate(`/kanbans/${job.id}`)} />
             ))}
 
             {/* Add New Job Card */}

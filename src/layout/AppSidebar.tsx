@@ -31,9 +31,9 @@ const navItems: NavItem[] = [
     path: "/",
   },
   {
-    name: "Candidates",
+    name: "Kanban",
     icon: <ListIcon />,
-    path: "/candidates",
+    path: "/kanbans",
   },
   {
     icon: <CalenderIcon />,
@@ -47,8 +47,8 @@ const navItems: NavItem[] = [
   // },
   {
     icon: <UserCircleIcon />,
-    name: "Suggestion",
-    path: "/suggestion",
+    name: "Candidates",
+    path: "/candidates",
   },
   {
     name: "Jobs",
@@ -290,7 +290,7 @@ const AppSidebar: React.FC = () => {
         />
       )}
       <aside
-        className={`fixed top-0 left-0 flex flex-col h-full bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 transition-all duration-300 ease-in-out z-50 border-r border-gray-200
+        className={`fixed top-0 left-0 flex flex-col h-full bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 ease-in-out z-50 border-r border-gray-200
           ${
             isExpanded || isMobileOpen
               ? "w-[290px]"
