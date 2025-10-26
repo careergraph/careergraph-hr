@@ -7,8 +7,9 @@ import { Job, ApplicationRequirements } from "@/types/job";
 interface ApplicationRequirementsStepProps {
   jobData: Partial<Job>;
   onUpdate: (data: Partial<Job>) => void;
-  onNext: () => void;
+  onNext: (data: Partial<Job>) => Promise<void> | void;
   onBack: () => void;
+  isSubmitting?: boolean;
 }
 
 export const ApplicationRequirementsStep = ({
@@ -16,6 +17,7 @@ export const ApplicationRequirementsStep = ({
   onUpdate,
   onNext,
   onBack,
+  isSubmitting = false,
 }: ApplicationRequirementsStepProps) => {
   const [touched, setTouched] = useState(false);
   const [requirements, setRequirements] = useState<ApplicationRequirements>(
@@ -28,6 +30,9 @@ export const ApplicationRequirementsStep = ({
     }
   );
 
+  const requirementItemClass =
+    "flex items-center justify-between px-5 py-4 rounded-xl border border-border/60 bg-card/40 dark:bg-slate-900/40 hover:border-primary/30 transition-colors shadow-sm";
+
   const handleRequirementChange = (
     field: keyof ApplicationRequirements,
     value: boolean
@@ -39,30 +44,37 @@ export const ApplicationRequirementsStep = ({
   };
 
   const isStepValid = requirements.resume && requirements.coverLetter;
-  const handleNext = () => {
+  const handleNext = async () => {
     setTouched(true);
     if (!isStepValid) return;
-    onUpdate({
+    const payload = {
       ...jobData,
       applicationRequirements: requirements,
-    });
-    onNext();
+    };
+
+    onUpdate(payload);
+
+    try {
+      await onNext(payload);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Personal information</h2>
-        <p className="text-muted-foreground">
-          Decide what should be displayed on the application form.
+      <div className="rounded-2xl border border-border/60 bg-muted/20 dark:bg-slate-900/40 px-6 py-5 shadow-sm">
+        <h2 className="text-2xl font-semibold mb-2">Thông tin ứng tuyển</h2>
+        <p className="text-muted-foreground text-sm">
+          Lựa chọn những thành phần bắt buộc trên biểu mẫu ứng viên cần cung cấp.
         </p>
       </div>
 
-      <div className="space-y-6">
-        <div className="flex items-center justify-between py-4 border-b">
+      <div className="space-y-4">
+        <div className={requirementItemClass}>
           <Label
             htmlFor="resume"
-            className="text-base font-normal cursor-pointer"
+            className="text-base font-medium cursor-pointer"
           >
             Resume
           </Label>
@@ -76,10 +88,10 @@ export const ApplicationRequirementsStep = ({
           />
         </div>
 
-        <div className="flex items-center justify-between py-4 border-b">
+        <div className={requirementItemClass}>
           <Label
             htmlFor="coverLetter"
-            className="text-base font-normal cursor-pointer"
+            className="text-base font-medium cursor-pointer"
           >
             Cover Letter
           </Label>
@@ -93,10 +105,10 @@ export const ApplicationRequirementsStep = ({
           />
         </div>
 
-        <div className="flex items-center justify-between py-4 border-b">
+        <div className={requirementItemClass}>
           <Label
             htmlFor="photo"
-            className="text-base font-normal cursor-pointer"
+            className="text-base font-medium cursor-pointer"
           >
             Photo
           </Label>
@@ -110,10 +122,10 @@ export const ApplicationRequirementsStep = ({
           />
         </div>
 
-        <div className="flex items-center justify-between py-4 border-b">
+        <div className={requirementItemClass}>
           <Label
             htmlFor="desiredSalary"
-            className="text-base font-normal cursor-pointer"
+            className="text-base font-medium cursor-pointer"
           >
             Desired Salary
           </Label>
@@ -128,12 +140,12 @@ export const ApplicationRequirementsStep = ({
         </div>
       </div>
 
-      <div className="pt-8">
-        <h3 className="text-xl font-bold mb-2">
-          Ask candidates about their qualifications
+      <div className="pt-8 rounded-2xl border border-dashed border-border/60 bg-muted/10 dark:bg-slate-900/40 px-6 py-6 text-center">
+        <h3 className="text-xl font-semibold mb-2">
+          Câu hỏi sàng lọc ứng viên
         </h3>
-        <p className="text-muted-foreground mb-6">
-          Add screening questions below to find the best candidates more easily
+        <p className="text-muted-foreground text-sm">
+          Bạn có thể bổ sung danh sách câu hỏi sau khi tạo job trong phần quản lý chi tiết.
         </p>
       </div>
 
@@ -141,8 +153,13 @@ export const ApplicationRequirementsStep = ({
         <Button onClick={onBack} variant="outline" size="lg" className="px-8">
           Back
         </Button>
-        <Button onClick={handleNext} size="lg" className="px-8" disabled={!isStepValid}>
-          Next
+        <Button
+          onClick={handleNext}
+          size="lg"
+          className="px-8"
+          disabled={!isStepValid || isSubmitting}
+        >
+          {isSubmitting ? "Đang lưu..." : "Next"}
         </Button>
         {!isStepValid && touched && (
           <p className="text-xs text-red-500 mt-2 text-right w-full">Resume và Cover Letter là bắt buộc.</p>

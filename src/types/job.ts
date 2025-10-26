@@ -28,6 +28,7 @@ type Job = {
   jobFunction?: JobFunction;
   employmentType?: EmploymentType;
   education?: Education;
+  jobCategory?: string;
 
   // Location details
   state?: string;
@@ -39,6 +40,8 @@ type Job = {
   // Field basic
   type?: EmploymentType;
   department?: string;
+  benefits?: string[];
+  numberOfPositions?: number;
 
   // Stats: Show phân tích data
   views?: number;
@@ -53,6 +56,7 @@ type Job = {
   salaryRange?: string;
   contactEmail?: string;
   contactPhone?: string;
+  expiryDate?: string;
   timeline?: JobTimelineEvent[];
 
   // Application requirements

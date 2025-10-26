@@ -29,13 +29,15 @@ import {
 interface JobDetailsStepProps {
   jobData: Partial<Job>;
   onUpdate: (data: Partial<Job>) => void;
-  onNext: () => void;
+  onNext: (data: Partial<Job>) => Promise<void> | void;
+  isSubmitting?: boolean;
 }
 
 export const JobDetailsStep = ({
   jobData,
   onUpdate,
   onNext,
+  isSubmitting = false,
 }: JobDetailsStepProps) => {
   // State cho location
   const [selectedProvinceCode, setSelectedProvinceCode] = useState<
@@ -154,7 +156,7 @@ export const JobDetailsStep = ({
   };
 
   // Xử lý khi nhấn Next
-  const handleNext = () => {
+  const handleNext = async () => {
     const err = validate();
     setTouched({
       title: true,
@@ -168,13 +170,18 @@ export const JobDetailsStep = ({
     });
     setError(err);
     if (Object.keys(err).length === 0) {
-      onUpdate({
+      const payload = {
         ...jobData,
         qualifications,
         minimumQualifications: minQualifications,
         responsibilities,
-      });
-      onNext();
+      };
+      onUpdate(payload);
+      try {
+        await onNext(payload);
+      } catch (error) {
+        console.error(error);
+      }
     }
   };
 
@@ -571,6 +578,13 @@ export const JobDetailsStep = ({
           <Input
             id="specific"
             placeholder="Địa chỉ cụ thể"
+            value={jobData.specific || ""}
+            onChange={(e) =>
+              onUpdate({
+                ...jobData,
+                specific: e.target.value,
+              })
+            }
             onFocus={() => setError((prev) => ({ ...prev, title: undefined }))}
             onBlur={() => setTouched((t) => ({ ...t, title: true }))}
             className="bg-white dark:bg-slate-900 max-h-[250px] overflow-y-auto"
@@ -643,8 +657,13 @@ export const JobDetailsStep = ({
       {/* Next button */}
       <div className="flex justify-end">
         <div className="inline-flex items-center bg-blue-100 text-blue-700 rounded-full text-sm font-medium p-1">
-          <Button onClick={handleNext} size="sm" className="px-4 py-2">
-            Tiếp tục
+          <Button
+            onClick={handleNext}
+            size="sm"
+            className="px-4 py-2"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Đang lưu..." : "Tiếp tục"}
           </Button>
         </div>
       </div>
