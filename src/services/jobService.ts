@@ -58,8 +58,7 @@ const mapJobToPayload = (job: Partial<Job>): JobPayload => {
     maxExperience: job.maxExperience,
     experienceLevel: toUpperSnake(job.experienceLevel as string | undefined),
     employmentType: toUpperSnake(job.employmentType as string | undefined),
-    jobFunction: toUpperSnake(job.jobFunction as string | undefined),
-    jobCategory: toUpperSnake(job.jobFunction as string | undefined),
+    jobCategory: toUpperSnake(job.jobCategory as string | undefined),
     education: toUpperSnake(job.education as string | undefined),
     state: job.state,
     city: job.city,
@@ -90,7 +89,7 @@ const mapJobToPayload = (job: Partial<Job>): JobPayload => {
 
 const unwrapResponse = <T>(data: T): T extends { data: infer U } ? U : T => {
   if (data && typeof data === "object" && data !== null && "data" in (data as Record<string, unknown>)) {
-    return (data as { data: unknown }).data as T extends { data: infer U } ? U : T;
+    return ((data as unknown) as { data: unknown }).data as T extends { data: infer U } ? U : T;
   }
 
   return data as T extends { data: infer U } ? U : T;
@@ -124,6 +123,15 @@ const jobService = {
     const response = await api.get("/jobs");
     return unwrapResponse(response.data);
   },
+
+  getJobForCompany: async (companyId: string) => {
+    if (!companyId) {
+      throw new Error("Thiếu mã công ty để tải danh sách công việc.");
+    }
+
+    const response = await api.get(`/jobs/company/${companyId}`);
+    return unwrapResponse(response.data);
+  }
 };
 
 export { jobService, mapJobToPayload };

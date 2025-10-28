@@ -2,7 +2,7 @@ import {
   Education,
   EmploymentType,
   ExperienceLevel,
-  JobFunction,
+  JobCategory
 } from "@/enums/workEnum";
 import { SkillLookup } from "./skill";
 import { Status } from "@/enums/commonEnum";
@@ -25,10 +25,9 @@ type Job = {
   experienceLevel?: ExperienceLevel;
 
   // Listing details
-  jobFunction?: JobFunction;
   employmentType?: EmploymentType;
   education?: Education;
-  jobCategory?: string;
+  jobCategory?: JobCategory;
 
   // Location details
   state?: string;
@@ -96,7 +95,7 @@ type Touched = {
   minExperience?: boolean;
   maxExperience?: boolean;
   experienceLevel?: boolean;
-  jobFunction?: boolean;
+  jobCategory?: boolean;
   type?: boolean;
   country?: boolean;
 };
@@ -108,7 +107,7 @@ type ErrorType = {
   maxExperience?: string;
   experienceLevel?: string;
   employmentType?: string;
-  jobFunction?: string;
+  jobCategory?: string;
   type?: string;
   location?: string;
 };

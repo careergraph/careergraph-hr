@@ -1,10 +1,3 @@
-enum JobFunction {
-  ENGINEERING = "Engineering",
-  DESIGN = "Design",
-  PRODUCT = "Product",
-  MARKETING = "Marketing",
-}
-
 enum EmploymentType {
   FULL_TIME = "Full-time",
   PART_TIME = "Part-time",
@@ -35,4 +28,15 @@ enum ExperienceLevel {
   CFO = "CFO",
 }
 
-export { JobFunction, EmploymentType, Education, ExperienceLevel };
+enum JobCategory {
+  ENGINEER = "Engineer",
+  BUSINESS = "Business",
+  ART_MUSIC = "Art & Music",
+  ADMINISTRATION = "Administration",
+  SALES = "Sales",
+  EDUCATION = "Education",
+  CUSTOMER_SERVICE = "Customer Service",
+  MANUFACTURING = "Manufacturing",
+}
+
+export {EmploymentType, Education, ExperienceLevel, JobCategory };

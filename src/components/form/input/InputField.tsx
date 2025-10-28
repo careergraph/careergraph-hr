@@ -1,5 +1,5 @@
 import type React from "react";
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 
 interface InputProps {
   type?: "text" | "number" | "email" | "password" | "date" | "time" | string;
@@ -17,6 +17,7 @@ interface InputProps {
   success?: boolean;
   error?: boolean;
   hint?: string;
+  endAdornment?: ReactNode;
 }
 
 const Input: FC<InputProps> = ({
@@ -35,6 +36,7 @@ const Input: FC<InputProps> = ({
   success = false,
   error = false,
   hint,
+  endAdornment,
 }) => {
   let inputClasses = ` h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3  dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 ${className}`;
 
@@ -46,6 +48,10 @@ const Input: FC<InputProps> = ({
     inputClasses += `  border-success-500 focus:border-success-300 focus:ring-success-500/20 dark:text-success-400 dark:border-success-500 dark:focus:border-success-800`;
   } else {
     inputClasses += ` bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-brand-500/20 dark:border-gray-700 dark:text-white/90  dark:focus:border-brand-800`;
+  }
+
+  if (endAdornment) {
+    inputClasses += " pr-12";
   }
 
   return (
@@ -64,6 +70,12 @@ const Input: FC<InputProps> = ({
         disabled={disabled}
         className={inputClasses}
       />
+
+      {endAdornment && (
+        <span className="absolute inset-y-0 right-3 flex items-center">
+          {endAdornment}
+        </span>
+      )}
 
       {hint && (
         <p

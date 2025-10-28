@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -27,13 +27,32 @@ const signUpSchema = z.object({
 
 type SignUpFormValues = z.infer<typeof signUpSchema>;
 
+const toVietnameseMessage = (raw?: string | null) => {
+  if (!raw) return null;
+  const normalized = raw.trim().toLowerCase();
+
+  if (normalized.includes("already") && normalized.includes("exist")) {
+    return "Email đã được đăng ký. Vui lòng sử dụng email khác.";
+  }
+
+  if (normalized.includes("otp")) {
+    return "OTP không hợp lệ hoặc đã hết hạn.";
+  }
+
+  return null;
+};
+
 const resolveErrorMessage = (error: unknown): string => {
   if (isAxiosError(error)) {
     const data = error.response?.data as { message?: string; error?: string } | undefined;
+    const vietnamese = toVietnameseMessage(data?.message ?? data?.error);
+    if (vietnamese) return vietnamese;
     return data?.message ?? data?.error ?? "Đăng ký không thành công. Vui lòng thử lại.";
   }
 
   if (error instanceof Error) {
+    const vietnamese = toVietnameseMessage(error.message);
+    if (vietnamese) return vietnamese;
     return error.message;
   }
 
@@ -53,11 +72,17 @@ export default function SignUpForm() {
       lastName: "",
       email: "",
       password: "",
-      acceptTerms: false,
+      acceptTerms: true,
     },
   });
 
   const { errors, isSubmitting } = formState;
+
+  useEffect(() => {
+    if (errors.password || errors.email || errors.firstName || errors.lastName) {
+      setFormError(null);
+    }
+  }, [errors.password, errors.email, errors.firstName, errors.lastName]);
 
   const onSubmit = async (values: SignUpFormValues) => {
     setFormError(null);
@@ -209,19 +234,23 @@ export default function SignUpForm() {
                           type={showPassword ? "text" : "password"}
                           error={!!errors.password}
                           hint={errors.password?.message}
+                          endAdornment={
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword((prev) => !prev)}
+                              className="text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                              aria-label={showPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
+                            >
+                              {showPassword ? (
+                                <EyeIcon className="size-5" />
+                              ) : (
+                                <EyeCloseIcon className="size-5" />
+                              )}
+                            </button>
+                          }
                         />
                       )}
                     />
-                    <span
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
-                    >
-                      {showPassword ? (
-                        <EyeIcon className="fill-gray-500 dark:fill-gray-400 size-5" />
-                      ) : (
-                        <EyeCloseIcon className="fill-gray-500 dark:fill-gray-400 size-5" />
-                      )}
-                    </span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-3">

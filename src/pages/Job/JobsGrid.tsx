@@ -6,7 +6,7 @@ import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import PageMeta from "@/components/common/PageMeta";
 import { JobCard } from "./JobCard";
 import { Job } from "@/types/job";
-import { EmploymentType } from "@/enums/workEnum";
+import { EmploymentType, JobCategory } from "@/enums/workEnum";
 import { Status } from "@/enums/commonEnum";
 import { jobService } from "@/services/jobService";
 import { useAuthStore } from "@/stores/authStore";
@@ -15,7 +15,6 @@ import { jobsData as fallbackJobs } from "@/data/jobsData";
 const employmentTypeMap: Record<string, EmploymentType> = {
   FULL_TIME: EmploymentType.FULL_TIME,
   FULLTIME: EmploymentType.FULL_TIME,
-  "FULL-TIME": EmploymentType.FULL_TIME,
   PART_TIME: EmploymentType.PART_TIME,
   PARTTIME: EmploymentType.PART_TIME,
   CONTRACT: EmploymentType.CONTRACT,
@@ -93,8 +92,7 @@ const normalizeJob = (raw: Record<string, unknown>): Job => {
     minExperience: typeof raw.minExperience === "number" ? raw.minExperience : undefined,
     maxExperience: typeof raw.maxExperience === "number" ? raw.maxExperience : undefined,
     experienceLevel: (raw.experienceLevel as Job["experienceLevel"]) ?? undefined,
-    jobFunction: (raw.jobFunction as Job["jobFunction"]) ?? undefined,
-    jobCategory: (raw.jobCategory as string) ?? undefined,
+    jobCategory: (raw.jobCategory as JobCategory) ?? undefined,
     employmentType: employmentType,
     type: employmentType,
     education: (raw.education as Job["education"]) ?? undefined,
@@ -156,16 +154,24 @@ const extractJobsFromResponse = (response: unknown): Record<string, unknown>[] =
 
 export default function JobsGrid() {
   const navigate = useNavigate();
-  const { accessToken } = useAuthStore();
+  const { accessToken, company, user } = useAuthStore();
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const companyId = company?.id ?? user?.companyId ?? null;
+
   useEffect(() => {
     if (!accessToken) {
       setJobs([]);
       setError("Bạn cần đăng nhập để xem danh sách công việc.");
+      return;
+    }
+
+    if (!companyId) {
+      setJobs([]);
+      setError("Không tìm thấy mã công ty. Vui lòng kiểm tra lại thông tin tài khoản.");
       return;
     }
 
@@ -175,7 +181,7 @@ export default function JobsGrid() {
       setError(null);
 
       try {
-        const response = await jobService.getAllJobs();
+        const response = await jobService.getJobForCompany(companyId);
         const rawJobs = extractJobsFromResponse(response);
 
         if (!rawJobs.length && Array.isArray(response)) {
@@ -210,7 +216,7 @@ export default function JobsGrid() {
     return () => {
       mounted = false;
     };
-  }, [accessToken]);
+  }, [accessToken, companyId]);
 
   const hasJobs = jobs.length > 0;
 

@@ -13,7 +13,10 @@ import Button from "../custom/button/Button";
 import GoogleAuth from "./GoogleAuth";
 import XAuth from "./XAuth";
 import authService, { LoginResponse } from "@/services/authService";
-import { useAuthStore, type AuthUser } from "@/stores/authStore";
+import accountService from "@/services/accountService";
+import companyService from "@/services/companyService";
+import { useAuthStore } from "@/stores/authStore";
+import type { AuthUser, CompanyProfile } from "@/types/account";
 
 const signInSchema = z.object({
   email: z.string({ required_error: "Email là bắt buộc" }).email("Email không hợp lệ"),
@@ -25,41 +28,121 @@ const signInSchema = z.object({
 
 type SignInFormValues = z.infer<typeof signInSchema>;
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const traverseForMatch = (
+  source: unknown,
+  predicate: (candidate: Record<string, unknown>) => boolean
+): Record<string, unknown> | null => {
+  const stack: unknown[] = [source];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+
+    if (Array.isArray(current)) {
+      stack.push(...current);
+      continue;
+    }
+
+    if (!isObject(current)) continue;
+
+    if (predicate(current)) {
+      return current;
+    }
+
+    stack.push(...Object.values(current));
+  }
+
+  return null;
+};
+
 const extractAuthUser = (payload: LoginResponse, fallbackEmail: string): AuthUser | null => {
-  if (!payload) return null;
-
-  if (payload.user && typeof payload.user === "object") {
-    return payload.user as AuthUser;
+  if (!payload) {
+    return fallbackEmail ? { email: fallbackEmail } : null;
   }
 
-  if (
-    "data" in payload &&
-    payload.data &&
-    typeof (payload.data as Record<string, unknown>).user === "object"
-  ) {
-    return (payload.data as { user: AuthUser }).user;
+  const userRecord = traverseForMatch(payload, (candidate) => {
+    if (typeof candidate.email === "string" && candidate.email.includes("@")) {
+      return true;
+    }
+
+    const hasName = typeof candidate.firstName === "string" || typeof candidate.lastName === "string";
+    const hasIdentifier = typeof candidate.id === "string" || typeof candidate.companyId === "string";
+
+    return hasName && hasIdentifier;
+  });
+
+  if (!userRecord) {
+    return fallbackEmail ? { email: fallbackEmail } : null;
   }
 
-  return fallbackEmail ? { email: fallbackEmail } : null;
+  const normalizedUser: AuthUser = { ...(userRecord as AuthUser) };
+
+  if (!normalizedUser.email && fallbackEmail) {
+    normalizedUser.email = fallbackEmail;
+  }
+
+  const embeddedCompany = traverseForMatch(payload, (candidate) => {
+    return (
+      typeof candidate.companyId === "string" ||
+      (typeof candidate.name === "string" && ("avatar" in candidate || "cover" in candidate))
+    );
+  });
+
+  if (!normalizedUser.company && embeddedCompany) {
+    normalizedUser.company = {
+      id: typeof embeddedCompany.companyId === "string" ? embeddedCompany.companyId : undefined,
+      name: typeof embeddedCompany.name === "string" ? embeddedCompany.name : undefined,
+      avatar: typeof embeddedCompany.avatar === "string" ? embeddedCompany.avatar : undefined,
+      cover: typeof embeddedCompany.cover === "string" ? embeddedCompany.cover : undefined,
+      size: typeof embeddedCompany.size === "string" ? embeddedCompany.size : undefined,
+      website: typeof embeddedCompany.website === "string" ? embeddedCompany.website : undefined,
+    } satisfies CompanyProfile;
+
+    if (!normalizedUser.companyId && normalizedUser.company?.id) {
+      normalizedUser.companyId = normalizedUser.company.id;
+    }
+  }
+
+  return normalizedUser;
 };
 
 const extractAccessToken = (payload: LoginResponse): string | null => {
   if (!payload) return null;
 
-  if (payload.accessToken && typeof payload.accessToken === "string") {
-    return payload.accessToken;
+  const tokenRecord = traverseForMatch(payload, (candidate) => {
+    return (
+      typeof candidate.accessToken === "string" ||
+      typeof candidate["access_token"] === "string" ||
+      (typeof candidate.token === "string" && candidate.token.includes("."))
+    );
+  });
+
+  if (!tokenRecord) return null;
+
+  if (typeof tokenRecord.accessToken === "string") return tokenRecord.accessToken;
+  if (typeof tokenRecord["access_token"] === "string") return tokenRecord["access_token"] as string;
+  if (typeof tokenRecord.token === "string") return tokenRecord.token;
+
+  return null;
+};
+
+const toVietnameseMessage = (raw?: string | null) => {
+  if (!raw) return null;
+
+  const normalized = raw.trim().toLowerCase();
+
+  if (normalized.includes("account") && normalized.includes("not found")) {
+    return "Tài khoản không tồn tại.";
   }
 
-  if (
-    "data" in payload &&
-    payload.data &&
-    typeof (payload.data as Record<string, unknown>).accessToken === "string"
-  ) {
-    return (payload.data as { accessToken: string }).accessToken;
+  if (normalized.includes("invalid") && normalized.includes("credential")) {
+    return "Email hoặc mật khẩu không chính xác.";
   }
 
-  if (typeof payload.token === "string") {
-    return payload.token;
+  if (normalized.includes("password") && normalized.includes("expired")) {
+    return "Mật khẩu đã hết hạn. Vui lòng đặt lại mật khẩu.";
   }
 
   return null;
@@ -68,10 +151,14 @@ const extractAccessToken = (payload: LoginResponse): string | null => {
 const resolveErrorMessage = (error: unknown): string => {
   if (isAxiosError(error)) {
     const data = error.response?.data as { message?: string; error?: string } | undefined;
+    const vietnamese = toVietnameseMessage(data?.message ?? data?.error);
+    if (vietnamese) return vietnamese;
     return data?.message ?? data?.error ?? "Đăng nhập thất bại. Vui lòng thử lại.";
   }
 
   if (error instanceof Error) {
+    const vietnamese = toVietnameseMessage(error.message);
+    if (vietnamese) return vietnamese;
     return error.message;
   }
 
@@ -81,7 +168,6 @@ const resolveErrorMessage = (error: unknown): string => {
 export default function SignInForm() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const { control, handleSubmit, formState } = useForm<SignInFormValues>({
     resolver: zodResolver(signInSchema),
@@ -94,11 +180,13 @@ export default function SignInForm() {
 
   const { errors, isSubmitting } = formState;
 
-  const { setAccessToken, setUser, setIsAuthenticating, isAuthenticating } = useAuthStore();
+  const { setAccessToken, setUser, updateUser, setCompany, setIsAuthenticating, isAuthenticating } =
+    useAuthStore();
 
   const onSubmit = async (values: SignInFormValues) => {
-    setFormError(null);
     setIsAuthenticating(true);
+
+    let token: string | null = null;
 
     try {
       const response = await authService.login({
@@ -106,7 +194,7 @@ export default function SignInForm() {
         password: values.password,
       });
 
-      const token = extractAccessToken(response);
+      token = extractAccessToken(response);
 
       if (!token) {
         throw new Error("Không nhận được access token từ phản hồi.");
@@ -116,12 +204,34 @@ export default function SignInForm() {
       const authUser = extractAuthUser(response, values.email.trim());
       setUser(authUser);
 
+      try {
+        const [currentAccount, currentCompany] = await Promise.all([
+          accountService.getCurrentAccount(),
+          companyService.getMyCompany(),
+        ]);
+
+        if (currentAccount) {
+          updateUser(currentAccount);
+        }
+
+        if (currentCompany) {
+          setCompany(currentCompany);
+          updateUser({ company: currentCompany, companyId: currentCompany.id });
+        }
+      } catch (currentError) {
+        console.error("Không thể tải dữ liệu tài khoản hoặc công ty", currentError);
+      }
+
       toast.success("Đăng nhập thành công!");
-      navigate("/jobs");
+      navigate("/dashboard");
     } catch (error) {
-      const message = resolveErrorMessage(error);
-      setFormError(message);
-      toast.error(message);
+      if (!token) {
+        const message = resolveErrorMessage(error);
+        toast.error(message);
+      } else {
+        console.error("Đăng nhập thành công nhưng gặp lỗi trong quá trình xử lý bổ sung", error);
+        toast.error("Đăng nhập thành công nhưng không thể tải đủ thông tin. Vui lòng thử lại sau.");
+      }
     } finally {
       setIsAuthenticating(false);
     }
@@ -130,8 +240,8 @@ export default function SignInForm() {
   const submitting = isSubmitting || isAuthenticating;
 
   return (
-    <div className="flex flex-col flex-1">
-      <div className="w-full max-w-md pt-10 mx-auto">
+    <div className="flex flex-col flex-1 w-full overflow-y-auto lg:w-1/2 no-scrollbar">
+      <div className="w-full max-w-md mx-auto mb-5 sm:pt-10">
         <Link
           to="/"
           className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
@@ -206,19 +316,23 @@ export default function SignInForm() {
                           placeholder="Nhập mật khẩu"
                           error={!!errors.password}
                           hint={errors.password?.message}
+                          endAdornment={
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword((prev) => !prev)}
+                              className="text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                              aria-label={showPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
+                            >
+                              {showPassword ? (
+                                <EyeIcon className="size-5" />
+                              ) : (
+                                <EyeCloseIcon className="size-5" />
+                              )}
+                            </button>
+                          }
                         />
                       )}
                     />
-                    <span
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
-                    >
-                      {showPassword ? (
-                        <EyeIcon className="fill-gray-500 dark:fill-gray-400 size-5" />
-                      ) : (
-                        <EyeCloseIcon className="fill-gray-500 dark:fill-gray-400 size-5" />
-                      )}
-                    </span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -244,11 +358,7 @@ export default function SignInForm() {
                     Quên mật khẩu?
                   </Link>
                 </div>
-                {formError && (
-                  <p className="text-sm text-error-500 bg-error-50 border border-error-100 rounded-lg px-4 py-3">
-                    {formError}
-                  </p>
-                )}
+                
                 <div>
                   <Button className="w-full" size="sm" disabled={submitting}>
                     {submitting ? "Đang đăng nhập..." : "Đăng nhập"}

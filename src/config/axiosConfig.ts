@@ -120,8 +120,12 @@ const attachAuthorizationHeader = (
 api.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().accessToken;
+    const requestUrl = config.url ?? "";
+    const isAuthRequest = authExemptEndpoints.some((endpoint) =>
+      requestUrl.includes(endpoint)
+    );
 
-    if (token) {
+    if (token && !isAuthRequest) {
       config.headers = attachAuthorizationHeader(config.headers, token);
     }
 

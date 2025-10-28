@@ -1,5 +1,5 @@
 import api from "@/config/axiosConfig";
-import { AuthUser } from "@/stores/authStore";
+import type { AccountProfile, CompanyProfile } from "@/types/account";
 
 export interface RegisterHrPayload {
   email: string;
@@ -21,7 +21,8 @@ export interface LoginPayload {
 export interface LoginResponse {
   accessToken?: string;
   refreshToken?: string;
-  user?: AuthUser;
+  account?: AccountProfile;
+  company?: CompanyProfile;
   [key: string]: unknown;
 }
 

@@ -20,11 +20,12 @@ import { District, Province, Ward } from "@/types/location";
 import { SkillLookup } from "@/types/skill";
 import { lookup } from "@/api/skillApis";
 import {
-  JobFunction,
   EmploymentType,
   Education,
   ExperienceLevel,
+  JobCategory,
 } from "@/enums/workEnum";
+import { Sparkles } from "lucide-react";
 
 interface JobDetailsStepProps {
   jobData: Partial<Job>;
@@ -149,7 +150,7 @@ export const JobDetailsStep = ({
     if (!jobData.maxExperience) err.maxExperience = "Required";
     if (!jobData.experienceLevel) err.experienceLevel = "Required";
     if (!jobData.employmentType) err.employmentType = "Required";
-    if (!jobData.jobFunction) err.jobFunction = "Required";
+    if (!jobData.jobCategory) err.jobCategory = "Required";
     if (!jobData.state || !jobData.city || !jobData.district)
       err.location = "Required";
     return err;
@@ -164,7 +165,7 @@ export const JobDetailsStep = ({
       minExperience: true,
       maxExperience: true,
       experienceLevel: true,
-      jobFunction: true,
+      jobCategory: true,
       type: true,
       country: true,
     });
@@ -209,6 +210,11 @@ export const JobDetailsStep = ({
           maxLength={100}
         />
       </div>
+
+      {/* AI generate */}
+      <span className="cursor-pointer inline-flex items-center  gap-2 rounded-full bg-gradient-to-r from-[#4f46e5]/15 via-[#7c3aed]/15 to-[#ec4899]/20 px-3 py-1 text-sm font-medium text-primary">
+        <Sparkles className="size-4" /> AI tự động tạo mô tả công việc
+      </span>
 
       {/* Description */}
       <div>
@@ -400,7 +406,7 @@ export const JobDetailsStep = ({
         <Label
           className={cn(
             "text-sm font-semibold flex items-center gap-1",
-            (touched.jobFunction && error.jobFunction) ||
+            (touched.jobCategory && error.jobCategory) ||
               (touched.type && error.type)
               ? "text-red-600"
               : ""
@@ -412,18 +418,17 @@ export const JobDetailsStep = ({
         <div className="grid grid-cols-3 gap-4 mt-2">
           {/* Job Function */}
           <Select
-            value={jobData.jobFunction || ""}
-            onValueChange={(value: JobFunction) => {
-              onUpdate({ ...jobData, jobFunction: value });
-              setTouched((t) => ({ ...t, jobFunction: true }));
-              // setError((prev) => ({ ...prev, jobFunction: undefined }));
+            value={jobData.jobCategory || ""}
+            onValueChange={(value: JobCategory) => {
+              onUpdate({ ...jobData, jobCategory: value });
+              setTouched((t) => ({ ...t, jobCategory: true }));
             }}
           >
             <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
               <SelectValue placeholder="Job Function" />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
-              {Object.entries(JobFunction).map(([key, value]) => (
+              {Object.entries(JobCategory).map(([key, value]) => (
                 <SelectItem key={key} value={value}>
                   {value}
                 </SelectItem>
@@ -437,7 +442,6 @@ export const JobDetailsStep = ({
             onValueChange={(value: EmploymentType) => {
               onUpdate({ ...jobData, employmentType: value });
               setTouched((t) => ({ ...t, employmentType: true }));
-              // setError((prev) => ({ ...prev, employmentType: undefined }));
             }}
           >
             <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
@@ -502,7 +506,6 @@ export const JobDetailsStep = ({
             onValueChange={(value) => {
               onUpdate({ ...jobData, state: value, city: "", district: "" });
               setTouched((t) => ({ ...t, country: true }));
-              // setError((prev) => ({ ...prev, country: undefined }));
 
               // Cập nhật mã tỉnh cho hook
               setSelectedProvinceCode(value);

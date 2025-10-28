@@ -41,18 +41,20 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     [jobId]
   );
 
-  const [candidates, setCandidates] = useState<Candidate[]>(() => filterByJob(initialCandidates));
-  const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(null);
+  const [candidates, setCandidates] = useState<Candidate[]>(() =>
+    filterByJob(initialCandidates)
+  );
+  const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(
+    null
+  );
   const [detailOpen, setDetailOpen] = useState(false);
-  const [dragSourceStatus, setDragSourceStatus] = useState<CandidateStatus | null>(null);
-  const [moveRequest, setMoveRequest] = useState<
-    | {
-        candidateId: string;
-        targetStatus: CandidateStatus;
-        targetCandidateId?: string;
-      }
-    | null
-  >(null);
+  const [dragSourceStatus, setDragSourceStatus] =
+    useState<CandidateStatus | null>(null);
+  const [moveRequest, setMoveRequest] = useState<{
+    candidateId: string;
+    targetStatus: CandidateStatus;
+    targetCandidateId?: string;
+  } | null>(null);
   const dragSnapshotRef = useRef<Candidate[] | null>(null);
   const didConfirmRef = useRef(false);
 
@@ -102,16 +104,23 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     const containerId = over.data?.current?.sortable?.containerId;
 
     setCandidates((prev) => {
-      const activeIndex = prev.findIndex((candidate) => candidate.id === activeId);
+      const activeIndex = prev.findIndex(
+        (candidate) => candidate.id === activeId
+      );
       if (activeIndex === -1) return prev;
 
       const activeCandidateData = prev[activeIndex];
-      const overCandidateData = prev.find((candidate) => candidate.id === overId);
+      const overCandidateData = prev.find(
+        (candidate) => candidate.id === overId
+      );
 
       const inferredStatus =
-        typeof containerId === "string" ? (containerId as CandidateStatus) : undefined;
+        typeof containerId === "string"
+          ? (containerId as CandidateStatus)
+          : undefined;
 
-      const targetStatus = overColumn?.id ?? overCandidateData?.status ?? inferredStatus;
+      const targetStatus =
+        overColumn?.id ?? overCandidateData?.status ?? inferredStatus;
 
       if (!targetStatus) return prev;
 
@@ -120,7 +129,9 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
         status: targetStatus,
       };
 
-      const withoutActive = prev.filter((candidate) => candidate.id !== activeId);
+      const withoutActive = prev.filter(
+        (candidate) => candidate.id !== activeId
+      );
 
       if (overCandidateData && overCandidateData.id !== activeId) {
         const overIndex = withoutActive.findIndex(
@@ -235,14 +246,17 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
 
   // Filter candidates by status
   const getCandidatesByStatus = useCallback(
-    (status: CandidateStatus) => candidates.filter((candidate) => candidate.status === status),
+    (status: CandidateStatus) =>
+      candidates.filter((candidate) => candidate.status === status),
     [candidates]
   );
 
   const pendingCandidate = useMemo(
     () =>
       moveRequest
-        ? candidates.find((candidate) => candidate.id === moveRequest.candidateId) ?? null
+        ? candidates.find(
+            (candidate) => candidate.id === moveRequest.candidateId
+          ) ?? null
         : null,
     [candidates, moveRequest]
   );
@@ -294,11 +308,6 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100/60 p-6">
       <div className="mx-auto max-w-[1640px] space-y-6">
-        <div className="flex flex-col gap-2">
-          <p className="text-sm text-slate-500">
-            Theo dõi tiến trình tuyển dụng và quản lý tương tác với ứng viên trong thời gian thực.
-          </p>
-        </div>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -354,7 +363,9 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancelMove}>Huỷ</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCancelMove}>
+              Huỷ
+            </AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmMove}>
               Xác nhận
             </AlertDialogAction>
