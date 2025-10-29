@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // ...existing code...
 import { Candidate, Status as CandidateStatus } from "@/types/candidate";
-import { CandidateDetailDialog } from "./CandidateDetailDialog";
+import { CandidateDetail } from "./CandidateDetail";
 import {
   DndContext,
   DragOverlay,
@@ -333,7 +333,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           </DragOverlay>
         </DndContext>
         {/* Dialog chi tiết ứng viên */}
-        <CandidateDetailDialog
+        <CandidateDetail
           open={detailOpen}
           onOpenChange={setDetailOpen}
           candidate={activeCandidate}
