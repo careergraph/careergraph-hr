@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Job, ApplicationRequirements } from "@/types/job";
 
 interface ApplicationRequirementsStepProps {
@@ -43,13 +44,73 @@ export const ApplicationRequirementsStep = ({
     });
   };
 
+  const generateId = () =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+  const handleAddQuestion = () => {
+    setRequirements((prev) => ({
+      ...prev,
+      screeningQuestions: [
+        ...(prev.screeningQuestions || []),
+        {
+          id: generateId(),
+          question: "",
+          type: "text" as const,
+          required: false,
+        },
+      ],
+    }));
+  };
+
+  const handleQuestionChange = (id: string, value: string) => {
+    setRequirements((prev) => ({
+      ...prev,
+      screeningQuestions: (prev.screeningQuestions || []).map((question) =>
+        question.id === id ? { ...question, question: value } : question
+      ),
+    }));
+  };
+
+  const handleQuestionRequiredChange = (id: string, value: boolean) => {
+    setRequirements((prev) => ({
+      ...prev,
+      screeningQuestions: (prev.screeningQuestions || []).map((question) =>
+        question.id === id ? { ...question, required: value } : question
+      ),
+    }));
+  };
+
+  const handleQuestionRemove = (id: string) => {
+    setRequirements((prev) => ({
+      ...prev,
+      screeningQuestions: (prev.screeningQuestions || []).filter(
+        (question) => question.id !== id
+      ),
+    }));
+  };
+
   const isStepValid = requirements.resume && requirements.coverLetter;
   const handleNext = async () => {
     setTouched(true);
     if (!isStepValid) return;
+    const sanitizedQuestions = (requirements.screeningQuestions || [])
+      .map((question) => ({
+        ...question,
+        question: question.question.trim(),
+      }))
+      .filter((question) => question.question.length > 0);
+
+    const updatedRequirements: ApplicationRequirements = {
+      ...requirements,
+      screeningQuestions: sanitizedQuestions,
+    };
+
+    setRequirements(updatedRequirements);
     const payload = {
       ...jobData,
-      applicationRequirements: requirements,
+      applicationRequirements: updatedRequirements,
     };
 
     onUpdate(payload);
@@ -140,29 +201,96 @@ export const ApplicationRequirementsStep = ({
         </div>
       </div>
 
-      <div className="pt-8 rounded-2xl border border-dashed border-border/60 bg-muted/10 dark:bg-slate-900/40 px-6 py-6 text-center">
-        <h3 className="text-xl font-semibold mb-2">
-          Câu hỏi sàng lọc ứng viên
-        </h3>
-        <p className="text-muted-foreground text-sm">
-          Bạn có thể bổ sung danh sách câu hỏi sau khi tạo job trong phần quản lý chi tiết.
-        </p>
+      <div className="pt-8 rounded-2xl border border-dashed border-border/60 bg-muted/10 dark:bg-slate-900/40 px-6 py-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-semibold">
+            Câu hỏi sàng lọc ứng viên (Tuỳ chọn)
+          </h3>
+          <Button variant="ghost" size="sm" onClick={handleAddQuestion}>
+            + Thêm tiêu chí
+          </Button>
+        </div>
+
+        {(requirements.screeningQuestions || []).length > 0 ? (
+          <div className="space-y-3">
+            {(requirements.screeningQuestions || []).map((question) => (
+              <div
+                key={question.id}
+                className="rounded-xl border border-border/60 bg-card/40 dark:bg-slate-900/40 px-4 py-3 shadow-sm"
+              >
+                <Input
+                  placeholder="Nhập tiêu chí hoặc câu hỏi"
+                  value={question.question}
+                  onChange={(event) =>
+                    handleQuestionChange(question.id, event.target.value)
+                  }
+                  className="mb-3"
+                />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`required-${question.id}`}
+                      checked={question.required}
+                      onCheckedChange={(checked) =>
+                        handleQuestionRequiredChange(
+                          question.id,
+                          checked as boolean
+                        )
+                      }
+                      className="h-5 w-5"
+                    />
+                    <Label
+                      htmlFor={`required-${question.id}`}
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      Bắt buộc
+                    </Label>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleQuestionRemove(question.id)}
+                  >
+                    Xoá
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            Bạn có thể bổ sung danh sách câu hỏi để sàng lọc ứng viên ngay tại đây hoặc thêm sau khi tạo job.
+          </p>
+        )}
       </div>
 
-      <div className="flex justify-between pt-6">
-        <Button onClick={onBack} variant="outline" size="lg" className="px-8">
-          Back
-        </Button>
-        <Button
-          onClick={handleNext}
-          size="lg"
-          className="px-8"
-          disabled={!isStepValid || isSubmitting}
-        >
-          {isSubmitting ? "Đang lưu..." : "Next"}
-        </Button>
+      <div className="flex flex-col items-end gap-2 pt-6">
+        <div className="flex w-full items-center justify-between">
+          <div className="inline-flex items-center bg-blue-100 text-blue-700 rounded-full text-sm font-medium p-1">
+            <Button
+              onClick={onBack}
+              variant="ghost"
+              size="sm"
+              className="px-4 py-2 text-blue-700 hover:text-blue-800"
+            >
+              ← Quay lại
+            </Button>
+          </div>
+          <div className="inline-flex items-center bg-blue-100 text-blue-700 rounded-full text-sm font-medium p-1">
+            <Button
+              onClick={handleNext}
+              size="sm"
+              className="px-4 py-2"
+              disabled={!isStepValid || isSubmitting}
+            >
+              {isSubmitting ? "Đang lưu..." : "Tiếp tục"}
+            </Button>
+          </div>
+        </div>
         {!isStepValid && touched && (
-          <p className="text-xs text-red-500 mt-2 text-right w-full">Resume và Cover Letter là bắt buộc.</p>
+          <p className="text-xs text-red-500 text-right w-full">
+            Resume và Cover Letter là bắt buộc.
+          </p>
         )}
       </div>
     </div>

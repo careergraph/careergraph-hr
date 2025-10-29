@@ -34,7 +34,6 @@ export const PromoteStep = ({
     const payload = {
       ...jobData,
       promotionType,
-      status: "active",
     };
 
     onUpdate(payload);
@@ -102,23 +101,27 @@ export const PromoteStep = ({
         </p>
       </div>
 
-      <div className="flex justify-between pt-6">
-        <Button
-          onClick={onBack}
-          variant="ghost"
-          size="lg"
-          className="px-8 text-primary"
-        >
-          <span className="mr-2">←</span> Quay lại chỉnh sửa
-        </Button>
-        <Button
-          onClick={handlePromote}
-          size="lg"
-          className="px-8"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Đang đăng..." : "Hoàn tất đăng tuyển"}
-        </Button>
+      <div className="flex items-center justify-between pt-6">
+        <div className="inline-flex items-center bg-blue-100 text-blue-700 rounded-full text-sm font-medium p-1">
+          <Button
+            onClick={onBack}
+            variant="ghost"
+            size="sm"
+            className="px-4 py-2 text-blue-700 hover:text-blue-800"
+          >
+            ← Quay lại chỉnh sửa
+          </Button>
+        </div>
+        <div className="inline-flex items-center bg-blue-100 text-blue-700 rounded-full text-sm font-medium p-1">
+          <Button
+            onClick={handlePromote}
+            size="sm"
+            className="px-4 py-2"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Đang đăng..." : "Hoàn tất đăng tuyển"}
+          </Button>
+        </div>
       </div>
     </div>
   );

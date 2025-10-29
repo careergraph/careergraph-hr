@@ -95,32 +95,14 @@ const AddJob = () => {
   };
 
   const handleRequirementsNext = async (payload: Partial<Job>) => {
-    const jobId = jobData.id;
-
-    if (!jobId) {
-      const message = "Không tìm thấy thông tin bản nháp. Vui lòng hoàn tất bước trước.";
-      toast.error(message);
-      throw new Error(message);
-    }
-
     setIsSavingRequirements(true);
     try {
-      await jobService.updateJob(jobId, {
-        ...jobData,
-        ...payload,
-      });
-
       setJobData((prev) => ({
         ...prev,
         ...payload,
       }));
 
-      toast.success("Đã lưu yêu cầu ứng tuyển.");
       setCurrentStep(3);
-    } catch (error) {
-      const message = resolveErrorMessage(error);
-      toast.error(message);
-      throw error;
     } finally {
       setIsSavingRequirements(false);
     }
@@ -140,7 +122,6 @@ const AddJob = () => {
       await jobService.publishJob(jobId, {
         ...jobData,
         ...payload,
-        status: Status.ACTIVE,
       });
 
       setJobData((prev) => ({
@@ -149,7 +130,7 @@ const AddJob = () => {
         status: Status.ACTIVE,
       }));
 
-      toast.success("Job posted successfully!");
+      toast.success("Job đã được đăng tải trên nền tảng!");
       navigate("/jobs", { replace: true });
     } catch (error) {
       const message = resolveErrorMessage(error);

@@ -47,6 +47,9 @@ export const JobDetailsStep = ({
   const [selectedDistrictCode, setSelectedDistrictCode] = useState<
     string | undefined
   >(undefined);
+  const [selectedWardCode, setSelectedWardCode] = useState<string | undefined>(
+    undefined
+  );
 
   // Gọi hook lấy location
   const {
@@ -98,6 +101,37 @@ export const JobDetailsStep = ({
   const [responsibilities, setResponsibilities] = useState<string[]>(
     jobData.responsibilities || []
   );
+
+  useEffect(() => {
+    if (!selectedProvinceCode && jobData.state && provinces.length) {
+      const matchedProvince = provinces.find(
+        (province) => province.name === jobData.state
+      );
+      if (matchedProvince) {
+        setSelectedProvinceCode(String(matchedProvince.code));
+      }
+    }
+  }, [jobData.state, provinces, selectedProvinceCode]);
+
+  useEffect(() => {
+    if (!selectedDistrictCode && jobData.city && districts.length) {
+      const matchedDistrict = districts.find(
+        (district) => district.name === jobData.city
+      );
+      if (matchedDistrict) {
+        setSelectedDistrictCode(String(matchedDistrict.code));
+      }
+    }
+  }, [jobData.city, districts, selectedDistrictCode]);
+
+  useEffect(() => {
+    if (!selectedWardCode && jobData.district && wards.length) {
+      const matchedWard = wards.find((ward) => ward.name === jobData.district);
+      if (matchedWard) {
+        setSelectedWardCode(String(matchedWard.code));
+      }
+    }
+  }, [jobData.district, selectedWardCode, wards]);
 
   // Xử lý các component: Qualifications, Minimum Qualifications, Responsibilities
   const addItem = (
@@ -502,14 +536,22 @@ export const JobDetailsStep = ({
         <div className="grid grid-cols-2 gap-4">
           {/* Provinces */}
           <Select
-            value={jobData.state || ""}
+            value={selectedProvinceCode}
             onValueChange={(value) => {
-              onUpdate({ ...jobData, state: value, city: "", district: "" });
+              const selectedProvince = provinces.find(
+                (province) => String(province.code) === value
+              );
+              onUpdate({
+                ...jobData,
+                state: selectedProvince?.name || "",
+                city: "",
+                district: "",
+              });
               setTouched((t) => ({ ...t, country: true }));
 
-              // Cập nhật mã tỉnh cho hook
               setSelectedProvinceCode(value);
               setSelectedDistrictCode(undefined);
+              setSelectedWardCode(undefined);
             }}
           >
             <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
@@ -530,12 +572,19 @@ export const JobDetailsStep = ({
 
           {/* Districts */}
           <Select
-            value={jobData.city || ""}
+            value={selectedDistrictCode}
             onValueChange={(value) => {
-              onUpdate({ ...jobData, city: value, district: "" });
+              const selectedDistrict = districts.find(
+                (district) => String(district.code) === value
+              );
+              onUpdate({
+                ...jobData,
+                city: selectedDistrict?.name || "",
+                district: "",
+              });
 
-              // Cập nhật mã huyện cho hook
               setSelectedDistrictCode(value);
+              setSelectedWardCode(undefined);
             }}
             disabled={!jobData.state || loadingDistricts}
           >
@@ -557,9 +606,16 @@ export const JobDetailsStep = ({
 
           {/* Wards */}
           <Select
-            value={jobData.district || ""}
+            value={selectedWardCode}
             onValueChange={(value) => {
-              onUpdate({ ...jobData, district: value });
+              const selectedWard = wards.find(
+                (ward) => String(ward.code) === value
+              );
+              onUpdate({
+                ...jobData,
+                district: selectedWard?.name || "",
+              });
+              setSelectedWardCode(value);
             }}
             disabled={!jobData.city || loadingWards}
           >

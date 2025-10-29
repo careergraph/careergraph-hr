@@ -1,4 +1,5 @@
 import api from "@/config/axiosConfig";
+import { Status } from "@/enums/commonEnum";
 import { Job } from "@/types/job";
 
 type JobPayload = {
@@ -44,7 +45,9 @@ const toUpperSnake = (value?: string | null) => {
 };
 
 const sanitizeArray = (values?: string[]) =>
-  values?.map((item) => item?.trim()).filter((item): item is string => Boolean(item && item.length > 0));
+  values
+    ?.map((item) => item?.trim())
+    .filter((item): item is string => Boolean(item && item.length > 0));
 
 const mapJobToPayload = (job: Partial<Job>): JobPayload => {
   const payload: JobPayload = {
@@ -76,20 +79,31 @@ const mapJobToPayload = (job: Partial<Job>): JobPayload => {
         : job.promotionType === "free"
         ? "STANDARD"
         : (job.promotionType as string | undefined),
-    status: toUpperSnake(job.status as string | undefined),
+    status: toUpperSnake(Status.DRAFT),
     numberOfPositions: job.numberOfPositions,
     expiryDate: job.expiryDate,
     benefits: sanitizeArray(job.benefits),
   };
 
   return Object.fromEntries(
-    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null)
+    Object.entries(payload).filter(
+      ([, value]) => value !== undefined && value !== null
+    )
   ) as JobPayload;
 };
 
 const unwrapResponse = <T>(data: T): T extends { data: infer U } ? U : T => {
-  if (data && typeof data === "object" && data !== null && "data" in (data as Record<string, unknown>)) {
-    return ((data as unknown) as { data: unknown }).data as T extends { data: infer U } ? U : T;
+  if (
+    data &&
+    typeof data === "object" &&
+    data !== null &&
+    "data" in (data as Record<string, unknown>)
+  ) {
+    return (data as unknown as { data: unknown }).data as T extends {
+      data: infer U;
+    }
+      ? U
+      : T;
   }
 
   return data as T extends { data: infer U } ? U : T;
@@ -98,7 +112,6 @@ const unwrapResponse = <T>(data: T): T extends { data: infer U } ? U : T => {
 const jobService = {
   createDraft: async (job: Partial<Job>) => {
     const payload = mapJobToPayload(job);
-    payload.status = "DRAFT";
     const response = await api.post("/jobs", payload);
     return unwrapResponse(response.data);
   },
@@ -111,11 +124,10 @@ const jobService = {
 
   publishJob: async (jobId: string, job: Partial<Job>) => {
     const payload = mapJobToPayload(job);
-    payload.status = "ACTIVE";
-    if (!payload.promotionType) {
-      payload.promotionType = "STANDARD";
-    }
-    const response = await api.put(`/jobs/${jobId}`, payload);
+    const promotionType = payload.promotionType ?? "STANDARD";
+    const response = await api.put(`/jobs/${jobId}/publish`, {
+      promotionType,
+    });
     return unwrapResponse(response.data);
   },
 
@@ -131,7 +143,7 @@ const jobService = {
 
     const response = await api.get(`/jobs/company/${companyId}`);
     return unwrapResponse(response.data);
-  }
+  },
 };
 
 export { jobService, mapJobToPayload };
