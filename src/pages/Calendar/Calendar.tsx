@@ -1,284 +1,419 @@
-import { useState, useRef, useEffect } from "react";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
-import { EventInput, DateSelectArg, EventClickArg } from "@fullcalendar/core";
-import { Modal } from "@/components/custom/modal";
-import { useModal } from "@/hooks/use-modal";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type FullCalendar from "@fullcalendar/react";
+import { DateSelectArg, EventClickArg, EventContentArg, DatesSetArg } from "@fullcalendar/core";
+import { CalendarClock, CalendarDays, Clock3, UserRound } from "lucide-react";
+
 import PageMeta from "@/components/common/PageMeta";
+import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import { useModal } from "@/hooks/use-modal";
 
-interface CalendarEvent extends EventInput {
-  extendedProps: {
-    calendar: string;
-  };
-}
+import { CalendarHero, type CalendarStatCard } from "./CalendarHero";
+import { CalendarBoard } from "./CalendarBoard";
+import { CalendarSidebar } from "./CalendarSidebar";
+import { CalendarModalForm } from "./CalendarModalForm";
+import {
+  CALENDAR_LEVELS,
+  CALENDAR_VARIANT_STYLES,
+  DEFAULT_EVENT_LEVEL,
+  DAY_IN_MS,
+  type CalendarLevel,
+  formatDateForInput,
+  getCalendarVariant,
+  normalizeDate,
+  toDate,
+} from "../../lib/calendar-utils";
+import { CalendarEvent } from "@/types/calendar";
 
-const Calendar: React.FC = () => {
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
-    null
+const renderEventContent = (eventInfo: EventContentArg) => {
+  const variant = getCalendarVariant(eventInfo.event.extendedProps.calendar);
+  const styles = CALENDAR_VARIANT_STYLES[variant];
+
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-2xl px-2.5 py-1 text-[11px] font-semibold tracking-wide ${styles.chip} ${styles.text}`}
+    >
+      <span className={`size-1.5 rounded-full ${styles.indicator}`} />
+      <span className="truncate">{eventInfo.event.title}</span>
+    </div>
   );
+};
+
+const Calendar = () => {
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
   const [eventTitle, setEventTitle] = useState("");
+  const [eventCandidate, setEventCandidate] = useState("");
   const [eventStartDate, setEventStartDate] = useState("");
   const [eventEndDate, setEventEndDate] = useState("");
-  const [eventLevel, setEventLevel] = useState("");
+  const [eventLevel, setEventLevel] = useState<CalendarLevel>(DEFAULT_EVENT_LEVEL);
+  const [eventLocation, setEventLocation] = useState("");
+  const [eventNotes, setEventNotes] = useState("");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const calendarRef = useRef<FullCalendar>(null);
+  const [currentRangeTitle, setCurrentRangeTitle] = useState("");
+  const [activeView, setActiveView] = useState("dayGridMonth");
+
+  const calendarRef = useRef<FullCalendar | null>(null);
   const { isOpen, openModal, closeModal } = useModal();
 
-  const calendarsEvents = {
-    Danger: "danger",
-    Success: "success",
-    Primary: "primary",
-    Warning: "warning",
-  };
-
   useEffect(() => {
-    // Initialize with some events
-    setEvents([
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 3);
+
+    const initialEvents: CalendarEvent[] = [
       {
         id: "1",
-        title: "Event Conf.",
-        start: new Date().toISOString().split("T")[0],
-        extendedProps: { calendar: "Danger" },
+        title: "Phỏng vấn kỹ thuật - Nguyễn Văn A",
+        start: formatDateForInput(today),
+        allDay: true,
+        extendedProps: {
+          calendar: "Danger",
+          candidate: "Nguyễn Văn A",
+          location: "Phòng họp Aurora - Tầng 5",
+          notes: "Pair-programming với Tech Lead và review CV",
+        },
       },
       {
         id: "2",
-        title: "Meeting",
-        start: new Date(Date.now() + 86400000).toISOString().split("T")[0],
-        extendedProps: { calendar: "Success" },
+        title: "Trao đổi offer - Trần Thu Hà",
+        start: formatDateForInput(tomorrow),
+        allDay: true,
+        extendedProps: {
+          calendar: "Success",
+          candidate: "Trần Thu Hà",
+          location: "Google Meet",
+          notes: "Chia sẻ chi tiết gói lương, phúc lợi và thời gian nhận việc",
+        },
       },
       {
         id: "3",
-        title: "Workshop",
-        start: new Date(Date.now() + 172800000).toISOString().split("T")[0],
-        end: new Date(Date.now() + 259200000).toISOString().split("T")[0],
-        extendedProps: { calendar: "Primary" },
+        title: "Phỏng vấn HR - Lê Minh Quân",
+        start: formatDateForInput(nextWeek),
+        end: formatDateForInput(nextWeek),
+        allDay: true,
+        extendedProps: {
+          calendar: "Primary",
+          candidate: "Lê Minh Quân",
+          location: "Văn phòng - Tầng 7",
+          notes: "Phỏng vấn văn hoá và trao đổi kỳ vọng",
+        },
       },
-    ]);
+    ];
+
+    setEvents(initialEvents);
+    setActiveEvent(initialEvents[0]);
   }, []);
 
-  const handleDateSelect = (selectInfo: DateSelectArg) => {
-    resetModalFields();
-    setEventStartDate(selectInfo.startStr);
-    setEventEndDate(selectInfo.endStr || selectInfo.startStr);
-    openModal();
-  };
+  const sortedEvents = useMemo(() => {
+    return [...events].sort((a, b) => {
+      const first = toDate(a.start)?.getTime() ?? 0;
+      const second = toDate(b.start)?.getTime() ?? 0;
+      return first - second;
+    });
+  }, [events]);
 
-  const handleEventClick = (clickInfo: EventClickArg) => {
-    const event = clickInfo.event;
-    setSelectedEvent(event as unknown as CalendarEvent);
-    setEventTitle(event.title);
-    setEventStartDate(event.start?.toISOString().split("T")[0] || "");
-    setEventEndDate(event.end?.toISOString().split("T")[0] || "");
-    setEventLevel(event.extendedProps.calendar);
-    openModal();
-  };
+  const { upcomingEvents, eventsThisWeek, todaysEvents, candidateCount } = useMemo(() => {
+    const now = new Date();
+    const start = normalizeDate(now) ?? new Date();
+    const tomorrow = new Date(start.getTime() + DAY_IN_MS);
+    const weekAhead = new Date(start.getTime() + 7 * DAY_IN_MS);
 
-  const handleAddOrUpdateEvent = () => {
-    if (selectedEvent) {
-      // Update existing event
-      setEvents((prevEvents) =>
-        prevEvents.map((event) =>
-          event.id === selectedEvent.id
-            ? {
-                ...event,
-                title: eventTitle,
-                start: eventStartDate,
-                end: eventEndDate,
-                extendedProps: { calendar: eventLevel },
-              }
-            : event
-        )
-      );
-    } else {
-      // Add new event
-      const newEvent: CalendarEvent = {
-        id: Date.now().toString(),
-        title: eventTitle,
-        start: eventStartDate,
-        end: eventEndDate,
-        allDay: true,
-        extendedProps: { calendar: eventLevel },
-      };
-      setEvents((prevEvents) => [...prevEvents, newEvent]);
+    const upcoming: CalendarEvent[] = [];
+    const week: CalendarEvent[] = [];
+    const todayEvents: CalendarEvent[] = [];
+    let candidateTotal = 0;
+
+    sortedEvents.forEach((event) => {
+      const date = normalizeDate(event.start);
+      if (event.extendedProps?.candidate) {
+        candidateTotal += 1;
+      }
+
+      if (!date) return;
+
+      if (date >= start) {
+        upcoming.push(event);
+      }
+
+      if (date >= start && date < tomorrow) {
+        todayEvents.push(event);
+      }
+
+      if (date >= start && date <= weekAhead) {
+        week.push(event);
+      }
+    });
+
+    return {
+      upcomingEvents: upcoming,
+      eventsThisWeek: week,
+      todaysEvents: todayEvents,
+      candidateCount: candidateTotal,
+    };
+  }, [sortedEvents]);
+
+  const calendarCounts = useMemo(() => {
+    const base = CALENDAR_LEVELS.reduce((acc, level) => {
+      acc[level] = 0;
+      return acc;
+    }, {} as Record<CalendarLevel, number>);
+
+    events.forEach((event) => {
+      const level = event.extendedProps?.calendar ?? DEFAULT_EVENT_LEVEL;
+      if (CALENDAR_LEVELS.includes(level as CalendarLevel)) {
+        base[level as CalendarLevel] = (base[level as CalendarLevel] ?? 0) + 1;
+      }
+    });
+
+    return base;
+  }, [events]);
+
+  const firstUpcomingEvent = useMemo(() => {
+    return upcomingEvents[0] ?? sortedEvents[0] ?? null;
+  }, [upcomingEvents, sortedEvents]);
+
+  useEffect(() => {
+    if (!activeEvent && firstUpcomingEvent) {
+      setActiveEvent(firstUpcomingEvent);
     }
+  }, [activeEvent, firstUpcomingEvent]);
+
+  const handleDatesSet = (arg: DatesSetArg) => {
+    setCurrentRangeTitle(arg.view.title);
+    setActiveView(arg.view.type);
+  };
+
+  const resetModalFields = () => {
+    setEditingEvent(null);
+    setEventTitle("");
+    setEventCandidate("");
+    setEventStartDate("");
+    setEventEndDate("");
+    setEventLevel(DEFAULT_EVENT_LEVEL);
+    setEventLocation("");
+    setEventNotes("");
+  };
+
+  const handleCloseModal = () => {
     closeModal();
     resetModalFields();
   };
 
-  const resetModalFields = () => {
-    setEventTitle("");
-    setEventStartDate("");
-    setEventEndDate("");
-    setEventLevel("");
-    setSelectedEvent(null);
+  const handleOpenCreateModal = () => {
+    resetModalFields();
+    openModal();
   };
+
+  const populateModalFields = (eventData: CalendarEvent) => {
+    setEditingEvent(eventData);
+    setEventTitle(eventData.title ?? "");
+    setEventCandidate(eventData.extendedProps?.candidate ?? "");
+    setEventStartDate(formatDateForInput(eventData.start));
+    setEventEndDate(formatDateForInput(eventData.end));
+    setEventLevel(eventData.extendedProps?.calendar ?? DEFAULT_EVENT_LEVEL);
+    setEventLocation(eventData.extendedProps?.location ?? "");
+    setEventNotes(eventData.extendedProps?.notes ?? "");
+  };
+
+  const handleDateSelect = (selectInfo: DateSelectArg) => {
+    resetModalFields();
+    const startInput = formatDateForInput(selectInfo.start);
+
+    let endInput = formatDateForInput(selectInfo.end);
+    if (selectInfo.allDay && selectInfo.end) {
+      const adjusted = new Date(selectInfo.end.getTime() - DAY_IN_MS);
+      endInput = formatDateForInput(adjusted);
+    }
+
+    setEventStartDate(startInput);
+    setEventEndDate(endInput || startInput);
+    openModal();
+    selectInfo.view.calendar.unselect();
+  };
+
+  const handleEventClick = (clickInfo: EventClickArg) => {
+    const matched = events.find((event) => event.id === clickInfo.event.id);
+
+    const eventData: CalendarEvent =
+      matched ?? {
+        id: clickInfo.event.id,
+        title: clickInfo.event.title,
+        start: clickInfo.event.start ?? clickInfo.event.startStr,
+        end: clickInfo.event.end ?? clickInfo.event.endStr,
+        allDay: clickInfo.event.allDay,
+        extendedProps: {
+          calendar:
+            (clickInfo.event.extendedProps.calendar as CalendarLevel) ??
+            DEFAULT_EVENT_LEVEL,
+          candidate: clickInfo.event.extendedProps.candidate,
+          location: clickInfo.event.extendedProps.location,
+          notes: clickInfo.event.extendedProps.notes,
+        },
+      };
+
+    populateModalFields(eventData);
+    setActiveEvent(matched ?? eventData);
+    openModal();
+  };
+
+  const handleAddOrUpdateEvent = () => {
+    const payload: CalendarEvent = {
+      id: editingEvent?.id ?? Date.now().toString(),
+      title: eventTitle,
+      start: eventStartDate,
+      end: eventEndDate || undefined,
+      allDay: true,
+      extendedProps: {
+        calendar: eventLevel,
+        candidate: eventCandidate || undefined,
+        location: eventLocation || undefined,
+        notes: eventNotes || undefined,
+      },
+    };
+
+    if (editingEvent) {
+      setEvents((prev) =>
+        prev.map((event) => (event.id === editingEvent.id ? payload : event))
+      );
+
+      setActiveEvent((prev: CalendarEvent | null) => (prev && prev.id === editingEvent.id ? payload : prev));
+    } else {
+      setEvents((prev) => [...prev, payload]);
+      setActiveEvent(payload);
+    }
+
+    handleCloseModal();
+  };
+
+  const handleViewChange = (view: string) => {
+    const api = calendarRef.current?.getApi();
+    if (!api || api.view.type === view) return;
+    api.changeView(view);
+  };
+
+  const handleNavigate = (direction: "prev" | "next") => {
+    const api = calendarRef.current?.getApi();
+    if (!api) return;
+    if (direction === "prev") {
+      api.prev();
+    } else {
+      api.next();
+    }
+  };
+
+  const handleToday = () => {
+    const api = calendarRef.current?.getApi();
+    api?.today();
+  };
+
+  const handleEditEvent = (event: CalendarEvent) => {
+    populateModalFields(event);
+    openModal();
+  };
+
+  const totalScheduled = useMemo(
+    () => CALENDAR_LEVELS.reduce((sum, level) => sum + (calendarCounts[level] ?? 0), 0),
+    [calendarCounts]
+  );
+
+  const statCards = useMemo<CalendarStatCard[]>(
+    () => [
+      {
+        title: "Tổng lịch hẹn",
+        value: events.length,
+        icon: CalendarDays,
+        helper: `${totalScheduled} lịch đã tạo`,
+      },
+      {
+        title: "Trong 7 ngày tới",
+        value: eventsThisWeek.length,
+        icon: CalendarClock,
+        helper: eventsThisWeek.length
+          ? "Theo dõi tiến độ từng vòng phỏng vấn"
+          : "Chưa có lịch hẹn trong tuần",
+      },
+      {
+        title: "Hôm nay",
+        value: todaysEvents.length,
+        icon: Clock3,
+        helper: todaysEvents.length
+          ? "Chuẩn bị nội dung phỏng vấn ngay"
+          : "Hôm nay chưa có lịch nào",
+      },
+      {
+        title: "Ứng viên tham gia",
+        value: candidateCount,
+        icon: UserRound,
+        helper: candidateCount
+          ? "Theo ghi chú trong từng lịch hẹn"
+          : "Thêm tên ứng viên để theo dõi",
+      },
+    ],
+    [candidateCount, events.length, eventsThisWeek.length, todaysEvents.length, totalScheduled]
+  );
 
   return (
     <>
-      <PageMeta
-        title="HR - CareerGraph"
-        description="HR - CareerGraph"
-      />
-      <div className="rounded-2xl border  border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-        <div className="custom-calendar">
-          <FullCalendar
-            ref={calendarRef}
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
-            headerToolbar={{
-              left: "prev,next addEventButton",
-              center: "title",
-              right: "dayGridMonth,timeGridWeek,timeGridDay",
-            }}
-            events={events}
-            selectable={true}
-            select={handleDateSelect}
-            eventClick={handleEventClick}
-            eventContent={renderEventContent}
-            customButtons={{
-              addEventButton: {
-                text: "Add Event +",
-                click: openModal,
-              },
-            }}
-          />
-        </div>
-        <Modal
-          isOpen={isOpen}
-          onClose={closeModal}
-          className="max-w-[700px] p-6 lg:p-10"
-        >
-          <div className="flex flex-col px-2 overflow-y-auto custom-scrollbar">
-            <div>
-              <h5 className="mb-2 font-semibold text-gray-800 modal-title text-theme-xl dark:text-white/90 lg:text-2xl">
-                {selectedEvent ? "Edit Event" : "Add Event"}
-              </h5>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Plan your next big moment: schedule or edit an event to stay on
-                track
-              </p>
-            </div>
-            <div className="mt-8">
-              <div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Event Title
-                  </label>
-                  <input
-                    id="event-title"
-                    type="text"
-                    value={eventTitle}
-                    onChange={(e) => setEventTitle(e.target.value)}
-                    className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                  />
-                </div>
-              </div>
-              <div className="mt-6">
-                <label className="block mb-4 text-sm font-medium text-gray-700 dark:text-gray-400">
-                  Event Color
-                </label>
-                <div className="flex flex-wrap items-center gap-4 sm:gap-5">
-                  {Object.entries(calendarsEvents).map(([key, value]) => (
-                    <div key={key} className="n-chk">
-                      <div
-                        className={`form-check form-check-${value} form-check-inline`}
-                      >
-                        <label
-                          className="flex items-center text-sm text-gray-700 form-check-label dark:text-gray-400"
-                          htmlFor={`modal${key}`}
-                        >
-                          <span className="relative">
-                            <input
-                              className="sr-only form-check-input"
-                              type="radio"
-                              name="event-level"
-                              value={key}
-                              id={`modal${key}`}
-                              checked={eventLevel === key}
-                              onChange={() => setEventLevel(key)}
-                            />
-                            <span className="flex items-center justify-center w-5 h-5 mr-2 border border-gray-300 rounded-full box dark:border-gray-700">
-                              <span
-                                className={`h-2 w-2 rounded-full bg-white ${
-                                  eventLevel === key ? "block" : "hidden"
-                                }`}
-                              ></span>
-                            </span>
-                          </span>
-                          {key}
-                        </label>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      <PageMeta title="HR - CareerGraph" description="HR - CareerGraph" />
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background dark:via-muted/10">
+        <div className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+          <PageBreadcrumb pageTitle="Lịch phỏng vấn" />
+          <div className="mt-8 space-y-6">
+            <CalendarHero
+              statCards={statCards}
+              onCreate={handleOpenCreateModal}
+              onToday={handleToday}
+            />
 
-              <div className="mt-6">
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                  Enter Start Date
-                </label>
-                <div className="relative">
-                  <input
-                    id="event-start-date"
-                    type="date"
-                    value={eventStartDate}
-                    onChange={(e) => setEventStartDate(e.target.value)}
-                    className="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                  />
-                </div>
-              </div>
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+              <CalendarBoard
+                calendarRef={calendarRef}
+                currentRangeTitle={currentRangeTitle}
+                activeView={activeView}
+                onChangeView={handleViewChange}
+                onNavigate={handleNavigate}
+                onSelectDate={handleDateSelect}
+                onEventClick={handleEventClick}
+                onDatesSet={handleDatesSet}
+                events={events}
+                renderEventContent={renderEventContent}
+              />
 
-              <div className="mt-6">
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                  Enter End Date
-                </label>
-                <div className="relative">
-                  <input
-                    id="event-end-date"
-                    type="date"
-                    value={eventEndDate}
-                    onChange={(e) => setEventEndDate(e.target.value)}
-                    className="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 mt-6 modal-footer sm:justify-end">
-              <button
-                onClick={closeModal}
-                type="button"
-                className="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] sm:w-auto"
-              >
-                Close
-              </button>
-              <button
-                onClick={handleAddOrUpdateEvent}
-                type="button"
-                className="btn btn-success btn-update-event flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto"
-              >
-                {selectedEvent ? "Update Changes" : "Add Event"}
-              </button>
+              <CalendarSidebar
+                calendarCounts={calendarCounts}
+                activeEvent={activeEvent}
+                onSelectEvent={setActiveEvent}
+                onEditEvent={handleEditEvent}
+                upcomingEvents={upcomingEvents}
+              />
             </div>
           </div>
-        </Modal>
+        </div>
       </div>
-    </>
-  );
-};
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const renderEventContent = (eventInfo: any) => {
-  const colorClass = `fc-bg-${eventInfo.event.extendedProps.calendar.toLowerCase()}`;
-  return (
-    <div
-      className={`event-fc-color flex fc-event-main ${colorClass} p-1 rounded-sm`}
-    >
-      <div className="fc-daygrid-event-dot"></div>
-      <div className="fc-event-time">{eventInfo.timeText}</div>
-      <div className="fc-event-title">{eventInfo.event.title}</div>
-    </div>
+      <CalendarModalForm
+        isOpen={isOpen}
+        editingEvent={editingEvent}
+        eventTitle={eventTitle}
+        eventCandidate={eventCandidate}
+        eventLevel={eventLevel}
+        eventStartDate={eventStartDate}
+        eventEndDate={eventEndDate}
+        eventLocation={eventLocation}
+        eventNotes={eventNotes}
+        onClose={handleCloseModal}
+        onSubmit={handleAddOrUpdateEvent}
+        onTitleChange={setEventTitle}
+        onCandidateChange={setEventCandidate}
+        onLevelChange={setEventLevel}
+        onStartDateChange={setEventStartDate}
+        onEndDateChange={setEventEndDate}
+        onLocationChange={setEventLocation}
+        onNotesChange={setEventNotes}
+      />
+    </>
   );
 };
 
