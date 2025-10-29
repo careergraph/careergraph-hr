@@ -1,16 +1,28 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { Plus } from "lucide-react";
-import { isAxiosError } from "axios";
+import { ListFilter } from "lucide-react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import PageMeta from "@/components/common/PageMeta";
 import { JobCard } from "./JobCard";
+import JobFilters, {
+  JobFilterState,
+  initialJobFilterState,
+} from "./JobFilters";
 import { Job } from "@/types/job";
 import { EmploymentType, JobCategory } from "@/enums/workEnum";
 import { Status } from "@/enums/commonEnum";
 import { jobService } from "@/services/jobService";
 import { useAuthStore } from "@/stores/authStore";
 import { jobsData as fallbackJobs } from "@/data/jobsData";
+import { Button } from "@/components/ui/button";
+
+const normalizeKey = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’'`]/g, "")
+    .replace(/[\s&/-]+/g, "_")
+    .toUpperCase();
 
 const employmentTypeMap: Record<string, EmploymentType> = {
   FULL_TIME: EmploymentType.FULL_TIME,
@@ -30,16 +42,47 @@ const statusMap: Record<string, Status> = {
   CLOSED: Status.CLOSED,
 };
 
-const toEmploymentType = (value?: string | null): EmploymentType | undefined => {
+const jobCategoryMap: Record<string, JobCategory> = {
+  ENGINEER: JobCategory.ENGINEER,
+  ENGINEERING: JobCategory.ENGINEER,
+  TECHNOLOGY: JobCategory.ENGINEER,
+  SOFTWARE_ENGINEERING: JobCategory.ENGINEER,
+  SOFTWARE: JobCategory.ENGINEER,
+  BUSINESS: JobCategory.BUSINESS,
+  BUSINESS_OPERATIONS: JobCategory.BUSINESS,
+  ART_MUSIC: JobCategory.ART_MUSIC,
+  ART_AND_MUSIC: JobCategory.ART_MUSIC,
+  DESIGN: JobCategory.ART_MUSIC,
+  ADMINISTRATION: JobCategory.ADMINISTRATION,
+  ADMIN: JobCategory.ADMINISTRATION,
+  SALES: JobCategory.SALES,
+  EDUCATION: JobCategory.EDUCATION,
+  TRAINING: JobCategory.EDUCATION,
+  CUSTOMER_SERVICE: JobCategory.CUSTOMER_SERVICE,
+  CUSTOMER_SUCCESS: JobCategory.CUSTOMER_SERVICE,
+  SUPPORT: JobCategory.CUSTOMER_SERVICE,
+  MANUFACTURING: JobCategory.MANUFACTURING,
+  PRODUCTION: JobCategory.MANUFACTURING,
+};
+
+const toEmploymentType = (
+  value?: string | null
+): EmploymentType | undefined => {
   if (!value) return undefined;
-  const key = value.replace(/[-\s]/g, "_").toUpperCase();
+  const key = normalizeKey(value);
   return employmentTypeMap[key] ?? undefined;
 };
 
 const toStatus = (value?: string | null): Status => {
   if (!value) return Status.ACTIVE;
-  const key = value.replace(/[-\s]/g, "_").toUpperCase();
+  const key = normalizeKey(value);
   return statusMap[key] ?? Status.ACTIVE;
+};
+
+const toJobCategory = (value?: string | null): JobCategory | undefined => {
+  if (!value) return undefined;
+  const key = normalizeKey(value);
+  return jobCategoryMap[key] ?? undefined;
 };
 
 const normalizeSkillIds = (skills: unknown): Job["skills"] => {
@@ -76,23 +119,40 @@ const generateId = () => {
 };
 
 const normalizeJob = (raw: Record<string, unknown>): Job => {
-  const employmentType = toEmploymentType((raw.employmentType ?? raw.type ?? "") as string | undefined);
+  const employmentType = toEmploymentType(
+    (raw.employmentType ?? raw.type ?? "") as string | undefined
+  );
+  const jobCategory = toJobCategory(
+    (raw.jobCategory ?? raw.category ?? raw.departmentCategory ?? "") as
+      | string
+      | undefined
+  );
 
-  const idValue = (raw.id ?? raw.jobId ?? raw.uuid) as string | number | undefined;
+  const idValue = (raw.id ?? raw.jobId ?? raw.uuid) as
+    | string
+    | number
+    | undefined;
   const id = idValue ? String(idValue) : generateId();
 
   return {
     id,
     title: (raw.title as string) ?? "Tin tuyển dụng",
     description: (raw.description as string) ?? "",
-    department: (raw.department as string) ?? (raw.jobCategory as string) ?? "",
+    department:
+      (raw.department as string) ??
+      (raw.departmentName as string) ??
+      jobCategory ??
+      "",
     responsibilities: (raw.responsibilities as string[]) ?? [],
     qualifications: (raw.qualifications as string[]) ?? [],
     minimumQualifications: (raw.minimumQualifications as string[]) ?? [],
-    minExperience: typeof raw.minExperience === "number" ? raw.minExperience : undefined,
-    maxExperience: typeof raw.maxExperience === "number" ? raw.maxExperience : undefined,
-    experienceLevel: (raw.experienceLevel as Job["experienceLevel"]) ?? undefined,
-    jobCategory: (raw.jobCategory as JobCategory) ?? undefined,
+    minExperience:
+      typeof raw.minExperience === "number" ? raw.minExperience : undefined,
+    maxExperience:
+      typeof raw.maxExperience === "number" ? raw.maxExperience : undefined,
+    experienceLevel:
+      (raw.experienceLevel as Job["experienceLevel"]) ?? undefined,
+    jobCategory,
     employmentType: employmentType,
     type: employmentType,
     education: (raw.education as Job["education"]) ?? undefined,
@@ -106,10 +166,14 @@ const normalizeJob = (raw: Record<string, unknown>): Job => {
     contactPhone: (raw.contactPhone as string) ?? undefined,
     benefits: (raw.benefits as string[]) ?? undefined,
     numberOfPositions:
-      typeof raw.numberOfPositions === "number" ? raw.numberOfPositions : undefined,
+      typeof raw.numberOfPositions === "number"
+        ? raw.numberOfPositions
+        : undefined,
     expiryDate: (raw.expiryDate as string) ?? undefined,
     skills: normalizeSkillIds(raw.skills ?? raw.skillIds),
-    applicationRequirements: (raw.applicationRequirements as Job["applicationRequirements"]) ?? undefined,
+    applicationRequirements:
+      (raw.applicationRequirements as Job["applicationRequirements"]) ??
+      undefined,
     promotionType: (raw.promotionType as Job["promotionType"]) ?? undefined,
     status: toStatus((raw.status as string) ?? undefined),
     postedDate: raw.postedDate
@@ -126,7 +190,9 @@ const normalizeJob = (raw: Record<string, unknown>): Job => {
   };
 };
 
-const extractJobsFromResponse = (response: unknown): Record<string, unknown>[] => {
+const extractJobsFromResponse = (
+  response: unknown
+): Record<string, unknown>[] => {
   if (!response) return [];
 
   if (Array.isArray(response)) {
@@ -152,60 +218,86 @@ const extractJobsFromResponse = (response: unknown): Record<string, unknown>[] =
   return [];
 };
 
+const SKELETON_COUNT = 6;
+
 export default function JobsGrid() {
   const navigate = useNavigate();
   const { accessToken, company, user } = useAuthStore();
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<JobFilterState>({
+    ...initialJobFilterState,
+  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [totalResults, setTotalResults] = useState<number | null>(null);
 
   const companyId = company?.id ?? user?.companyId ?? null;
 
   useEffect(() => {
-    if (!accessToken) {
+    const handler = window.setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+    }, 300);
+
+    return () => {
+      window.clearTimeout(handler);
+    };
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (!accessToken || !companyId) {
       setJobs([]);
-      setError("Bạn cần đăng nhập để xem danh sách công việc.");
+      setTotalResults(0);
+      setLoading(false);
       return;
     }
 
-    if (!companyId) {
-      setJobs([]);
-      setError("Không tìm thấy mã công ty. Vui lòng kiểm tra lại thông tin tài khoản.");
-      return;
-    }
+    let active = true;
+    const controller = new AbortController();
 
-    let mounted = true;
     const fetchJobs = async () => {
       setLoading(true);
-      setError(null);
 
       try {
-        const response = await jobService.getJobForCompany(companyId);
+        const response = await jobService.searchJobs(
+          companyId,
+          {
+            query: debouncedSearch || undefined,
+            statuses: filters.statuses,
+            employmentTypes: filters.employmentTypes,
+            jobCategories: filters.categories,
+          },
+          controller.signal
+        );
+
         const rawJobs = extractJobsFromResponse(response);
-
-        if (!rawJobs.length && Array.isArray(response)) {
-          rawJobs.push(...(response as Record<string, unknown>[]));
-        }
-
         const normalizedJobs = rawJobs.map(normalizeJob);
 
-        if (mounted) {
+        const total =
+          typeof (response as { totalElements?: number }).totalElements ===
+          "number"
+            ? (response as { totalElements: number }).totalElements
+            : typeof (response as { total?: number }).total === "number"
+            ? (response as { total: number }).total
+            : normalizedJobs.length;
+
+        if (active) {
           setJobs(normalizedJobs);
+          setTotalResults(total);
         }
       } catch (err) {
-        const message = isAxiosError(err)
-          ? err.response?.data?.message ?? err.message
-          : err instanceof Error
-          ? err.message
-          : "Không thể tải danh sách công việc";
+        if (controller.signal.aborted) {
+          console.log(`Fetch jobs request was aborted: ${err}`);
+          return;
+        }
 
-        if (mounted) {
-          setError(message);
+        if (active) {
           setJobs(fallbackJobs);
+          setTotalResults(fallbackJobs.length);
         }
       } finally {
-        if (mounted) {
+        if (active) {
           setLoading(false);
         }
       }
@@ -214,81 +306,100 @@ export default function JobsGrid() {
     fetchJobs();
 
     return () => {
-      mounted = false;
+      active = false;
+      controller.abort();
     };
-  }, [accessToken, companyId]);
+  }, [accessToken, companyId, filters, debouncedSearch]);
 
   const hasJobs = jobs.length > 0;
 
-  const handleAddJob = () => {
-    navigate("/jobs/new");
-  };
+  const handleSelectJob = useCallback(
+    (jobId: string) => {
+      navigate(`/kanbans/${jobId}`);
+    },
+    [navigate]
+  );
+
+  const handleFilterChange = useCallback((nextFilters: JobFilterState) => {
+    setFilters(nextFilters);
+  }, []);
+
+  const handleResetFilters = useCallback(() => {
+    setFilters({ ...initialJobFilterState });
+    setSearchTerm("");
+  }, []);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchTerm(value);
+  }, []);
+
+  const renderSkeleton = () => (
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {[...Array(SKELETON_COUNT)].map((_, index) => (
+        <div
+          key={index}
+          className="h-56 rounded-2xl border border-border bg-card/80 animate-pulse"
+        />
+      ))}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background">
+      {/* Page metadata */}
       <PageMeta title="HR - CareerGraph" description="HR - CareerGraph" />
+      {/* Breadcrumb */}
       <PageBreadcrumb pageTitle="Công việc" />
-      <div className="container mx-auto px-4">
-        <div className="max-w-5xl mx-auto space-y-8">
-          {error && (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-          {loading && (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {[...Array(3)].map((_, index) => (
-                <div
-                  key={index}
-                  className="h-56 rounded-2xl border border-border bg-card animate-pulse"
-                />
-              ))}
-            </div>
-          )}
-          {!loading && !hasJobs && !error && (
-            <div className="rounded-2xl border border-dashed border-border bg-muted/20 dark:bg-slate-800/50 p-10 text-center">
-              <h3 className="text-lg font-semibold text-foreground dark:text-slate-100 mb-2">
-                Chưa có công việc nào được đăng
-              </h3>
-              <p className="text-sm text-muted-foreground dark:text-slate-300 mb-6">
-                Hãy tạo công việc đầu tiên để thu hút ứng viên.
-              </p>
-              <button
-                onClick={handleAddJob}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                <Plus className="w-4 h-4" /> Tạo công việc mới
-              </button>
-            </div>
-          )}
-          {hasJobs && (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {jobs.map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  onSelectJob={() => navigate(`/kanbans/${job.id}`)}
-                />
-              ))}
+      <div className="container mx-auto px-4 pb-12">
+        <div className="mx-auto max-w-6xl lg:max-w-7xl space-y-8">
+          <JobFilters
+            value={filters}
+            onChange={handleFilterChange}
+            onReset={handleResetFilters}
+            totalResults={totalResults ?? jobs.length}
+            isLoading={loading}
+            searchTerm={searchTerm}
+            onSearchChange={handleSearchChange}
+          />
 
-              <button
-                onClick={handleAddJob}
-                className="group p-4 rounded-2xl border-2 border-dashed border-border dark:border-slate-600 hover:border-primary/50 bg-muted/20 dark:bg-slate-800/50 hover:bg-primary/5 dark:hover:bg-primary/10 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex flex-col items-center justify-center gap-4 min-h-[240px]"
-              >
-                <div className="p-4 rounded-full bg-primary/10 dark:bg-primary/20 group-hover:bg-primary/20 dark:group-hover:bg-primary/30 transition-colors shadow-sm">
-                  <Plus className="w-8 h-8 text-primary dark:text-primary/80" />
-                </div>
-                <div className="text-center">
-                  <p className="font-semibold text-foreground dark:text-slate-100 mb-1">
-                    Thêm công việc mới
-                  </p>
-                  <p className="text-sm text-muted-foreground dark:text-slate-300">
-                    Tạo vị trí tuyển dụng mới
-                  </p>
-                </div>
-              </button>
-            </div>
-          )}
+          <section className="space-y-6">
+            {loading && !hasJobs ? (
+              renderSkeleton()
+            ) : hasJobs ? (
+              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                {jobs.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    job={job}
+                    onSelectJob={() => handleSelectJob(job.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-3xl border border-dashed border-border bg-muted/20 p-10 text-center dark:bg-slate-800/50">
+                <h3 className="text-lg font-semibold text-foreground dark:text-slate-100">
+                  Không tìm thấy công việc phù hợp
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground dark:text-slate-300">
+                  Thử thay đổi từ khóa hoặc đặt lại bộ lọc để xem thêm kết quả.
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-6 gap-2"
+                  onClick={handleResetFilters}
+                >
+                  <ListFilter className="h-4 w-4" />
+                  Xóa bộ lọc
+                </Button>
+              </div>
+            )}
+
+            {loading && hasJobs && (
+              <div className="rounded-3xl border border-dashed border-border bg-muted/10 px-4 py-3 text-sm text-muted-foreground dark:bg-slate-800/40">
+                Đang cập nhật danh sách công việc...
+              </div>
+            )}
+          </section>
         </div>
       </div>
     </div>
