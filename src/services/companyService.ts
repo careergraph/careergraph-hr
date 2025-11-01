@@ -1,9 +1,12 @@
 import api from "@/config/axiosConfig";
 import type { CompanyProfile, CompanyAddress, CompanyContact } from "@/types/account";
 
+// companyService xử lý việc ánh xạ và lấy dữ liệu hồ sơ doanh nghiệp.
+
 type ApiEnvelope<T> = { data?: T } | { result?: T } | T;
 
 const unwrap = <T>(payload: ApiEnvelope<T>): T => {
+  // Chuẩn hóa nhiều định dạng response khác nhau về cùng shape.
   if (payload && typeof payload === "object") {
     if ("data" in payload && payload.data !== undefined) {
       return payload.data as T;
@@ -18,6 +21,7 @@ const unwrap = <T>(payload: ApiEnvelope<T>): T => {
 };
 
 const mapAddress = (raw: Record<string, unknown>): CompanyAddress => ({
+  // Chỉ chấp nhận chuỗi/number hợp lệ, tránh undefined gây crash UI.
   label: typeof raw.label === "string" ? raw.label : undefined,
   street: typeof raw.street === "string" ? raw.street : undefined,
   district: typeof raw.district === "string" ? raw.district : undefined,
@@ -34,6 +38,7 @@ const mapContact = (raw: Record<string, unknown>): CompanyContact => ({
 });
 
 const mapCompany = (raw: Record<string, unknown>): CompanyProfile => {
+  // Ánh xạ dữ liệu thô từ API sang model nội bộ.
   const addresses = Array.isArray(raw.addresses)
     ? (raw.addresses as Record<string, unknown>[]).map(mapAddress)
     : undefined;
@@ -78,6 +83,7 @@ const companyService = {
       return null;
     }
 
+    // Trả về profile đã được chuẩn hóa; null nếu thiếu dữ liệu.
     return mapCompany(data as Record<string, unknown>);
   },
 };

@@ -1,5 +1,7 @@
 import { ScrollReveal } from "./ScrollReveal";
 
+// TestimonialsSection trình bày cảm nhận của khách hàng/doanh nghiệp.
+
 type Testimonial = {
   quote: string;
   author: string;
@@ -16,6 +18,7 @@ export function TestimonialsSection({ testimonials }: TestimonialsSectionProps) 
       id="testimonials"
       className="rounded-3xl border border-slate-200 bg-slate-900 px-8 py-14 text-slate-100 shadow-2xl"
     >
+      {/* Bố cục chia hai cột: giới thiệu và trích dẫn khách hàng. */}
       <div className="grid gap-12 md:grid-cols-[1.1fr_0.9fr] md:items-start">
         <ScrollReveal direction="left" className="space-y-5">
           <span className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
@@ -30,6 +33,7 @@ export function TestimonialsSection({ testimonials }: TestimonialsSectionProps) 
         </ScrollReveal>
         <ScrollReveal direction="right" className="grid gap-6 sm:grid-cols-2">
           {testimonials.map((item, index) => (
+            // Mỗi testimonial hiển thị trích dẫn và thông tin tác giả.
             <ScrollReveal key={item.quote} direction={index % 2 === 0 ? "up" : "down"} className="rounded-3xl border border-white/10 bg-white/5 p-6">
               <blockquote className="border-l-2 border-primary/60 pl-4 text-sm leading-relaxed text-slate-200">
                 “{item.quote}”

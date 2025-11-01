@@ -5,12 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Candidate } from "@/types/candidate";
 import { GraduationCap, Languages } from "lucide-react";
 
+// OverviewTab tổng hợp thông tin chung của ứng viên.
+
 type OverviewTabProps = {
   candidate: Candidate;
 };
 
 export function OverviewTab({ candidate }: OverviewTabProps) {
   const overviewSections = useMemo(() => {
+    // Chuẩn hóa dữ liệu các khối thông tin để render động.
     const topSkills = (
       candidate.skills?.length ? candidate.skills : candidate.labels
     ).slice(0, 4);
@@ -78,6 +81,7 @@ export function OverviewTab({ candidate }: OverviewTabProps) {
 
   return (
     <ScrollArea className="h-full px-5 pb-10 pt-5 sm:px-8">
+      {/* Danh sách các nhóm thông tin tổng quan. */}
       <div className="space-y-6">
         {overviewSections.map((section) => (
           <div key={section.id} className="space-y-4">
@@ -111,6 +115,7 @@ export function OverviewTab({ candidate }: OverviewTabProps) {
       <Separator className="my-6" />
 
       <div className="grid gap-5 lg:grid-cols-2">
+        {/* Khối học vấn và ngôn ngữ. */}
         <div className="rounded-2xl border border-slate-100 bg-gradient-to-br from-slate-900/95 to-slate-800/90 p-6 text-white shadow-lg">
           <div className="flex items-center gap-3">
             <GraduationCap className="h-5 w-5 text-white/80" />
@@ -134,6 +139,7 @@ export function OverviewTab({ candidate }: OverviewTabProps) {
           </div>
         </div>
 
+        {/* Khối kỹ năng nổi bật. */}
         <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-6 shadow-inner">
           <div className="flex items-center gap-3">
             <Languages className="h-5 w-5 text-slate-500" />

@@ -17,6 +17,8 @@ import { CvTab } from "./CandidateTab/CvTab";
 import { MessagesTab } from "./CandidateTab/MessagesTab";
 import { EmailTab } from "./CandidateTab/EmailTab";
 
+// CandidateDetail hiển thị panel chi tiết của ứng viên trong Kanban.
+
 type CandidateDetailProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -31,10 +33,12 @@ export function CandidateDetail({
   setHeaderBlur,
 }: CandidateDetailProps) {
   useEffect(() => {
+    // Làm mờ header khi panel mở để tạo trọng tâm.
     setHeaderBlur(open);
   }, [open, setHeaderBlur]);
 
   const getInitials = (name: string) =>
+    // Lấy ký tự đầu mỗi từ để hiển thị avatar fallback.
     name
       .split(" ")
       .map((part) => part[0])
@@ -43,6 +47,7 @@ export function CandidateDetail({
       .slice(0, 2);
 
   const highlightCards = useMemo(
+    // Chuẩn bị dữ liệu highlight phía trên tabs khi có ứng viên.
     () =>
       candidate
         ? [
@@ -86,6 +91,7 @@ export function CandidateDetail({
           className="w-full border-l border-slate-200/50 bg-white p-0 sm:max-w-[90vw] lg:max-w-[70vw] xl:max-w-[65rem]"
         >
           <div className="flex h-full flex-col overflow-hidden">
+            {/* Phần đầu hiển thị thông tin tổng quan ứng viên. */}
             <div className="border-b border-slate-100 bg-white px-6 py-6 sm:px-8">
               <div className="flex flex-wrap items-start justify-between gap-5">
                 <div className="flex items-start gap-3">
@@ -111,6 +117,7 @@ export function CandidateDetail({
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
                       <span className="inline-flex items-center gap-2">
+              {/* Tabs cung cấp các chế độ xem chi tiết. */}
                         <Briefcase className="h-4 w-4 text-slate-400" />
                         {candidate.position}
                       </span>

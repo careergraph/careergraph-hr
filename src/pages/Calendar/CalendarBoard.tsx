@@ -15,6 +15,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
+// CalendarBoard hiển thị FullCalendar tương tác cùng các nút điều hướng và đổi chế độ xem.
+
 interface CalendarBoardProps {
   calendarRef: RefObject<FullCalendar | null>;
   currentRangeTitle: string;
@@ -50,6 +52,7 @@ export const CalendarBoard = ({
 
   return (
     <section className="overflow-hidden overflow-y-auto max-h-3/4 rounded-3xl border border-border/60 bg-card/80 p-4 shadow-md shadow-brand-950/5 backdrop-blur-sm dark:bg-slate-950/40 sm:p-6">
+      {/* Lưới lịch kèm thanh điều hướng, chuyển chế độ xem và thao tác sự kiện. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-muted-foreground">

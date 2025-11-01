@@ -20,17 +20,21 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+// JobFilters cung cấp thanh tìm kiếm và các bộ lọc nâng cao cho danh sách việc làm.
+
 /* eslint-disable react-refresh/only-export-components */
 export type JobFilterState = {
   categories: JobCategory[];
   statuses: Status[];
   employmentTypes: EmploymentType[];
+  query?: string;
 };
 
 export const initialJobFilterState: JobFilterState = {
   categories: [],
   statuses: [],
   employmentTypes: [],
+  query: "",
 };
 
 type JobFiltersProps = {
@@ -75,6 +79,7 @@ const toggleValue = <T extends string>(
   value: T,
   enabled: boolean
 ) => {
+  // Thêm hoặc loại bỏ giá trị khỏi mảng tùy vào trạng thái kích hoạt.
   if (enabled) {
     if (values.includes(value)) return values;
     return [...values, value];
@@ -103,6 +108,7 @@ const JobFiltersComponent = ({
 }: JobFiltersProps) => {
   const navigate = useNavigate();
   const handleAddJob = useCallback(() => {
+    // Điều hướng sang trang tạo job mới.
     navigate("/jobs/new");
   }, [navigate]);
 
@@ -114,6 +120,7 @@ const JobFiltersComponent = ({
   const hasActiveFilters = appliedCount > 0 || Boolean(searchTerm.trim());
 
   const handleStatusChange = (status: Status, checked: boolean) => {
+    // Cập nhật danh sách trạng thái được chọn.
     onChange({
       ...value,
       statuses: toggleValue(value.statuses, status, checked),
@@ -124,6 +131,7 @@ const JobFiltersComponent = ({
     type: EmploymentType,
     checked: boolean
   ) => {
+    // Cập nhật danh sách hình thức làm việc được chọn.
     onChange({
       ...value,
       employmentTypes: toggleValue(value.employmentTypes, type, checked),
@@ -131,6 +139,7 @@ const JobFiltersComponent = ({
   };
 
   const handleCategoryChange = (category: JobCategory, checked: boolean) => {
+    // Cập nhật nhóm công việc đã chọn.
     onChange({
       ...value,
       categories: toggleValue(value.categories, category, checked),
@@ -138,15 +147,18 @@ const JobFiltersComponent = ({
   };
 
   const handleSearchInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    // Đẩy giá trị tìm kiếm lên component cha để debounce và gọi API.
     onSearchChange(event.target.value);
   };
 
   const handleClearAll = () => {
+    // Xóa toàn bộ bộ lọc và từ khóa đang áp dụng.
     onSearchChange("");
     onReset?.();
   };
 
   const handleClearSearch = () => {
+    // Chỉ xóa từ khóa tìm kiếm trong input.
     onSearchChange("");
   };
 
@@ -200,6 +212,7 @@ const JobFiltersComponent = ({
 
   return (
     <section className="rounded-3xl border border-border/60 bg-card/80 px-5 py-5 shadow-sm backdrop-blur">
+      {/* Khối đầu hiển thị ô tìm kiếm và nút mở bộ lọc nâng cao. */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:max-w-xl">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -296,6 +309,7 @@ const JobFiltersComponent = ({
                           </AccordionTrigger>
                           <AccordionContent className="px-1 pb-4 pt-0">
                             <div className="space-y-2">
+                              {/* Danh sách checkbox cho từng giá trị của bộ lọc này. */}
                               {options.map((option) => (
                                 <label
                                   key={option}
@@ -346,6 +360,7 @@ const JobFiltersComponent = ({
         </div>
         {hasActiveFilters && (
           <>
+            {/* Hiển thị badge cho từ khóa tìm kiếm hiện tại. */}
             {searchTerm && (
               <Badge
                 variant="outline"
@@ -361,6 +376,7 @@ const JobFiltersComponent = ({
                 </button>
               </Badge>
             )}
+            {/* Vẽ mỗi badge cho bộ lọc đã áp dụng để người dùng xóa nhanh. */}
             {filterBadges.map((badge) => (
               <Badge
                 key={badge.id}
@@ -377,6 +393,7 @@ const JobFiltersComponent = ({
                 </button>
               </Badge>
             ))}
+            {/* Nút xoá tất cả điều kiện lọc một lần. */}
             <Button
               variant="ghost"
               size="sm"

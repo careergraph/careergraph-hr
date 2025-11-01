@@ -24,6 +24,8 @@ import {
 } from "../../lib/calendar-utils";
 import { CalendarEvent } from "@/types/calendar";
 
+// Calendar điều phối bảng lịch, sidebar thống kê và modal chỉnh sửa lịch hẹn.
+
 const renderEventContent = (eventInfo: EventContentArg) => {
   const variant = getCalendarVariant(eventInfo.event.extendedProps.calendar);
   const styles = CALENDAR_VARIANT_STYLES[variant];
@@ -356,6 +358,7 @@ const Calendar = () => {
 
   return (
     <>
+      {/* Trang lịch kết hợp phần thống kê, bảng lịch, sidebar và modal chỉnh sửa. */}
       <PageMeta title="HR - CareerGraph" description="HR - CareerGraph" />
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background dark:via-muted/10">
         <div className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">

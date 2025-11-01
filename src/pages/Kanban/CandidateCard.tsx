@@ -6,6 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Candidate } from "@/types/candidate";
 
+// CandidateCard hiển thị ứng viên trong Kanban và hỗ trợ kéo thả.
+
 export interface CandidateCardProps {
   candidate: Candidate;
   onViewDetails?: (candidate: Candidate) => void;
@@ -28,12 +30,14 @@ export function CandidateCard({
     isDragging,
   } = useSortable({ id: candidate.id });
 
+  // Ánh xạ transform/thời gian chuyển động khi kéo thả.
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
   const getInitials = (name: string) =>
+    // Lấy ký tự đầu để làm avatar fallback.
     name
       .split(" ")
       .map((part) => part[0])
@@ -70,6 +74,7 @@ export function CandidateCard({
       style={style}
       className={`w-full transition ${isDragging ? "opacity-50 cursor-grabbing" : ""} ${className ?? ""}`}
     >
+      {/* Thẻ chính hiển thị thông tin ứng viên. */}
       <Card
         className={`relative mb-3 flex w-full cursor-pointer items-start gap-4 overflow-hidden rounded-2xl border border-slate-200 bg-card shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
           compact ? "p-4" : "p-5"

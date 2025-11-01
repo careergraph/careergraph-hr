@@ -12,13 +12,15 @@ import { Status } from "@/enums/commonEnum";
 import { EmploymentType } from "@/enums/workEnum";
 import { KeyboardEvent } from "react";
 
+// JobCard hiển thị thông tin tóm tắt của một job kèm các chỉ số tương tác.
+
 interface JobCardProps {
   job: Job;
   onSelectJob?: () => void;
 }
 
 export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
-  // Màu cho từng loại công việc
+  // Màu cho từng loại công việc giúp người xem nhận diện nhanh.
   const typeColors = {
     [EmploymentType.FULL_TIME]: {
       badge: "text-cyan-700 bg-cyan-100 dark:text-cyan-300 dark:bg-cyan-950/30",
@@ -65,6 +67,7 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
     typeColors[job.type as keyof typeof typeColors] ||
     typeColors[EmploymentType.FULL_TIME];
 
+  // Nếu job không có trạng thái thì mặc định ACTIVE để hiển thị badge.
   const currentStatus = job.status ?? Status.ACTIVE;
 
   const typeLabelMap: Partial<Record<EmploymentType, string>> = {
@@ -76,6 +79,7 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
     [EmploymentType.TEMPORARY]: "Tạm thời",
   };
 
+  // Bảng ánh xạ trạng thái sang nhãn tiếng Việt.
   const statusLabelMap: Record<Status, string> = {
     [Status.ACTIVE]: "Đang tuyển",
     [Status.INACTIVE]: "Tạm dừng",
@@ -84,6 +88,7 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    // Cho phép mở job bằng phím Enter hoặc Space để đảm bảo accessibility.
     if (!onSelectJob) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -91,7 +96,7 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
     }
   };
 
-  // Màu cho trạng thái
+  // Màu cho trạng thái hiển thị badge tương ứng.
   const statusColor =
     currentStatus === Status.ACTIVE
       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
@@ -112,7 +117,8 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
       <div
         className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${color.gradient} opacity-60 transition-opacity duration-300 group-hover:opacity-80`}
       />
-      {/* Header: type icon + type badge */}
+      {/* Thẻ hiển thị thông tin chính và hành động nhanh cho job. */}
+      {/* Phần đầu: biểu tượng và badge loại công việc */}
       <div className="flex items-center justify-between mb-3">
         <div className={`p-2.5 rounded-xl ${color.bg}`}>
           <Briefcase className={`w-5 h-5 ${color.icon}`} />
@@ -122,7 +128,7 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
         </Badge>
       </div>
 
-      {/* Title + Department + Status */}
+      {/* Tiêu đề, phòng ban và badge trạng thái */}
       <div className="flex items-start justify-between mb-3 cursor-pointer">
         <div className="flex-1 min-w-0">
           <h3
@@ -140,7 +146,7 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
         </Badge>
       </div>
 
-      {/* Location + Posted Date */}
+      {/* Địa điểm và ngày đăng tin */}
       <div className="flex items-center justify-between text-xs text-muted-foreground dark:text-slate-400 mb-4">
         <span className="flex items-center gap-1">
           <MapPin className="w-3 h-3" />
@@ -153,7 +159,7 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
         </span>
       </div>
 
-      {/* Action icons trải đều */}
+      {/* Các chỉ số tương tác của tin tuyển dụng */}
       <div className="flex items-center text-sm text-muted-foreground mt-auto justify-between">
         <div className="flex items-center gap-2">
           <Bookmark className="w-4 h-4" />

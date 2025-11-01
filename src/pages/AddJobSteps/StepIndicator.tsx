@@ -1,6 +1,8 @@
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// StepIndicator biểu diễn tiến độ các bước tạo job bằng các trạng thái khác nhau.
+
 interface StepIndicatorProps {
   currentStep: number;
   steps: string[];
@@ -9,6 +11,7 @@ interface StepIndicatorProps {
 export const StepIndicator = ({ currentStep, steps }: StepIndicatorProps) => {
   return (
     <div className="w-full max-w-2xl mx-auto mb-8 mt-[-25px]">
+      {/* Thanh tiến độ nằm ngang hiển thị bước đã hoàn thành, hiện tại và sắp tới. */}
       <div className="flex items-center justify-between">
         {steps.map((step, index) => {
           const stepNumber = index + 1;

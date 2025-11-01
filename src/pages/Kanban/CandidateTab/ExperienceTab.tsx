@@ -3,6 +3,8 @@ import { Separator } from "@/components/ui/separator";
 import { Candidate } from "@/types/candidate";
 import { CalendarClock } from "lucide-react";
 
+// ExperienceTab liệt kê timeline tương tác và mô tả kinh nghiệm ứng viên.
+
 type ExperienceTabProps = {
   candidate: Candidate;
 };
@@ -10,6 +12,7 @@ type ExperienceTabProps = {
 export function ExperienceTab({ candidate }: ExperienceTabProps) {
   return (
     <ScrollArea className="h-full px-5 pb-10 pt-5 sm:px-8">
+      {/* Bảng timeline các hoạt động tuyển dụng. */}
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
@@ -48,6 +51,7 @@ export function ExperienceTab({ candidate }: ExperienceTabProps) {
 
       <Separator className="my-6" />
 
+      {/* Tóm tắt kinh nghiệm tổng quan. */}
       <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-6">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
           Kinh nghiệm tổng hợp

@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Clock3, MapPin, NotebookPen, UserRound } from "lucide-react";
 
+// CalendarSidebar tổng hợp số lượng lịch theo cấp độ và liệt kê các sự kiện sắp diễn ra.
+
 interface CalendarSidebarProps {
   calendarCounts: Record<(typeof CALENDAR_LEVELS)[number], number>;
   activeEvent: CalendarEvent | null;
@@ -36,6 +38,7 @@ export const CalendarSidebar = ({
 
   return (
     <aside className="flex flex-col gap-6">
+      {/* Các panel trong sidebar hiển thị thống kê và danh sách lịch hẹn sắp đến. */}
       <div className="rounded-3xl border border-border/60 bg-card/80 p-5 shadow-sm shadow-brand-950/5 dark:bg-slate-950/40">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Phân loại lịch

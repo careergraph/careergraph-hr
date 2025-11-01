@@ -7,6 +7,8 @@ import { Briefcase, Users, CheckCircle, Star, UserCheck } from "lucide-react";
 import { CandidateCard } from "./CandidateCard";
 import { Candidate, Status as CandidateStatus } from "@/types/candidate";
 
+// Column đại diện cho một trạng thái trong Kanban và là vùng thả.
+
 interface ColumnProps {
   id: CandidateStatus;
   title: string;
@@ -69,6 +71,7 @@ export const Column = ({
 
   return (
     <div className="relative flex w-[300px] flex-none flex-col">
+      {/* Hiệu ứng gradient đầu cột. */}
       <div
         className={`absolute inset-x-6 top-0 z-10 h-1 rounded-full bg-gradient-to-r ${style.accent} opacity-40`}
       />
@@ -102,6 +105,7 @@ export const Column = ({
             isOver ? "bg-primary/5 ring-2 ring-primary/30" : "bg-background dark:bg-slate-900/40"
           }`}
         >
+          {/* Vùng chứa danh sách ứng viên có thể kéo thả. */}
           {candidates.length > 0 ? (
             <SortableContext
               items={candidates.map((c) => c.id)}

@@ -11,6 +11,8 @@ import {
 import { Check } from "lucide-react";
 import { Job } from "@/types/job";
 
+// PromoteStep giúp nhà tuyển dụng chọn gói quảng bá trước khi đăng job.
+
 interface PromoteStepProps {
   jobData: Partial<Job>;
   onUpdate: (data: Partial<Job>) => void;
@@ -31,6 +33,7 @@ export const PromoteStep = ({
   );
 
   const handlePromote = async () => {
+    // Gộp lựa chọn gói quảng bá vào dữ liệu job hiện tại.
     const payload = {
       ...jobData,
       promotionType,
@@ -39,6 +42,7 @@ export const PromoteStep = ({
     onUpdate(payload);
 
     try {
+      // Gọi callback submit để publish job với cấu hình này.
       await onSubmit(payload);
     } catch (error) {
       console.error(error);
@@ -47,6 +51,7 @@ export const PromoteStep = ({
 
   return (
     <div className="space-y-8">
+      {/* Cấu hình gói quảng bá và các nút xác nhận cuối cùng. */}
       <div className="rounded-2xl border border-border/60 bg-muted/20 dark:bg-slate-900/40 px-6 py-5 shadow-sm">
         <h2 className="text-2xl font-semibold mb-2">Quảng bá tuyển dụng</h2>
         <p className="text-sm text-muted-foreground">

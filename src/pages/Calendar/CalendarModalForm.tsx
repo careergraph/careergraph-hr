@@ -14,6 +14,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { CalendarClock } from "lucide-react";
 
+// CalendarModalForm xử lý việc tạo và chỉnh sửa lịch hẹn thông qua modal.
+
 interface CalendarModalFormProps {
   isOpen: boolean;
   editingEvent: CalendarEvent | null;
@@ -58,6 +60,7 @@ export const CalendarModalForm = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-[760px] p-0">
       <div className="flex max-h-[80vh] flex-col overflow-hidden rounded-3xl bg-card">
+        {/* Nội dung modal để nhập chi tiết, thời gian và ghi chú sự kiện. */}
         <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
           <div>
             <h2 className="text-lg font-semibold text-foreground">

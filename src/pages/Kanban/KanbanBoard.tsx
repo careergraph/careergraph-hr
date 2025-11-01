@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-// ...existing code...
 import { Candidate, Status as CandidateStatus } from "@/types/candidate";
 import { CandidateDetail } from "./CandidateDetail";
 import {
@@ -29,6 +28,8 @@ import {
 
 import { initialCandidates, columns } from "@/data/candidateData";
 
+// KanbanBoard tổ chức danh sách ứng viên theo trạng thái và hỗ trợ kéo thả.
+
 interface KanbanBoardProps {
   jobId?: string;
 }
@@ -55,7 +56,9 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     targetStatus: CandidateStatus;
     targetCandidateId?: string;
   } | null>(null);
+  // Lưu lại snapshot trước khi kéo để hoàn tác khi cần.
   const dragSnapshotRef = useRef<Candidate[] | null>(null);
+  // Cờ giúp phân biệt đóng dialog do xác nhận hay hủy.
   const didConfirmRef = useRef(false);
 
   useEffect(() => {
@@ -84,6 +87,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     const { active } = event;
     const candidate = candidates.find((c) => c.id === active.id);
     if (candidate) {
+      // Hiển thị overlay và ghi nhận trạng thái hiện tại.
       setActiveCandidate(candidate);
       setDragSourceStatus(candidate.status);
       dragSnapshotRef.current = candidates.map((item) => ({ ...item }));
@@ -211,9 +215,11 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     }
 
     if (!targetStatus) {
+      // Không xác định được cột đích: hoàn tác về snapshot ban đầu.
       if (dragSnapshotRef.current) {
         setCandidates(dragSnapshotRef.current);
         dragSnapshotRef.current = null;
+    // Sau khi xác nhận dialog, handleConfirmMove sẽ cập nhật state chính thức.
       }
       setDragSourceStatus(null);
       return;
@@ -225,6 +231,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
         setDragSourceStatus(null);
         return;
       }
+      // Cùng cột => chỉ cần sắp xếp lại vị trí ngay lập tức.
       setCandidates((prev) => {
         const activeIndex = prev.findIndex((c) => c.id === activeId);
         const overIndex = prev.findIndex((c) => c.id === targetCandidateId);
@@ -241,6 +248,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
       targetStatus,
       targetCandidateId,
     });
+    // Reset để dialog confirm quyết định cập nhật.
     setDragSourceStatus(null);
   };
 
@@ -251,6 +259,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     [candidates]
   );
 
+  // Ứng viên đang chuẩn bị chuyển trạng thái để hiển thị trong dialog xác nhận.
   const pendingCandidate = useMemo(
     () =>
       moveRequest
@@ -261,6 +270,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     [candidates, moveRequest]
   );
 
+  // Lấy tiêu đề cột đích phục vụ thông báo xác nhận.
   const targetColumnTitle = useMemo(() => {
     if (!moveRequest) return "";
     return (
@@ -282,23 +292,27 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           (c) => c.id === moveRequest.targetCandidateId
         );
         if (targetIndex >= 0) {
+          // Nếu có ứng viên reference, chèn vào ngay sau họ.
           filtered.splice(targetIndex, 0, updatedCandidate);
         } else {
           filtered.push(updatedCandidate);
         }
       } else {
+        // Nếu thả vào vùng trống, thêm cuối danh sách.
         filtered.push(updatedCandidate);
       }
 
       return filtered;
     });
     dragSnapshotRef.current = null;
+    // Đánh dấu confirm để tránh gọi lại handleCancel khi dialog đóng.
     didConfirmRef.current = true;
     setMoveRequest(null);
   };
 
   const handleCancelMove = () => {
     if (dragSnapshotRef.current) {
+      // Hoàn tác về trạng thái trước khi kéo.
       setCandidates(dragSnapshotRef.current);
       dragSnapshotRef.current = null;
     }
@@ -307,6 +321,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100/60 p-6">
+      {/* Vùng bảng Kanban với từng cột trạng thái và overlay kéo thả. */}
       <div className="mx-auto max-w-[1640px] space-y-6">
         <DndContext
           sensors={sensors}

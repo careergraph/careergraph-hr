@@ -1,32 +1,17 @@
 import { Link } from "react-router";
-import { ClipboardList, ShieldCheck, Sparkles, Users2, Workflow } from "lucide-react";
+import { ClipboardList, Sparkles, Users2, Workflow } from "lucide-react";
 import { ScrollReveal } from "./ScrollReveal";
+
+// HeroSection giới thiệu thông điệp chính và CTA của trang landing.
 
 type HeroSectionProps = {
   stats: Array<{ figure: string; label: string }>;
 };
 
-const highlights = [
-  {
-    icon: <Sparkles className="size-4 text-primary" />,
-    title: "AI insight",
-    description: "Phân tích dữ liệu ứng viên theo thời gian thực giúp bạn ra quyết định nhanh chóng.",
-  },
-  {
-    icon: <ShieldCheck className="size-4 text-primary" />,
-    title: "Bảo mật cấp doanh nghiệp",
-    description: "Mã hóa đầu cuối và phân quyền chi tiết cho từng vai trò trong quy trình tuyển dụng.",
-  },
-  {
-    icon: <Workflow className="size-4 text-primary" />,
-    title: "Tự động hóa quy trình",
-    description: "Kích hoạt các mẫu hành động sẵn có để chuẩn hóa trải nghiệm ứng viên.",
-  },
-];
-
 export function HeroSection({ stats }: HeroSectionProps) {
   return (
     <section id="hero" className="grid gap-12 md:grid-cols-[1.05fr_0.95fr] md:items-center">
+      {/* Cột trái: nội dung giới thiệu và lời kêu gọi hành động. */}
       <ScrollReveal direction="left" className="space-y-8">
         <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#4f46e5]/15 via-[#7c3aed]/15 to-[#ec4899]/20 px-4 py-1.5 text-sm font-semibold text-primary">
           <Sparkles className="size-4" /> Nền tảng tuyển dụng cho HR hiện đại
@@ -68,21 +53,9 @@ export function HeroSection({ stats }: HeroSectionProps) {
             </div>
           ))}
         </div>
-        <div className="grid gap-4 rounded-3xl border border-slate-200/70 bg-white/80 p-6 shadow-md sm:grid-cols-3">
-          {highlights.map((item) => (
-            <div key={item.title} className="space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                {item.icon}
-                {item.title}
-              </div>
-              <p className="text-sm leading-relaxed text-slate-600">
-                {item.description}
-              </p>
-            </div>
-          ))}
-        </div>
       </ScrollReveal>
       <ScrollReveal direction="right" className="relative">
+        {/* Cột phải: mô phỏng dashboard với các thẻ giá trị. */}
         <div
           className="absolute -left-12 -top-12 h-32 w-32 rounded-full bg-primary/10 blur-[100px]"
           aria-hidden="true"

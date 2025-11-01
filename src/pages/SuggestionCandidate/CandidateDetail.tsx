@@ -23,6 +23,7 @@ type CandidateDetailProps = {
   candidate: Candidate | null;
 };
 
+// CandidateDetail hiển thị hồ sơ chi tiết của ứng viên được chọn.
 export function CandidateDetail({ candidate }: CandidateDetailProps) {
   if (!candidate) {
     return (
@@ -36,6 +37,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
   }
 
   const getInitials = (name: string) => {
+    // Lấy hai ký tự đầu mỗi từ để tạo avatar fallback.
     return name
       .split(" ")
       .map((n) => n[0])
@@ -46,9 +48,9 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
 
   return (
     <div className="flex h-full overflow-hidden rounded-xl border border-slate-200 bg-card shadow-sm">
-      {/* Left Sidebar */}
+      {/* Thanh bên trái chứa avatar và thông tin liên hệ nhanh. */}
       <div className="flex w-80 flex-col border-r border-slate-100 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
-        {/* Header avatar */}
+        {/* Phần đầu hiển thị avatar và chức danh. */}
         <div className="flex-shrink-0 border-b border-slate-100 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900">
           <Avatar className="mx-auto mb-4 h-20 w-20 border border-slate-200">
             <AvatarFallback className="bg-slate-200 text-lg font-semibold uppercase text-slate-600">
@@ -64,9 +66,9 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
           </p>
         </div>
 
-        {/* Info Sections */}
+        {/* Các mục thông tin chi tiết. */}
         <div className="flex-1 overflow-y-auto">
-          {/* Email */}
+          {/* Thông tin email */}
           <div className="border-b border-slate-100 dark:border-slate-800">
             <div className="flex w-full items-center gap-3 px-6 py-4">
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900/60">
@@ -83,7 +85,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
             </div>
           </div>
 
-          {/* Phone */}
+          {/* Thông tin số điện thoại */}
           {candidate.phone && (
             <div className="border-b border-slate-100 dark:border-slate-800">
               <div className="flex w-full items-center gap-3 px-6 py-4">
@@ -102,7 +104,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
             </div>
           )}
 
-          {/* Applied Date */}
+          {/* Ngày ứng tuyển */}
           <div className="border-b border-slate-100 dark:border-slate-800">
             <div className="flex w-full items-center gap-3 px-6 py-4">
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900/60">
@@ -119,7 +121,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
             </div>
           </div>
 
-          {/* Salary */}
+          {/* Mức lương mong muốn */}
           {candidate.salaryExpectation && (
             <div className="border-b border-slate-100 dark:border-slate-800">
               <div className="flex w-full items-center gap-3 px-6 py-4">
@@ -138,7 +140,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
             </div>
           )}
 
-          {/* Location */}
+          {/* Địa điểm sinh sống */}
           {candidate.location && (
             <div className="border-b border-slate-100 dark:border-slate-800">
               <div className="flex w-full items-center gap-3 px-6 py-4">
@@ -157,7 +159,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
             </div>
           )}
 
-          {/* Assignee */}
+          {/* Người phụ trách hồ sơ */}
           {candidate.assignee && (
             <div className="border-b border-slate-100 dark:border-slate-800">
               <div className="flex w-full items-center gap-3 px-6 py-4">
@@ -178,7 +180,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
         </div>
       </div>
 
-      {/* Right Content */}
+      {/* Nội dung chi tiết bên phải. */}
       <div className="flex min-h-0 flex-1 flex-col bg-gradient-to-br from-primary/10 via-white/95 to-white dark:from-primary/15 dark:via-slate-900 dark:to-slate-950">
         <div className="flex items-center justify-between gap-4 border-b border-white/60 bg-white/80 p-6 backdrop-blur-sm dark:border-slate-800/70 dark:bg-slate-900/60">
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
@@ -198,7 +200,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-6 bg-transparent p-6">
-          {/* Additional Info Grid */}
+          {/* Lưới thông tin bổ sung về trình độ và mong muốn. */}
           {(candidate.currentLevel ||
             candidate.desiredLevel ||
             candidate.workLocation ||
@@ -289,7 +291,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
             </>
           )}
 
-          {/* Skills */}
+          {/* Kỹ năng nổi bật của ứng viên */}
           <div>
             <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-400">
               KỸ NĂNG
@@ -309,7 +311,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
 
           <Separator />
 
-          {/* Description */}
+          {/* Mô tả chi tiết do recruiter ghi chú */}
           {candidate.description && (
             <>
               <div>

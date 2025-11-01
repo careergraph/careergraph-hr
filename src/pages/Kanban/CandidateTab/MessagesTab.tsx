@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MessageSquare } from "lucide-react";
 
+// MessagesTab cung cấp giao diện trao đổi trực tiếp với ứng viên.
+
 export function MessagesTab() {
   return (
     <div className="flex h-full flex-col justify-between bg-white">
@@ -13,6 +15,7 @@ export function MessagesTab() {
           </div>
         </div>
       </ScrollArea>
+      {/* Khối nhập tin nhắn và gửi đi. */}
       <div className="border-t border-slate-100 bg-slate-50/80 px-6 py-5 sm:px-8">
         <div className="flex flex-col gap-3">
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">

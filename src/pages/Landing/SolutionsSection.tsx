@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { ScrollReveal } from "./ScrollReveal";
 
+// SolutionsSection giới thiệu các mô-đun giải pháp cùng chỉ số minh chứng.
+
 type Solution = {
   title: string;
   description: string;
@@ -15,6 +17,7 @@ type SolutionsSectionProps = {
 export function SolutionsSection({ solutions }: SolutionsSectionProps) {
   return (
     <section id="solutions" className="space-y-12">
+      {/* Phần tiêu đề mô tả tổng quan giải pháp. */}
       <ScrollReveal direction="up" className="text-center space-y-4">
         <h2 className="text-3xl font-semibold text-slate-900">
           Các mô-đun giúp hiện đại hóa toàn bộ vòng đời tuyển dụng
@@ -26,6 +29,7 @@ export function SolutionsSection({ solutions }: SolutionsSectionProps) {
       </ScrollReveal>
       <div className="grid gap-6 lg:grid-cols-3">
         {solutions.map((solution, index) => (
+          // Mỗi mô-đun nêu bật mô tả và các số liệu tiêu biểu.
           <ScrollReveal
             key={solution.title}
             direction={index === 0 ? "left" : index === 2 ? "right" : "up"}

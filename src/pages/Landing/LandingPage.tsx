@@ -12,12 +12,16 @@ import { IntegrationsSection } from "./IntegrationsSection";
 import { CallToActionSection } from "./CallToActionSection";
 import { LandingFooter } from "./LandingFooter";
 
+// LandingPage kết hợp các section giới thiệu sản phẩm và điều hướng theo trạng thái đăng nhập.
+
+// Thống kê nhanh cho section hero.
 const heroStats = [
   { figure: "500+", label: "Doanh nghiệp tin dùng" },
   { figure: "15.000+", label: "Ứng viên được kết nối" },
   { figure: "3 ngày", label: "Thời gian tuyển dụng trung bình" },
 ];
 
+// Danh sách tính năng nổi bật trên trang.
 const featureCards = [
   {
     icon: <Users2 className="size-6 text-primary" />,
@@ -54,6 +58,7 @@ const featureCards = [
   },
 ];
 
+// Quy trình minh hoạ các bước tuyển dụng.
 const workflowSteps = [
   {
     title: "Đăng tin & mở chiến dịch trong vài phút",
@@ -71,6 +76,7 @@ const workflowSteps = [
   },
 ];
 
+// Các module giải pháp chuyên sâu hiển thị trong phần giải pháp.
 const solutionModules = [
   {
     title: "Talent CRM",
@@ -178,6 +184,7 @@ const integrations = [
 export default function LandingPage() {
   const { accessToken, user } = useAuthStore();
 
+  // Tạo tên hiển thị thân thiện dựa trên thông tin người dùng.
   const userDisplayName = useMemo(() => {
     const trimmedFirst = user?.firstName?.trim();
     const trimmedLast = user?.lastName?.trim();
@@ -190,6 +197,7 @@ export default function LandingPage() {
   }, [user?.firstName, user?.lastName]);
 
   useEffect(() => {
+    // Tạm thời bật hiệu ứng scroll mượt để khi bấm anchor sẽ mềm mại hơn.
     if (typeof document === "undefined") return;
 
     const root = document.documentElement;
@@ -202,6 +210,7 @@ export default function LandingPage() {
   }, []);
 
   const handleNavigate = (sectionId: string) => {
+    // Cuộn tới section tương ứng khi người dùng chọn trên header.
     if (typeof document === "undefined") return;
 
     const target = document.getElementById(sectionId);
@@ -212,6 +221,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-900">
+      {/* Trang landing gồm header, các section nội dung và footer. */}
       <LandingHeader
         onNavigate={handleNavigate}
         authenticated={Boolean(accessToken)}

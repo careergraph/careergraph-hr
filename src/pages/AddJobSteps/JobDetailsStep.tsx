@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Wand2 } from "lucide-react";
 import { Job } from "@/types/job";
 import { type Touched, type ErrorType } from "@/types/job";
 import useLocation from "@/hooks/use-location";
@@ -26,6 +26,8 @@ import {
   JobCategory,
 } from "@/enums/workEnum";
 import { Sparkles } from "lucide-react";
+
+// JobDetailsStep thu thập thông tin cốt lõi, vị trí và kỹ năng cho job trong wizard tạo mới.
 
 interface JobDetailsStepProps {
   jobData: Partial<Job>;
@@ -66,9 +68,9 @@ export const JobDetailsStep = ({
   const [skills, setSkills] = useState<SkillLookup[]>([]);
   const [skillLoading, setSkillLoading] = useState(false);
 
-  // Gọi API mỗi lần query thay đổi khi tìm job
+  // Gọi API tìm kỹ năng mỗi khi người dùng thay đổi từ khóa.
   useEffect(() => {
-    // Query rỗng kh gọi API
+    // Khi input trống thì reset danh sách, tránh gọi API không cần thiết.
     if (!query || query.trim().length === 0) {
       setSkills([]);
       return;
@@ -76,14 +78,14 @@ export const JobDetailsStep = ({
 
     setSkillLoading(true);
 
-    // Debound 400ms
+    // Debounce 400ms để chỉ gọi API khi người dùng ngừng nhập.
     const delayData = setTimeout(async () => {
       const response = await lookup(query);
       setSkills(response.data || []);
       setSkillLoading(false);
     }, 400);
 
-    // Huy debound nếu query đổi trước 400s
+    // Huỷ debounce nếu query đổi trước khi timer hoàn thành.
     return () => clearTimeout(delayData);
   }, [query]);
 
@@ -103,6 +105,7 @@ export const JobDetailsStep = ({
   );
 
   useEffect(() => {
+    // Khi đã có danh sách tỉnh, tự động chọn tỉnh khớp dữ liệu job cũ.
     if (!selectedProvinceCode && jobData.state && provinces.length) {
       const matchedProvince = provinces.find(
         (province) => province.name === jobData.state
@@ -114,6 +117,7 @@ export const JobDetailsStep = ({
   }, [jobData.state, provinces, selectedProvinceCode]);
 
   useEffect(() => {
+    // Tương tự với quận/huyện khi dữ liệu job có city đã lưu.
     if (!selectedDistrictCode && jobData.city && districts.length) {
       const matchedDistrict = districts.find(
         (district) => district.name === jobData.city
@@ -125,6 +129,7 @@ export const JobDetailsStep = ({
   }, [jobData.city, districts, selectedDistrictCode]);
 
   useEffect(() => {
+    // Đồng bộ phường/xã dựa trên dữ liệu job cũ.
     if (!selectedWardCode && jobData.district && wards.length) {
       const matchedWard = wards.find((ward) => ward.name === jobData.district);
       if (matchedWard) {
@@ -147,6 +152,7 @@ export const JobDetailsStep = ({
     type: "qualifications" | "minQualifications" | "responsibilities",
     index: number
   ) => {
+    // Xóa phần tử theo index trên danh sách tương ứng.
     if (type === "qualifications")
       setQualifications(qualifications.filter((_, i) => i !== index));
     else if (type === "minQualifications")
@@ -159,6 +165,7 @@ export const JobDetailsStep = ({
     index: number,
     value: string
   ) => {
+    // Sao chép mảng để đảm bảo tính bất biến trước khi cập nhật phần tử.
     if (type === "qualifications") {
       const updated = [...qualifications];
       updated[index] = value;
@@ -177,6 +184,7 @@ export const JobDetailsStep = ({
   // Validate form tạo job
   const validate = (): ErrorType => {
     const err: ErrorType = {};
+    // Các trường bắt buộc cần có giá trị; thiết lập thông báo lỗi tương ứng.
     if (!jobData.title || jobData.title.trim() === "") err.title = "Required";
     if (!jobData.description || jobData.description.trim() === "")
       err.description = "Required";
@@ -187,11 +195,20 @@ export const JobDetailsStep = ({
     if (!jobData.jobCategory) err.jobCategory = "Required";
     if (!jobData.state || !jobData.city || !jobData.district)
       err.location = "Required";
+
+    if (jobData.minExperience && jobData.maxExperience) {
+      const min = Number(jobData.minExperience);
+      const max = Number(jobData.maxExperience);
+      if (Number.isNaN(min) || Number.isNaN(max) || min > max) {
+        err.maxExperience = "Invalid range";
+      }
+    }
     return err;
   };
 
   // Xử lý khi nhấn Next
   const handleNext = async () => {
+    // Chạy validate trước khi chuyển bước kế tiếp.
     const err = validate();
     setTouched({
       title: true,
@@ -213,6 +230,7 @@ export const JobDetailsStep = ({
       };
       onUpdate(payload);
       try {
+        // Đẩy dữ liệu lên parent; parent sẽ gọi API lưu nháp.
         await onNext(payload);
       } catch (error) {
         console.error(error);
@@ -222,6 +240,7 @@ export const JobDetailsStep = ({
 
   return (
     <div className="space-y-6">
+      {/* Phần này chứa toàn bộ trường thông tin cơ bản, gợi ý AI và yêu cầu chi tiết. */}
       {/* Job Title */}
       <div>
         <Label
@@ -245,10 +264,21 @@ export const JobDetailsStep = ({
         />
       </div>
 
-      {/* AI generate */}
-      <span className="cursor-pointer inline-flex items-center  gap-2 rounded-full bg-gradient-to-r from-[#4f46e5]/15 via-[#7c3aed]/15 to-[#ec4899]/20 px-3 py-1 text-sm font-medium text-primary">
-        <Sparkles className="size-4" /> AI tự động tạo mô tả công việc
-      </span>
+      {/* AI Generate Expand */}
+      <div className="w-full bg-gradient-to-r from-[#4f46e5]/10 via-[#7c3aed]/10 to-[#ec4899]/10 p-4 rounded-2xl border border-violet-300/20">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-[7]">
+            <Sparkles className="size-5 text-primary animate-pulse" />
+            <span className="text-sm font-semibold text-primary">
+              AI tự động tạo mô tả công việc
+            </span>
+          </div>
+          <button className="flex-[3] group relative inline-flex justify-center items-center gap-2 rounded-full px-4 py-2 font-medium text-white bg-gradient-to-r from-[#4f46e5] via-[#7c3aed] to-[#ec4899] hover:opacity-90 shadow-lg hover:shadow-xl transition-all">
+            <Wand2 className="size-4 group-hover:rotate-12 transition-transform" />
+            Generate mô tả
+          </button>
+        </div>
+      </div>
 
       {/* Description */}
       <div>

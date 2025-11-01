@@ -3,6 +3,8 @@ import { Candidate } from "@/types/candidate";
 import { Dispatch, SetStateAction } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+// CandidateHorizontalList hiển thị danh sách ứng viên dạng thẻ lướt ngang.
+
 interface CandidateHorizontalListProps {
   candidates: Candidate[];
   selectedCandidate: Candidate | null;
@@ -14,6 +16,7 @@ const CandidateHorizontalList = ({
   selectedCandidate,
   setSelectedCandidate,
 }: CandidateHorizontalListProps) => {
+  // Giới hạn danh sách để chỉ hiển thị tối đa 10 ứng viên.
   const limitedCandidates = useMemo(
     () => candidates.slice(0, 10),
     [candidates]
@@ -30,21 +33,25 @@ const CandidateHorizontalList = ({
     setPage((prev) => Math.min(prev, totalPages - 1));
   }, [totalPages]);
 
+  // Tính toán những ứng viên nằm trong trang hiện tại.
   const visibleCandidates = useMemo(() => {
     const start = page * PAGE_SIZE;
     return limitedCandidates.slice(start, start + PAGE_SIZE);
   }, [limitedCandidates, page]);
 
   const handlePrevious = () => {
+    // Di chuyển về trang trước nếu còn.
     setPage((prev) => Math.max(prev - 1, 0));
   };
 
   const handleNext = () => {
+    // Di chuyển tới trang tiếp theo nếu chưa ở cuối.
     setPage((prev) => Math.min(prev + 1, totalPages - 1));
   };
 
   return (
     <div className="mb-6">
+      {/* Thanh điều hướng và các thẻ ứng viên gợi ý. */}
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -67,7 +74,7 @@ const CandidateHorizontalList = ({
               onClick={() => setSelectedCandidate(candidate)}
             >
               <div className="mb-3 flex items-center  gap-3">
-                {/* Avatar */}
+                {/* Ảnh đại diện hoặc ký tự viết tắt của ứng viên. */}
                 {candidate.avatar ? (
                   <img
                     src={candidate.avatar}
@@ -86,7 +93,7 @@ const CandidateHorizontalList = ({
                   </p>
                 </div>
               </div>
-              {/* Labels */}
+              {/* Nhãn kỹ năng/điểm nổi bật của ứng viên. */}
               <div className="flex flex-wrap gap-1 mt-1">
                 {candidate.labels && candidate.labels.length > 0 && (
                   <>

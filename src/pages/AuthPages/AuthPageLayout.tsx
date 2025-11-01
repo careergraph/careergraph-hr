@@ -3,6 +3,8 @@ import GridShape from "@/components/common/GridShape";
 import { Link } from "react-router";
 import ThemeTogglerTwo from "@/components/common/ThemeTogglerTwo";
 
+// AuthLayout cung cấp khung bố cục và phần thương hiệu dùng chung cho trang auth.
+
 export default function AuthLayout({
   children,
 }: {
@@ -10,6 +12,7 @@ export default function AuthLayout({
 }) {
   return (
     <div className="relative p-6 bg-white z-1 dark:bg-gray-900 sm:p-0">
+      {/* Bố cục bao bọc form đăng nhập/đăng ký với panel thương hiệu và nút đổi theme. */}
       <div className="relative flex flex-col justify-center w-full h-screen lg:flex-row dark:bg-gray-900 sm:p-0">
         {children}
         <div className="items-center hidden w-full h-full lg:w-1/2 bg-brand-950 dark:bg-white/5 lg:grid">

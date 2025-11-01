@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { ScrollReveal } from "./ScrollReveal";
 
+// PricingSection trình bày các gói sản phẩm và đặc điểm chính.
+
 type PricingPlan = {
   name: string;
   price: string;
@@ -16,6 +18,7 @@ type PricingSectionProps = {
 export function PricingSection({ plans }: PricingSectionProps) {
   return (
     <section id="pricing" className="space-y-12">
+      {/* Tiêu đề phần giá và mô tả ngắn. */}
       <ScrollReveal direction="up" className="text-center space-y-4">
         <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
           Linh hoạt theo quy mô
@@ -29,6 +32,7 @@ export function PricingSection({ plans }: PricingSectionProps) {
       </ScrollReveal>
       <div className="grid gap-6 lg:grid-cols-3">
         {plans.map((plan, index) => (
+          // Mỗi gói nêu bật giá, mô tả và lợi ích kèm nút liên hệ.
           <ScrollReveal
             key={plan.name}
             direction={index === 0 ? "left" : index === plans.length - 1 ? "right" : "up"}

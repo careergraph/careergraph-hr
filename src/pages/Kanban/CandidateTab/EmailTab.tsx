@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Candidate } from "@/types/candidate";
 import { Mail } from "lucide-react";
 
+// EmailTab hỗ trợ gửi email nhanh cho ứng viên theo mẫu.
+
 type EmailTabProps = {
   candidate: Candidate;
 };
@@ -22,6 +24,7 @@ export function EmailTab({ candidate }: EmailTabProps) {
             </p>
           </div>
 
+          {/* Danh sách mẫu email có thể chèn nhanh. */}
           <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm">
             <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
               Mẫu email đề xuất
@@ -46,6 +49,7 @@ export function EmailTab({ candidate }: EmailTabProps) {
       </ScrollArea>
 
       <div className="border-t border-slate-100 bg-slate-50/90 px-6 py-5 sm:px-8">
+        {/* Thông tin người phụ trách và hành động gửi email. */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-wide text-slate-500">

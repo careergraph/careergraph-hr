@@ -5,6 +5,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Job, ApplicationRequirements } from "@/types/job";
 
+// ApplicationRequirementsStep cấu hình giấy tờ và câu hỏi sàng lọc bắt buộc cho ứng viên.
+
 interface ApplicationRequirementsStepProps {
   jobData: Partial<Job>;
   onUpdate: (data: Partial<Job>) => void;
@@ -124,6 +126,7 @@ export const ApplicationRequirementsStep = ({
 
   return (
     <div className="space-y-8">
+      {/* Danh sách tùy chỉnh các giấy tờ bắt buộc và câu hỏi bổ sung cho ứng viên. */}
       <div className="rounded-2xl border border-border/60 bg-muted/20 dark:bg-slate-900/40 px-6 py-5 shadow-sm">
         <h2 className="text-2xl font-semibold mb-2">Thông tin ứng tuyển</h2>
         <p className="text-muted-foreground text-sm">

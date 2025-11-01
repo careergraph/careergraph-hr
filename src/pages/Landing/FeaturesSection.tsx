@@ -2,6 +2,8 @@ import { ReactNode } from "react";
 import clsx from "clsx";
 import { ScrollReveal } from "./ScrollReveal";
 
+// FeaturesSection trình bày các nhóm tính năng kèm lợi ích nổi bật.
+
 type Feature = {
   icon: ReactNode;
   title: string;
@@ -16,6 +18,7 @@ type FeaturesSectionProps = {
 export function FeaturesSection({ features }: FeaturesSectionProps) {
   return (
     <section id="features" className="space-y-12">
+      {/* Tiêu đề và mô tả chung cho phần tính năng. */}
       <ScrollReveal direction="up" className="text-center space-y-4">
         <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
           Tối ưu quy trình
@@ -31,6 +34,7 @@ export function FeaturesSection({ features }: FeaturesSectionProps) {
       </ScrollReveal>
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {features.map((feature, index) => {
+          // Mỗi thẻ tính năng hiển thị icon, mô tả và danh sách lợi ích.
           return (
             <ScrollReveal
               key={feature.title}

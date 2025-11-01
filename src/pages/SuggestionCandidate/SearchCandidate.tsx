@@ -10,6 +10,8 @@ import { Search, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import useLocation from "@/hooks/use-location";
 
+// SearchCandidate cung cấp bộ lọc từ khóa và địa điểm cho danh sách ứng viên.
+
 const SearchCandidate = () => {
   // Search và filter candidate
   const [searchQuery, setSearchQuery] = useState("");
@@ -20,9 +22,10 @@ const SearchCandidate = () => {
 
   return (
     <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+      {/* Thanh tìm kiếm và chọn địa điểm để lọc ứng viên. */}
       <div className="container mx-auto mb-4">
         <div className="flex justify-between items-center gap-4">
-          {/* Search Bar */}
+          {/* Ô nhập từ khóa tìm kiếm. */}
           <div className="flex-1 max-w relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
@@ -33,7 +36,7 @@ const SearchCandidate = () => {
             />
           </div>
 
-          {/* Location Select */}
+          {/* Dropdown chọn tỉnh/thành. */}
           <div className="flex-shrink-0">
             <Select
               value={selectedProvince}

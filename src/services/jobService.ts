@@ -87,6 +87,7 @@ const compactObject = <T extends Record<string, unknown>>(
  * pruning undefined entries.
  */
 const mapJobToPayload = (job: Partial<Job>): JobPayload => {
+  // Ánh xạ đối tượng Job nội bộ sang payload API, đồng thời loại bỏ giá trị trống.
   const payload: JobPayload = {
     title: job.title,
     description: job.description,
@@ -116,18 +117,22 @@ const mapJobToPayload = (job: Partial<Job>): JobPayload => {
         : job.promotionType === "free"
         ? "STANDARD"
         : (job.promotionType as string | undefined),
+    // Khi tạo hoặc lưu nháp phải gắn trạng thái DRAFT theo định dạng backend.
     status: toUpperSnake(Status.DRAFT),
     numberOfPositions: job.numberOfPositions,
     expiryDate: job.expiryDate,
     benefits: sanitizeArray(job.benefits),
   };
 
+  // compactObject sẽ loại bỏ toàn bộ trường undefined/null trước khi gửi.
   return compactObject(payload) as JobPayload;
 };
 
 const mapSearchPayload = (payload: JobSearchPayload) => {
-  const body = {
-    query: payload.query?.trim() || undefined,
+  // Tách query để đưa lên query string và giữ các bộ lọc trong body.
+  const query = payload.query?.trim() || undefined;
+
+  const filters = {
     statuses: normalizeEnumArray(payload.statuses),
     employmentTypes: normalizeEnumArray(payload.employmentTypes),
     jobCategories: normalizeEnumArray(payload.jobCategories),
@@ -135,23 +140,30 @@ const mapSearchPayload = (payload: JobSearchPayload) => {
     size: payload.size,
   } as Record<string, unknown>;
 
-  return compactObject(body, (key, value) => {
+  const body = compactObject(filters, (key, value) => {
     if (Array.isArray(value)) {
       return value.length > 0;
     }
 
     if (key === "page" || key === "size") {
+      // Trang/ kích thước phải là số hợp lệ mới được gửi đi.
       return typeof value === "number" && !Number.isNaN(value);
     }
 
     return value !== undefined && value !== null && value !== "";
-  });
+  }) as Record<string, unknown>;
+
+  return {
+    query,
+    body,
+  };
 };
 
 /**
  * Response helpers: unwrap Axios-style payloads into plain objects.
  */
 const unwrapResponse = <T>(data: T): T extends { data: infer U } ? U : T => {
+  // Một số HTTP client/ backend bọc kết quả trong { data: ... }; hàm này trả về phần lõi.
   if (
     data &&
     typeof data === "object" &&
@@ -174,6 +186,7 @@ const unwrapResponse = <T>(data: T): T extends { data: infer U } ? U : T => {
 const jobService = {
   createDraft: async (job: Partial<Job>) => {
     const payload = mapJobToPayload(job);
+    // API yêu cầu mọi thuộc tính trong body đã được chuẩn hóa theo snake case.
     const response = await api.post("/jobs", payload);
     return unwrapResponse(response.data);
   },
@@ -187,6 +200,7 @@ const jobService = {
   publishJob: async (jobId: string, job: Partial<Job>) => {
     const payload = mapJobToPayload(job);
     const promotionType = payload.promotionType ?? "STANDARD";
+    // Endpoint publish chỉ chấp nhận promotionType, những field khác đã lưu ở draft.
     const response = await api.put(`/jobs/${jobId}/publish`, {
       promotionType,
     });
@@ -202,14 +216,23 @@ const jobService = {
       throw new Error("Thiếu mã công ty để tìm kiếm công việc.");
     }
 
+    const { query, body } = mapSearchPayload(payload);
+
     const requestBody = {
       companyId,
-      ...mapSearchPayload(payload),
+      ...body,
     };
 
-    const response = await api.post("/jobs/search", requestBody, {
-      signal,
-    });
+    // Query được đẩy lên params để backend đọc từ query string.
+    const response = await api.post(
+      "/jobs/search",
+      requestBody,
+      {
+        signal,
+        params: query ? { query } : undefined,
+      }
+    );
+    // Lúc này response có thể nằm trong các thuộc tính data/ result nên cần unwrap.
     return unwrapResponse(response.data);
   },
 
@@ -234,6 +257,7 @@ const jobService = {
             if (typeof item === "string") return item;
             if (item && typeof item === "object") {
               const source = item as Record<string, unknown>;
+              // Một số backend trả về label/title/name, nên ưu tiên lần lượt.
               const label =
                 (source.label as string | undefined) ??
                 (source.title as string | undefined) ??

@@ -1,9 +1,12 @@
 import { Link } from "react-router";
 import { ScrollReveal } from "./ScrollReveal";
 
+// CallToActionSection khuyến khích người dùng đăng ký hoặc liên hệ.
+
 export function CallToActionSection() {
   return (
     <ScrollReveal direction="up" className="rounded-3xl border border-primary/20 bg-gradient-to-r from-[#4f46e5] via-[#7c3aed] to-[#ec4899] px-8 py-12 text-white shadow-2xl">
+      {/* Nội dung CTA với tiêu đề thuyết phục và hai lựa chọn hành động. */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-2xl space-y-3">
           <h2 className="text-3xl font-semibold">Sẵn sàng nâng tầm trải nghiệm tuyển dụng?</h2>

@@ -2,6 +2,8 @@ import { LucideIcon, CalendarPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
+// CalendarHero hiển thị thống kê chính và các hành động nhanh cho trang lịch.
+
 export type CalendarStatCard = {
   title: string;
   value: number;
@@ -18,6 +20,7 @@ interface CalendarHeroProps {
 export const CalendarHero = ({ statCards, onCreate, onToday }: CalendarHeroProps) => {
   return (
     <section className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-lg shadow-brand-950/5 backdrop-blur-sm transition dark:bg-slate-950/40">
+      {/* Các thẻ thống kê và hành động chính để quản lý lịch. */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
         <div className="flex flex-wrap items-center gap-3">

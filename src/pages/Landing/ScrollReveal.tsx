@@ -1,6 +1,8 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 
+// ScrollReveal tạo hiệu ứng hiện dần khi phần tử đi vào khung nhìn.
+
 type Direction = "up" | "down" | "left" | "right";
 
 type ScrollRevealProps = {
@@ -11,6 +13,7 @@ type ScrollRevealProps = {
   delay?: number;
 };
 
+// Lớp chuyển động ban đầu tùy theo hướng.
 const hiddenClassByDirection: Record<Direction, string> = {
   up: "translate-y-10",
   down: "-translate-y-10",
@@ -29,6 +32,7 @@ export function ScrollReveal({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    // Quan sát phần tử để bật/tắt trạng thái hiển thị khi cuộn tới.
     const element = ref.current;
     if (!element) return;
 
@@ -59,6 +63,7 @@ export function ScrollReveal({
       ref={ref}
       className={clsx(
         "transition-all duration-700 ease-out will-change-transform",
+        // Khi hiển thị thì reset transform, ngược lại áp dụng lớp ẩn tương ứng.
         isVisible ? "opacity-100 translate-x-0 translate-y-0" : clsx("opacity-0", hiddenClassByDirection[direction]),
         className
       )}

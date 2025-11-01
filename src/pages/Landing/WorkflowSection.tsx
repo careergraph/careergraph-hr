@@ -1,6 +1,8 @@
 import { ReactNode } from "react";
 import { ScrollReveal } from "./ScrollReveal";
 
+// WorkflowSection mô tả chuỗi bước làm việc minh họa cho quy trình tuyển dụng.
+
 type WorkflowStep = {
   title: string;
   description: string;
@@ -16,6 +18,7 @@ type WorkflowSectionProps = {
 export function WorkflowSection({ steps, illustration }: WorkflowSectionProps) {
   return (
     <section id="workflow" className="grid gap-10 rounded-3xl border border-slate-200 bg-white/90 p-10 shadow-xl md:grid-cols-[1.05fr_0.95fr]">
+      {/* Cột trái liệt kê từng bước trong quy trình. */}
       <ScrollReveal direction="left" className="space-y-7">
         <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-1.5 text-xs font-semibold tracking-wide text-emerald-700">
           Quy trình thông minh
@@ -25,6 +28,7 @@ export function WorkflowSection({ steps, illustration }: WorkflowSectionProps) {
         </h2>
         <div className="relative space-y-8">
           {steps.map((step, index) => (
+            // Mỗi bước hiển thị icon, tiêu đề và mô tả chi tiết.
             <ScrollReveal key={step.title} direction="up">
               <div className="relative pl-14">
                 <div className="absolute left-0 top-0 flex size-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
@@ -46,6 +50,7 @@ export function WorkflowSection({ steps, illustration }: WorkflowSectionProps) {
         </div>
       </ScrollReveal>
       <ScrollReveal direction="right" className="relative flex items-center justify-center">
+        {/* Cột phải hiển thị hình minh họa quy trình. */}
         <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/20 to-emerald-200/20 blur-3xl" aria-hidden />
         <div className="relative w-full rounded-3xl border border-white/60 bg-white/95 p-6 shadow-2xl">
           <img

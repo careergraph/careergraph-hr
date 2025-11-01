@@ -1,8 +1,11 @@
+// LandingFooter hiển thị thông tin thương hiệu và liên kết nhanh cuối trang.
 export function LandingFooter() {
+  // Lấy năm hiện tại để cập nhật bản quyền.
   const currentYear = new Date().getFullYear();
 
   return (
     <footer className="border-t border-slate-200 bg-white/80">
+      {/* Bố cục gồm khối giới thiệu và các cột liên kết. */}
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10 text-sm text-slate-500 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-3">
           <div className="flex items-center gap-3">

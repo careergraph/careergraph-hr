@@ -16,7 +16,10 @@ import { useAuthStore } from "@/stores/authStore";
 import { jobsData as fallbackJobs } from "@/data/jobsData";
 import { Button } from "@/components/ui/button";
 
+// JobsGrid chịu trách nhiệm lấy dữ liệu và hiển thị danh sách việc làm có bộ lọc.
+
 const normalizeKey = (value: string) =>
+  // Chuẩn hóa chuỗi về dạng UPPER_SNAKE để so sánh với enum đã định nghĩa.
   value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -92,6 +95,7 @@ const normalizeSkillIds = (skills: unknown): Job["skills"] => {
     return skills
       .map((skill) => {
         if (typeof skill === "string") {
+          // Backend có thể trả về mảng string, map sang đối tượng { id, name }.
           return { id: skill, name: skill };
         }
 
@@ -99,6 +103,7 @@ const normalizeSkillIds = (skills: unknown): Job["skills"] => {
           const skillObj = skill as { id?: string; name?: string };
           const id = skillObj.id ?? skillObj.name;
           if (!id) return undefined;
+          // Khi cả id và name có thể thiếu, dùng id làm fallback cho name.
           return { id, name: skillObj.name ?? id };
         }
 
@@ -118,6 +123,7 @@ const generateId = () => {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
+// Chuẩn hóa dữ liệu job từ API về model chuẩn dùng trong UI.
 const normalizeJob = (raw: Record<string, unknown>): Job => {
   const employmentType = toEmploymentType(
     (raw.employmentType ?? raw.type ?? "") as string | undefined
@@ -224,11 +230,13 @@ export default function JobsGrid() {
   const navigate = useNavigate();
   const { accessToken, company, user } = useAuthStore();
 
+  // Trạng thái cục bộ theo dõi danh sách job, bộ lọc và tiến trình tải.
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<JobFilterState>({
     ...initialJobFilterState,
   });
+  // searchTerm: giá trị người dùng nhập; debouncedSearch: giá trị delay dùng gọi API.
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [totalResults, setTotalResults] = useState<number | null>(null);
@@ -236,6 +244,7 @@ export default function JobsGrid() {
   const companyId = company?.id ?? user?.companyId ?? null;
 
   useEffect(() => {
+    // Debounce 300ms giúp gom chuỗi gõ liên tiếp trước khi gọi API.
     const handler = window.setTimeout(() => {
       setDebouncedSearch(searchTerm.trim());
     }, 300);
@@ -246,6 +255,7 @@ export default function JobsGrid() {
   }, [searchTerm]);
 
   useEffect(() => {
+    // Khi có đủ thông tin xác thực thì gọi dịch vụ tìm kiếm job.
     if (!accessToken || !companyId) {
       setJobs([]);
       setTotalResults(0);
@@ -260,6 +270,7 @@ export default function JobsGrid() {
       setLoading(true);
 
       try {
+        // Gọi API với query trên params và các bộ lọc trong body.
         const response = await jobService.searchJobs(
           companyId,
           {
@@ -283,6 +294,7 @@ export default function JobsGrid() {
             : normalizedJobs.length;
 
         if (active) {
+          // Chỉ update state khi effect chưa bị hủy.
           setJobs(normalizedJobs);
           setTotalResults(total);
         }
@@ -293,6 +305,7 @@ export default function JobsGrid() {
         }
 
         if (active) {
+          // Nếu lỗi thì dùng dữ liệu mặc định để tránh giao diện trống.
           setJobs(fallbackJobs);
           setTotalResults(fallbackJobs.length);
         }
@@ -315,21 +328,25 @@ export default function JobsGrid() {
 
   const handleSelectJob = useCallback(
     (jobId: string) => {
+      // Khi chọn job thì điều hướng sang trang kanban tương ứng.
       navigate(`/kanbans/${jobId}`);
     },
     [navigate]
   );
 
   const handleFilterChange = useCallback((nextFilters: JobFilterState) => {
+    // Cập nhật bộ lọc khi người dùng thay đổi các checkbox.
     setFilters(nextFilters);
   }, []);
 
   const handleResetFilters = useCallback(() => {
+    // Đặt lại tất cả điều kiện lọc và từ khóa tìm kiếm.
     setFilters({ ...initialJobFilterState });
     setSearchTerm("");
   }, []);
 
   const handleSearchChange = useCallback((value: string) => {
+    // Đồng bộ ô tìm kiếm với state để kích hoạt debounce.
     setSearchTerm(value);
   }, []);
 
@@ -346,6 +363,7 @@ export default function JobsGrid() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background">
+      {/* Bố cục trang việc làm gồm breadcrumb, bộ lọc và danh sách kết quả. */}
       {/* Page metadata */}
       <PageMeta title="HR - CareerGraph" description="HR - CareerGraph" />
       {/* Breadcrumb */}

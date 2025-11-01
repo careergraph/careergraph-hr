@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 
+// Các mục điều hướng cuộn tới từng section trên landing page.
 const navItems = [
   { label: "Tổng quan", id: "hero" },
   { label: "Tính năng", id: "features" },
@@ -22,6 +23,7 @@ export function LandingHeader({
 }: LandingHeaderProps) {
   return (
     <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-8">
+      {/* Logo và menu điều hướng chính của trang. */}
       <div className="flex items-center gap-3">
         <img
           src="/images/logo/logo.svg"
