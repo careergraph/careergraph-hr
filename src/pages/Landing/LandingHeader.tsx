@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { cn } from "@/lib/utils";
 
 // Các mục điều hướng cuộn tới từng section trên landing page.
 const navItems = [
@@ -21,8 +23,64 @@ export function LandingHeader({
   authenticated,
   userName,
 }: LandingHeaderProps) {
+  const [activeSection, setActiveSection] = useState<string>(navItems[0].id);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 24);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const intersecting = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (intersecting?.target?.id) {
+          setActiveSection(intersecting.target.id);
+        }
+      },
+      {
+        rootMargin: "-45% 0px -45% 0px",
+        threshold: [0.1, 0.3, 0.6],
+      }
+    );
+
+    const targets = navItems
+      .map((item) => document.getElementById(item.id))
+      .filter((el): el is HTMLElement => Boolean(el));
+
+    targets.forEach((el) => observer.observe(el));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   return (
-    <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-8">
+    <header
+      className={cn(
+        "sticky top-0 z-50 w-full transition-all duration-500",
+        isScrolled
+          ? "border-b border-white/60 bg-white/85 shadow-[0_10px_40px_rgba(15,23,42,0.08)] backdrop-blur-md"
+          : "bg-transparent"
+      )}
+    >
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5 md:py-8">
       {/* Logo và menu điều hướng chính của trang. */}
       <div className="flex items-center gap-3">
         <img
@@ -35,7 +93,7 @@ export function LandingHeader({
           CareerGraph
         </span>
       </div>
-      <nav className="hidden flex-1 items-center justify-center gap-5 text-sm font-semibold text-slate-600 md:flex">
+      <nav className="hidden flex-1 items-center justify-center gap-4 md:flex">
         {navItems.map((item) => (
           <a
             key={item.id}
@@ -44,9 +102,21 @@ export function LandingHeader({
               event.preventDefault();
               onNavigate(item.id);
             }}
-            className="relative inline-flex items-center gap-2 rounded-full px-3 py-1 text-slate-600 transition-colors whitespace-nowrap hover:text-slate-900"
+            className={cn(
+              "group relative inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition-all duration-300 ease-out whitespace-nowrap",
+              activeSection === item.id
+                ? "text-slate-900"
+                : "text-slate-600 hover:text-slate-900"
+            )}
           >
-            {item.label}
+            <span
+              aria-hidden
+              className={cn(
+                "absolute inset-0 scale-90 rounded-full bg-white/80 opacity-0 shadow-sm transition-all duration-300 ease-out group-hover:scale-100 group-hover:opacity-100 dark:bg-white/10",
+                activeSection === item.id && "scale-100 opacity-100"
+              )}
+            />
+            <span className="relative z-10">{item.label}</span>
           </a>
         ))}
       </nav>
@@ -78,6 +148,7 @@ export function LandingHeader({
           </Link>
         </div>
       )}
+      </div>
     </header>
   );
 }
