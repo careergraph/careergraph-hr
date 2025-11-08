@@ -70,7 +70,7 @@ const mapCompany = (raw: Record<string, unknown>): CompanyProfile => {
 
 const companyService = {
   getMyCompany: async (): Promise<CompanyProfile | null> => {
-    const response = await api.get("/company/me");
+    const response = await api.get("/companies/me");
     const payload = unwrap(response.data);
 
     if (!payload || typeof payload !== "object") {

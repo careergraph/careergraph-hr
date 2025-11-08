@@ -75,8 +75,6 @@ interface JobTimelineEvent {
 interface ApplicationRequirements {
   resume: boolean;
   coverLetter: boolean;
-  photo: boolean;
-  desiredSalary: boolean;
   screeningQuestions?: ScreeningQuestion[];
 }
 

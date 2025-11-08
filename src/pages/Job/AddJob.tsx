@@ -7,7 +7,7 @@ import { PromoteStep } from "../AddJobSteps/PromoteStep";
 import { Job } from "@/types/job";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { jobService } from "@/services/jobService";
+import { jobService, type JobRecruitmentPayload } from "@/services/jobService";
 import { Status } from "@/enums/commonEnum";
 
 // AddJob điều phối quy trình tạo job nhiều bước gồm lưu nháp và công khai.
@@ -104,15 +104,39 @@ const AddJob = () => {
   };
 
   const handleRequirementsNext = async (payload: Partial<Job>) => {
+    const jobId = jobData.id;
+
+    if (!jobId) {
+      const message = "Không tìm thấy bản nháp để cập nhật yêu cầu ứng tuyển.";
+      toast.error(message);
+      throw new Error(message);
+    }
+
     setIsSavingRequirements(true);
     try {
+      const recruitmentPayload: JobRecruitmentPayload = {
+        jobId,
+        coverLetter: Boolean(payload.applicationRequirements?.coverLetter ?? true),
+      };
+
+      await jobService.updateRecruitment(recruitmentPayload);
+
       // Lưu yêu cầu ứng tuyển vào state dùng cho bước tiếp theo.
       setJobData((prev) => ({
         ...prev,
         ...payload,
+        applicationRequirements: {
+          resume: true,
+          coverLetter: recruitmentPayload.coverLetter,
+        },
       }));
 
+      toast.success("Đã lưu yêu cầu ứng tuyển.");
       setCurrentStep(3);
+    } catch (error) {
+      const message = resolveErrorMessage(error);
+      toast.error(message);
+      throw error;
     } finally {
       setIsSavingRequirements(false);
     }

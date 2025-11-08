@@ -1,7 +1,7 @@
 import api from "@/config/axiosConfig";
 import { Status } from "@/enums/commonEnum";
 import { EmploymentType, JobCategory } from "@/enums/workEnum";
-import { Job } from "@/types/job";
+import { Job, ApplicationRequirements } from "@/types/job";
 
 type JobPayload = {
   title?: string;
@@ -43,6 +43,15 @@ type JobSearchPayload = {
   size?: number;
 };
 
+type JobRecruitmentPayload = {
+  jobId: string;
+  coverLetter: boolean;
+};
+
+const DEFAULT_QUERY = "";
+const DEFAULT_PAGE = 0;
+const DEFAULT_SIZE = 9;
+
 /**
  * Helpers: shared utilities for normalizing strings, arrays, and filtering
  * out empty values before sending requests.
@@ -82,6 +91,19 @@ const compactObject = <T extends Record<string, unknown>>(
     Object.entries(source).filter(([key, value]) => predicate(key, value))
   ) as Partial<T>;
 
+const sanitizeApplicationRequirements = (
+  requirements?: ApplicationRequirements
+) => {
+  if (!requirements) return undefined;
+
+  const coverLetter = Boolean(requirements.coverLetter);
+
+  return {
+    resume: true,
+    coverLetter,
+  } satisfies Pick<ApplicationRequirements, "resume" | "coverLetter">;
+};
+
 /**
  * Payload builders: map internal job structures into API-friendly bodies while
  * pruning undefined entries.
@@ -110,7 +132,9 @@ const mapJobToPayload = (job: Partial<Job>): JobPayload => {
     salaryRange: job.salaryRange,
     contactEmail: job.contactEmail,
     contactPhone: job.contactPhone,
-    applicationRequirements: job.applicationRequirements,
+    applicationRequirements: sanitizeApplicationRequirements(
+      job.applicationRequirements
+    ),
     promotionType:
       job.promotionType === "paid"
         ? "PREMIUM"
@@ -128,33 +152,31 @@ const mapJobToPayload = (job: Partial<Job>): JobPayload => {
   return compactObject(payload) as JobPayload;
 };
 
-const mapSearchPayload = (payload: JobSearchPayload) => {
+const mapSearchPayload = (payload: JobSearchPayload = {}) => {
   // Tách query để đưa lên query string và giữ các bộ lọc trong body.
-  const query = payload.query?.trim() || undefined;
+  const trimmedQuery = payload.query?.trim();
+  const query = typeof trimmedQuery === "string" ? trimmedQuery : DEFAULT_QUERY;
 
-  const filters = {
-    statuses: normalizeEnumArray(payload.statuses),
-    employmentTypes: normalizeEnumArray(payload.employmentTypes),
-    jobCategories: normalizeEnumArray(payload.jobCategories),
-    page: payload.page,
-    size: payload.size,
-  } as Record<string, unknown>;
+  const page =
+    typeof payload.page === "number" && payload.page >= 0
+      ? payload.page
+      : DEFAULT_PAGE;
 
-  const body = compactObject(filters, (key, value) => {
-    if (Array.isArray(value)) {
-      return value.length > 0;
-    }
+  const size =
+    typeof payload.size === "number" && payload.size > 0
+      ? payload.size
+      : DEFAULT_SIZE;
 
-    if (key === "page" || key === "size") {
-      // Trang/ kích thước phải là số hợp lệ mới được gửi đi.
-      return typeof value === "number" && !Number.isNaN(value);
-    }
-
-    return value !== undefined && value !== null && value !== "";
-  }) as Record<string, unknown>;
+  const body = {
+    statuses: normalizeEnumArray(payload.statuses) ?? [],
+    employmentTypes: normalizeEnumArray(payload.employmentTypes) ?? [],
+    jobCategories: normalizeEnumArray(payload.jobCategories) ?? [],
+  } satisfies Record<string, unknown>;
 
   return {
     query,
+    page,
+    size,
     body,
   };
 };
@@ -197,6 +219,23 @@ const jobService = {
     return unwrapResponse(response.data);
   },
 
+  updateRecruitment: async ({
+    jobId,
+    coverLetter,
+  }: JobRecruitmentPayload) => {
+    if (!jobId) {
+      throw new Error(
+        "Thiếu mã công việc để cập nhật yêu cầu ứng tuyển."
+      );
+    }
+
+    const response = await api.put(`/jobs/${jobId}/recruitment`, {
+      resume: true,
+      coverLetter: Boolean(coverLetter),
+    });
+    return unwrapResponse(response.data);
+  },
+
   publishJob: async (jobId: string, job: Partial<Job>) => {
     const payload = mapJobToPayload(job);
     const promotionType = payload.promotionType ?? "STANDARD";
@@ -216,7 +255,7 @@ const jobService = {
       throw new Error("Thiếu mã công ty để tìm kiếm công việc.");
     }
 
-    const { query, body } = mapSearchPayload(payload);
+    const { query, page, size, body } = mapSearchPayload(payload);
 
     const requestBody = {
       companyId,
@@ -229,7 +268,11 @@ const jobService = {
       requestBody,
       {
         signal,
-        params: query ? { query } : undefined,
+        params: {
+          query,
+          page,
+          size,
+        },
       }
     );
     // Lúc này response có thể nằm trong các thuộc tính data/ result nên cần unwrap.
@@ -305,3 +348,4 @@ const jobService = {
 };
 
 export { jobService, mapJobToPayload };
+export type { JobRecruitmentPayload };

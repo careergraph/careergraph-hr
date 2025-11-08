@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { ListFilter } from "lucide-react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
@@ -225,6 +225,7 @@ const extractJobsFromResponse = (
 };
 
 const SKELETON_COUNT = 6;
+const PAGE_SIZE = 9;
 
 export default function JobsGrid() {
   const navigate = useNavigate();
@@ -240,6 +241,8 @@ export default function JobsGrid() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [totalResults, setTotalResults] = useState<number | null>(null);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const companyId = company?.id ?? user?.companyId ?? null;
 
@@ -278,6 +281,8 @@ export default function JobsGrid() {
             statuses: filters.statuses,
             employmentTypes: filters.employmentTypes,
             jobCategories: filters.categories,
+            page,
+            size: PAGE_SIZE,
           },
           controller.signal
         );
@@ -297,6 +302,9 @@ export default function JobsGrid() {
           // Chỉ update state khi effect chưa bị hủy.
           setJobs(normalizedJobs);
           setTotalResults(total);
+          setTotalPages(
+            total > 0 ? Math.ceil(total / PAGE_SIZE) : 0
+          );
         }
       } catch (err) {
         if (controller.signal.aborted) {
@@ -306,8 +314,17 @@ export default function JobsGrid() {
 
         if (active) {
           // Nếu lỗi thì dùng dữ liệu mặc định để tránh giao diện trống.
-          setJobs(fallbackJobs);
+          const fallbackSlice = fallbackJobs.slice(
+            page * PAGE_SIZE,
+            page * PAGE_SIZE + PAGE_SIZE
+          );
+          setJobs(fallbackSlice);
           setTotalResults(fallbackJobs.length);
+          setTotalPages(
+            fallbackJobs.length > 0
+              ? Math.ceil(fallbackJobs.length / PAGE_SIZE)
+              : 0
+          );
         }
       } finally {
         if (active) {
@@ -322,7 +339,20 @@ export default function JobsGrid() {
       active = false;
       controller.abort();
     };
-  }, [accessToken, companyId, filters, debouncedSearch]);
+  }, [accessToken, companyId, filters, debouncedSearch, page]);
+
+  useEffect(() => {
+    if (totalPages === 0) {
+      if (page !== 0) {
+        setPage(0);
+      }
+      return;
+    }
+
+    if (page >= totalPages) {
+      setPage(totalPages - 1);
+    }
+  }, [page, totalPages]);
 
   const hasJobs = jobs.length > 0;
 
@@ -334,21 +364,64 @@ export default function JobsGrid() {
     [navigate]
   );
 
-  const handleFilterChange = useCallback((nextFilters: JobFilterState) => {
-    // Cập nhật bộ lọc khi người dùng thay đổi các checkbox.
-    setFilters(nextFilters);
-  }, []);
+  const handleFilterChange = useCallback(
+    (nextFilters: JobFilterState) => {
+      // Cập nhật bộ lọc khi người dùng thay đổi các checkbox.
+      setFilters(nextFilters);
+      setPage(0);
+    },
+    []
+  );
 
   const handleResetFilters = useCallback(() => {
     // Đặt lại tất cả điều kiện lọc và từ khóa tìm kiếm.
     setFilters({ ...initialJobFilterState });
     setSearchTerm("");
+    setPage(0);
   }, []);
 
   const handleSearchChange = useCallback((value: string) => {
     // Đồng bộ ô tìm kiếm với state để kích hoạt debounce.
     setSearchTerm(value);
+    setPage(0);
   }, []);
+
+  const handlePageChange = useCallback(
+    (nextPage: number) => {
+      if (nextPage === page) return;
+      if (nextPage < 0) return;
+      if (totalPages > 0 && nextPage >= totalPages) return;
+      setPage(nextPage);
+    },
+    [page, totalPages]
+  );
+
+  const pageNumbers = useMemo(() => {
+    if (totalPages <= 0) return [] as number[];
+
+    const visiblePages = 5;
+    const halfRange = Math.floor(visiblePages / 2);
+    let start = Math.max(0, page - halfRange);
+    let end = start + visiblePages - 1;
+
+    if (end >= totalPages) {
+      end = totalPages - 1;
+      start = Math.max(0, end - visiblePages + 1);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  }, [page, totalPages]);
+
+  const canGoPrevious = page > 0;
+  const canGoNext = totalPages > 0 && page < totalPages - 1;
+
+  const hasPagination =
+    typeof totalResults === "number" && totalResults > 0 && totalPages > 0;
+
+  const startItem = hasPagination ? page * PAGE_SIZE + 1 : 0;
+  const endItem = hasPagination
+    ? Math.min(totalResults as number, startItem + jobs.length - 1)
+    : 0;
 
   const renderSkeleton = () => (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -415,6 +488,45 @@ export default function JobsGrid() {
             {loading && hasJobs && (
               <div className="rounded-3xl border border-dashed border-border bg-muted/10 px-4 py-3 text-sm text-muted-foreground dark:bg-slate-800/40">
                 Đang cập nhật danh sách công việc...
+              </div>
+            )}
+
+            {hasPagination && (
+              <div className="flex flex-col gap-4 rounded-3xl border border-border bg-card/40 p-4 backdrop-blur-xl dark:bg-slate-900/40 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Hiển thị {startItem.toLocaleString("vi-VN")} - {endItem.toLocaleString("vi-VN")} trong {(
+                    totalResults as number
+                  ).toLocaleString("vi-VN")} công việc
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canGoPrevious}
+                    onClick={() => handlePageChange(page - 1)}
+                  >
+                    Trước
+                  </Button>
+                  {pageNumbers.map((pageNumber) => (
+                    <Button
+                      key={pageNumber}
+                      variant={pageNumber === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNumber)}
+                      aria-current={pageNumber === page ? "page" : undefined}
+                    >
+                      {pageNumber + 1}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canGoNext}
+                    onClick={() => handlePageChange(page + 1)}
+                  >
+                    Sau
+                  </Button>
+                </div>
               </div>
             )}
           </section>
