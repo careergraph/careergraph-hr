@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { initialCandidates, columns } from "@/data/candidateData";
+import { applicationService } from "@/services/applicationService";
+import { Status as CandidateStatusType } from "@/types/candidate";
 
 // KanbanBoard tổ chức danh sách ứng viên theo trạng thái và hỗ trợ kéo thả.
 
@@ -45,6 +47,9 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
   const [candidates, setCandidates] = useState<Candidate[]>(() =>
     filterByJob(initialCandidates)
   );
+  // Note: we intentionally do not render a loading indicator inside this
+  // board to keep the UI simple — errors are logged to console. If you want
+  // a spinner or placeholder, we can render it where appropriate.
   const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(
     null
   );
@@ -67,6 +72,179 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     setMoveRequest(null);
     dragSnapshotRef.current = null;
   }, [filterByJob]);
+
+  // If a jobId is supplied we should load real applications from the API
+  // instead of the local `initialCandidates` fixture. We keep the mapping
+  // logic here so the rest of the Kanban app continues to work with the
+  // existing `Candidate` type.
+  useEffect(() => {
+    if (!jobId) return; // nothing to do when not filtering by job
+
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    (async () => {
+      try {
+        // We don't render a loading UI here; log for debugging.
+        console.debug("Loading applications for jobId", jobId);
+
+        // Call the backend: GET /applications?jobId=...
+        const resp = await applicationService.fetchApplicationsByJob(
+          jobId,
+          signal
+        );
+
+        // The backend returns an envelope { status, message, data: [...] }
+        const items = Array.isArray(resp.data) ? resp.data : [];
+
+        // MAP: application -> Candidate (typed defensively)
+        const stageToStatus: Record<string, CandidateStatusType> = {
+          APPLIED: "apply",
+          SUBMITTED: "apply",
+          SCHEDULED: "meeting",
+          INVITED: "meeting",
+          INTERVIEW: "interview",
+          TRIAL: "trial",
+          HIRED: "hired",
+        } as const;
+
+        const normalizeString = (v: unknown, fallback = "") =>
+          typeof v === "string" ? v : fallback;
+
+        const mapped: Candidate[] = items.map((raw) => {
+          const app = raw as unknown as Record<string, unknown>;
+          const applicationId = normalizeString(
+            app["applicationId"] || app["id"]
+          );
+          const candidateObj =
+            (app["candidate"] as Record<string, unknown>) || {};
+          const jobObj = (app["job"] as Record<string, unknown>) || {};
+
+          const firstName = normalizeString(candidateObj["firstName"]);
+          const lastName = normalizeString(candidateObj["lastName"]);
+          const email = normalizeString(
+            candidateObj["email"],
+            "unknown@example.com"
+          );
+
+          const name =
+            [firstName, lastName].filter(Boolean).join(" ") ||
+            (email.includes("@") ? email.split("@")[0] : email);
+
+          const rawStage = normalizeString(app["currentStage"], "APPLIED");
+          const status =
+            (stageToStatus[rawStage] as CandidateStatusType) || "apply";
+
+          const stageHistory = Array.isArray(app["stageHistory"])
+            ? (app["stageHistory"] as unknown[])
+            : [];
+
+          const candidate: Candidate = {
+            id: applicationId,
+            ticketId: applicationId,
+            jobId: normalizeString(jobObj["id"] || jobId),
+            name,
+            position: normalizeString(jobObj["title"], "Ứng viên"),
+            email,
+            phone: ((): string => {
+              const contacts = candidateObj["contacts"];
+              if (Array.isArray(contacts) && contacts.length > 0) {
+                const first = contacts[0] as Record<string, unknown>;
+                return normalizeString(first["value"] || "");
+              }
+              return "";
+            })(),
+            priority: "medium",
+            status,
+            appliedDate: normalizeString(
+              app["appliedDate"],
+              new Date().toISOString()
+            ),
+            experienceLevel: "mid",
+            salaryExpectation: normalizeString(jobObj["salaryRange"] || ""),
+            assignee: undefined,
+            labels: [],
+            description: normalizeString(
+              app["stageNote"] || app["coverLetter"] || ""
+            ),
+            timeline: stageHistory.map((h, i) => {
+              const evt = (h as Record<string, unknown>) || {};
+              return {
+                id: `${applicationId}-evt-${i}`,
+                action: normalizeString(evt["toStage"] || evt["to"] || ""),
+                description: normalizeString(evt["note"] || ""),
+                date: normalizeString(
+                  evt["changedAt"] || new Date().toISOString()
+                ),
+                user: normalizeString(evt["changedBy"] || ""),
+              };
+            }),
+
+            avatar: normalizeString(
+              candidateObj["avatar"] || candidateObj["profilePicture"] || ""
+            ),
+            age: 0,
+            experience: `${normalizeString(
+              candidateObj["yearsOfExperience"] || "0"
+            )} năm`,
+            lastActive: normalizeString(
+              app["stageChangedAt"] ||
+                app["appliedDate"] ||
+                new Date().toISOString()
+            ),
+
+            gender: "Nam",
+            birthYear: 1990,
+            maritalStatus: "",
+            location: {
+              city: normalizeString(jobObj["city"] || ""),
+              province: normalizeString(jobObj["state"] || ""),
+            },
+            address: normalizeString(jobObj["specific"] || ""),
+
+            education: normalizeString(candidateObj["educationLevel"] || ""),
+            yearsOfExperience: normalizeString(
+              String(candidateObj["yearsOfExperience"] || "0")
+            ),
+            currentLevel: "",
+            desiredLevel: "",
+
+            desiredSalary: normalizeString(
+              String(candidateObj["salaryExpectationMin"] || "")
+            ),
+            workLocation: normalizeString(candidateObj["workLocation"] || ""),
+            workType: "",
+            industry: normalizeString(candidateObj["industry"] || ""),
+
+            skills: Array.isArray(candidateObj["skills"])
+              ? (candidateObj["skills"] as unknown[]).map((s) =>
+                  typeof s === "string"
+                    ? s
+                    : normalizeString((s as Record<string, unknown>)["name"])
+                )
+              : [],
+            languages: [],
+            hasPurchased: false,
+            educationLevel: normalizeString(
+              candidateObj["educationLevel"] || undefined
+            ),
+          } as Candidate;
+
+          return candidate;
+        });
+
+        setCandidates(mapped);
+      } catch (err: unknown) {
+        if (signal.aborted) return;
+        console.error("Error loading applications:", err);
+      } finally {
+        if (!signal.aborted)
+          console.debug("Finished loading applications for", jobId);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [jobId]);
   // Xử lý khi click vào candidate để xem chi tiết
   const handleViewDetails = (candidate: Candidate) => {
     setActiveCandidate(candidate);
@@ -219,7 +397,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
       if (dragSnapshotRef.current) {
         setCandidates(dragSnapshotRef.current);
         dragSnapshotRef.current = null;
-    // Sau khi xác nhận dialog, handleConfirmMove sẽ cập nhật state chính thức.
+        // Sau khi xác nhận dialog, handleConfirmMove sẽ cập nhật state chính thức.
       }
       setDragSourceStatus(null);
       return;
@@ -343,7 +521,9 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           </div>
           <DragOverlay>
             {activeCandidate ? (
-              <CandidateCard candidate={activeCandidate} />
+              <div className="z-[1000] opacity-100">
+                <CandidateCard candidate={activeCandidate} isDragPreview />
+              </div>
             ) : null}
           </DragOverlay>
         </DndContext>

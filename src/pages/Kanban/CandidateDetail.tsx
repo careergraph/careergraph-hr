@@ -16,6 +16,7 @@ import { ExperienceTab } from "./CandidateTab/ExperienceTab";
 import { CvTab } from "./CandidateTab/CvTab";
 import { MessagesTab } from "./CandidateTab/MessagesTab";
 import { EmailTab } from "./CandidateTab/EmailTab";
+import { formatDate } from "@/lib/candidateDataUtils";
 
 // CandidateDetail hiển thị panel chi tiết của ứng viên trong Kanban.
 
@@ -59,7 +60,7 @@ export function CandidateDetail({
             },
             {
               label: "Hoạt động gần nhất",
-              value: candidate.lastActive,
+              value: formatDate(candidate.lastActive),
               icon: <CalendarClock className="h-4 w-4" />,
               accent: "bg-sky-100 text-sky-600",
             },
@@ -73,15 +74,6 @@ export function CandidateDetail({
         : [],
     [candidate]
   );
-
-  // const skillPalette = [
-  //   "bg-blue-100 text-blue-700",
-  //   "bg-rose-100 text-rose-700",
-  //   "bg-emerald-100 text-emerald-700",
-  //   "bg-amber-100 text-amber-700",
-  //   "bg-purple-100 text-purple-700",
-  //   "bg-sky-100 text-sky-700",
-  // ];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -117,7 +109,7 @@ export function CandidateDetail({
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
                       <span className="inline-flex items-center gap-2">
-              {/* Tabs cung cấp các chế độ xem chi tiết. */}
+                        {/* Tabs cung cấp các chế độ xem chi tiết. */}
                         <Briefcase className="h-4 w-4 text-slate-400" />
                         {candidate.position}
                       </span>
@@ -141,31 +133,12 @@ export function CandidateDetail({
 
                   <p className="mt-2 text-xs text-slate-500">
                     Ứng tuyển{" "}
-                    <span className="font-semibold">{candidate.appliedDate}</span>
+                    <span className="font-semibold">
+                      {formatDate(candidate.appliedDate)}
+                    </span>
                   </p>
                 </div>
               </div>
-
-              {/* <div className="mt-4 flex flex-wrap gap-2">
-                {candidate.labels.slice(0, 6).map((label, index) => (
-                  <Badge
-                    key={label}
-                    className={`${
-                      skillPalette[index % skillPalette.length]
-                    } border-0 px-3 py-1 text-[11px] font-medium`}
-                  >
-                    {label}
-                  </Badge>
-                ))}
-                {candidate.labels.length > 6 ? (
-                  <Badge
-                    variant="outline"
-                    className="border-dashed border-slate-200 px-3 py-1 text-[11px] text-slate-500"
-                  >
-                    +{candidate.labels.length - 6}
-                  </Badge>
-                ) : null}
-              </div> */}
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {highlightCards.map((item) => (

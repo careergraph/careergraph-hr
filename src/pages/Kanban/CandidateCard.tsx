@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Candidate } from "@/types/candidate";
+import { formatDate } from "@/lib/candidateDataUtils";
 
 // CandidateCard hiển thị ứng viên trong Kanban và hỗ trợ kéo thả.
 
@@ -13,6 +14,7 @@ export interface CandidateCardProps {
   onViewDetails?: (candidate: Candidate) => void;
   compact?: boolean;
   className?: string;
+  isDragPreview?: boolean;
 }
 
 export function CandidateCard({
@@ -20,7 +22,12 @@ export function CandidateCard({
   onViewDetails,
   compact = false,
   className,
+  isDragPreview = false,
 }: CandidateCardProps) {
+  // `useSortable` provides `isDragging` which tells us whether this
+  // particular card instance is currently being dragged. We use that to
+  // hide the original card while the DragOverlay (preview) is shown so the
+  // user sees a single floating card instead of two.
   const {
     attributes,
     listeners,
@@ -72,7 +79,9 @@ export function CandidateCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`w-full transition ${isDragging ? "opacity-50 cursor-grabbing" : ""} ${className ?? ""}`}
+      className={`w-full transition ${
+        isDragging && !isDragPreview ? "invisible" : ""
+      } ${className ?? ""}`}
     >
       {/* Thẻ chính hiển thị thông tin ứng viên. */}
       <Card
@@ -84,7 +93,14 @@ export function CandidateCard({
         role="button"
         aria-label={`Xem chi tiết ứng viên ${candidate.name}`}
       >
-        <div className={`absolute inset-0 bg-gradient-to-br ${priority.indicator} opacity-10`} />
+        {/* Decorative gradient: render normally, but hide when this card is
+            used as the drag preview to ensure the floating preview remains
+            visually solid (user reported the overlay looked transparent). */}
+        {!isDragPreview && (
+          <div
+            className={`absolute inset-0 bg-gradient-to-br ${priority.indicator} opacity-10`}
+          />
+        )}
         <div className="relative flex w-full items-start gap-4">
           <div className="flex flex-col items-center gap-3">
             <button
@@ -108,7 +124,7 @@ export function CandidateCard({
           </div>
 
           <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0 space-y-0.5">
                 <h3 className="truncate text-sm font-semibold text-foreground">
                   {candidate.name}
@@ -127,7 +143,7 @@ export function CandidateCard({
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 <CalendarClock className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-                {candidate.appliedDate}
+                {formatDate(candidate.appliedDate)}
               </span>
               {candidate.location?.city ? (
                 <span className="inline-flex items-center gap-1">
