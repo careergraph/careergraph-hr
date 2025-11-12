@@ -13,7 +13,6 @@ import Button from "../custom/button/Button";
 import GoogleAuth from "./GoogleAuth";
 import XAuth from "./XAuth";
 import authService, { LoginResponse } from "@/services/authService";
-import accountService from "@/services/accountService";
 import companyService from "@/services/companyService";
 import { useAuthStore } from "@/stores/authStore";
 import type { AuthUser, CompanyProfile } from "@/types/account";
@@ -205,21 +204,18 @@ export default function SignInForm() {
       setUser(authUser);
 
       try {
-        const [currentAccount, currentCompany] = await Promise.all([
-          accountService.getCurrentAccount(),
-          companyService.getMyCompany(),
-        ]);
-
-        if (currentAccount) {
-          updateUser(currentAccount);
-        }
+        // We only need the company details here. The account/profile
+        // hydration from `/accounts/me` was removed to avoid duplicate
+        // network calls; other parts of the app will hydrate user info as
+        // needed.
+        const currentCompany = await companyService.getMyCompany();
 
         if (currentCompany) {
           setCompany(currentCompany);
           updateUser({ company: currentCompany, companyId: currentCompany.id });
         }
       } catch (currentError) {
-        console.error("Không thể tải dữ liệu tài khoản hoặc công ty", currentError);
+        console.error("Không thể tải dữ liệu công ty", currentError);
       }
 
       toast.success("Đăng nhập thành công!");
