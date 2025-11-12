@@ -3,15 +3,47 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Candidate } from "@/types/candidate";
+import type { CandidateOverviewResponse } from "@/types/candidateTab";
 import { GraduationCap, Languages } from "lucide-react";
 
 // OverviewTab tổng hợp thông tin chung của ứng viên.
 
 type OverviewTabProps = {
   candidate: Candidate;
+  // Optional data fetched from server specific to overview tab
+  overviewData?: CandidateOverviewResponse | null;
+  loading?: boolean;
+  error?: string | null;
 };
 
-export function OverviewTab({ candidate }: OverviewTabProps) {
+export function OverviewTab({ candidate, overviewData, loading, error }: OverviewTabProps) {
+  // If parent provided server-side overview data, show a small preview block.
+  // This is intentionally minimal: main rendering still uses the `candidate` shape.
+  // Provide a complete mock object so the UI remains populated when backend
+  // hasn't returned data yet. Backend can implement the same shape.
+  const mockOverview: CandidateOverviewResponse = {
+    id: candidate.id,
+    profileSummary:
+      "Kỹ sư phần mềm có 5+ năm kinh nghiệm xây dựng ứng dụng web, chuyên về TypeScript và React. Tự giác, có kinh nghiệm lead small teams.",
+    skills: ["TypeScript", "React", "Node.js", "GraphQL", "Testing"],
+    certifications: ["AWS Certified Developer", "ISTQB Foundation"],
+    education: {
+      school: "Đại học Bách Khoa Hà Nội",
+      degree: "Cử nhân",
+      major: "Khoa học Máy tính",
+      year: "2018",
+    },
+    links: [
+      { label: "LinkedIn", url: "https://linkedin.com/in/example" },
+      { label: "Github", url: "https://github.com/example" },
+    ],
+    social: { linkedin: "https://linkedin.com/in/example", github: "https://github.com/example" },
+    preferredLocations: ["Hà Nội", "Đà Nẵng"],
+    expectedSalary: "₫30,000,000 - ₫40,000,000",
+    noticePeriod: "2 tuần",
+  };
+
+  const shownOverview = overviewData ?? mockOverview;
   const overviewSections = useMemo(() => {
     // Chuẩn hóa dữ liệu các khối thông tin để render động.
     const topSkills = (
@@ -78,9 +110,55 @@ export function OverviewTab({ candidate }: OverviewTabProps) {
   }, [candidate]);
 
   const skills = candidate.skills?.length ? candidate.skills : candidate.labels;
-
   return (
     <ScrollArea className="h-full px-5 pb-10 pt-5 sm:px-8">
+      {/* Loading / error / server-preview for overview tab (optional) */}
+      {loading ? (
+        <div className="mb-4 px-3 py-2 text-sm text-slate-500">Đang tải dữ liệu tổng quan...</div>
+      ) : error ? (
+        <div className="text-sm text-indigo-500">Thông báo: Tính năng đang trong quá trình hoàn thiện!</div>
+      ) : (
+        <div className="mb-4 grid gap-3 rounded-md border border-slate-100 bg-slate-50 p-3 text-sm text-slate-700">
+          {shownOverview.profileSummary ? (
+            <div>
+              <h4 className="text-xs font-semibold text-slate-600">Tóm tắt hồ sơ</h4>
+              <p className="mt-1 text-sm text-slate-600">{shownOverview.profileSummary}</p>
+            </div>
+          ) : null}
+
+          {shownOverview.skills?.length ? (
+            <div>
+              <h4 className="text-xs font-semibold text-slate-600">Kỹ năng</h4>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {shownOverview.skills.map((s) => (
+                  <span key={s} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700 border border-slate-100">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {shownOverview.certifications?.length ? (
+            <div>
+              <h4 className="text-xs font-semibold text-slate-600">Chứng chỉ</h4>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+                {shownOverview.certifications.join(", ")}
+              </div>
+            </div>
+          ) : null}
+
+          {shownOverview.education ? (
+            <div>
+              <h4 className="text-xs font-semibold text-slate-600">Học vấn (server)</h4>
+              <p className="mt-1 text-sm text-slate-600">
+                {shownOverview.education.degree ?? ""} {shownOverview.education.major ? `- ${shownOverview.education.major}` : ""}
+                {shownOverview.education.school ? ` • ${shownOverview.education.school}` : ""}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      )}
       {/* Danh sách các nhóm thông tin tổng quan. */}
       <div className="space-y-6">
         {overviewSections.map((section) => (
