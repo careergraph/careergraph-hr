@@ -12,6 +12,7 @@ import Checkbox from "@/components/form/input/Checkbox";
 import GoogleAuth from "./GoogleAuth";
 import XAuth from "./XAuth";
 import authService from "@/services/authService";
+import { saveOtpContext } from "@/utils/otpStorage";
 
 const signUpSchema = z.object({
   firstName: z.string({ required_error: "Họ là bắt buộc" }).min(1, "Họ là bắt buộc"),
@@ -103,7 +104,10 @@ export default function SignUpForm() {
       reset({ ...values, password: "", acceptTerms: true });
 
       setTimeout(() => {
-        navigate("/signin", { state: { email: values.email.trim() } });
+        saveOtpContext({email: values.email.trim(),purpose: "verify_email",redirectTo: "/signin", })
+        navigate("/verify-otp", { 
+          replace: true,
+          state: { email: values.email.trim() } });
       }, 600);
     } catch (error) {
       const message = resolveErrorMessage(error);

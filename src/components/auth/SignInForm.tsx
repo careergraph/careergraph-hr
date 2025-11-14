@@ -17,6 +17,7 @@ import accountService from "@/services/accountService";
 import companyService from "@/services/companyService";
 import { useAuthStore } from "@/stores/authStore";
 import type { AuthUser, CompanyProfile } from "@/types/account";
+import { saveOtpContext } from "@/utils/otpStorage";
 
 const signInSchema = z.object({
   email: z.string({ required_error: "Email là bắt buộc" }).email("Email không hợp lệ"),
@@ -194,6 +195,7 @@ export default function SignInForm() {
         password: values.password,
       });
 
+      
       token = extractAccessToken(response);
 
       if (!token) {
@@ -224,8 +226,17 @@ export default function SignInForm() {
 
       toast.success("Đăng nhập thành công!");
       navigate("/dashboard");
-    } catch (error) {
+    } catch (error: Error | any) {
       if (!token) {
+        if(error?.status === 505){
+          saveOtpContext({email: values.email.trim(),purpose: "verify_email",redirectTo: "/signin", })
+          navigate("/verify-otp", {
+            replace: true,
+            state: {
+              email: values.email.trim()
+            }
+          })
+        }
         const message = resolveErrorMessage(error);
         toast.error(message);
       } else {
@@ -352,7 +363,7 @@ export default function SignInForm() {
                     </span>
                   </div>
                   <Link
-                    to="/reset-password"
+                    to="/forgot-password"
                     className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
                   >
                     Quên mật khẩu?

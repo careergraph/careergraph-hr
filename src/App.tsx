@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
 import SignIn from "@/pages/AuthPages/SignIn";
 import SignUp from "@/pages/AuthPages/SignUp";
+import Verify from "@/pages/AuthPages/Verify";
 import UserProfiles from "@/pages/Profile/UserProfiles";
 import Calendar from "@/pages/Calendar/Calendar";
 import AppLayout from "@/layout/AppLayout";
@@ -14,6 +15,8 @@ import { Toaster } from "sonner";
 import SuggestionCandidates from "@/pages/SuggestionCandidate/SuggestionCandidate";
 import RequireAuth from "@/components/auth/RequireAuth";
 import LandingPage from "@/pages/Landing/LandingPage";
+import ForgotPassword from "./pages/AuthPages/ForgotPassword";
+import ResetPassword from "./pages/AuthPages/ResetPassword";
 
 export default function App() {
   return (
@@ -40,6 +43,9 @@ export default function App() {
 
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/verify-otp" element={<Verify />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
