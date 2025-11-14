@@ -2,18 +2,31 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Candidate } from "@/types/candidate";
 import { Mail } from "lucide-react";
+import type { CandidateEmailsResponse } from "@/types/candidateTab";
 
 // EmailTab hỗ trợ gửi email nhanh cho ứng viên theo mẫu.
 
 type EmailTabProps = {
   candidate: Candidate;
+  emailsData?: CandidateEmailsResponse | null;
+  loading?: boolean;
+  error?: string | null;
 };
 
-export function EmailTab({ candidate }: EmailTabProps) {
+export function EmailTab({ candidate, emailsData, loading, error }: EmailTabProps) {
+  // Show a small status/preview area if server data is provided.
   return (
     <div className="flex h-full flex-col bg-white">
       <ScrollArea className="h-full px-6 pt-5 sm:px-8">
         <div className="space-y-4">
+          {/* Optional server data / loading / error preview for emails */}
+          {loading ? (
+            <div className="mb-3 px-3 py-2 text-sm text-slate-500">Đang tải email...</div>
+          ) : error ? (
+            <div className="text-sm text-indigo-500">Thông báo: Tính năng đang trong quá trình hoàn thiện!</div>
+          ) : emailsData ? (
+            <div className="mb-3 max-h-28 overflow-auto rounded-md border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">{JSON.stringify(emailsData)}</div>
+          ) : null}
           <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-5 py-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
               <Mail className="h-4 w-4 text-primary" />

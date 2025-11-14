@@ -85,9 +85,15 @@ export function CandidateCard({
     >
       {/* Thẻ chính hiển thị thông tin ứng viên. */}
       <Card
-        className={`relative mb-3 flex w-full cursor-pointer items-start gap-4 overflow-hidden rounded-2xl border border-slate-200 bg-card shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
-          compact ? "p-4" : "p-5"
-        }`}
+        // Khi thẻ đang được dùng làm preview (DragOverlay) chúng ta muốn
+        // nó hoàn toàn không trong suốt để người dùng thấy rõ thẻ đang
+        // kéo — do đó đổi nền thành solid (bg-white / dark:bg-slate-900)
+        // để tránh hiệu ứng mờ phía sau.
+        className={`relative mb-3 flex w-full cursor-pointer items-start gap-4 overflow-hidden rounded-2xl border border-slate-200 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+          isDragPreview
+            ? "bg-white dark:bg-slate-900"
+            : "bg-card"
+        } ${compact ? "p-4" : "p-5"}`}
         onClick={() => onViewDetails?.(candidate)}
         tabIndex={0}
         role="button"

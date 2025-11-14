@@ -33,8 +33,22 @@ const fetchApplicationsByJob = async (jobId: string, signal?: AbortSignal) => {
   return response.data as { status: string; message?: string; data?: unknown[] };
 };
 
+// Update application stage on backend
+const updateApplicationStage = async (
+  applicationId: string,
+  body: { stage: string; note: string }
+) => {
+  if (!applicationId) throw new Error("updateApplicationStage: applicationId is required");
+  // PUT /applications/{id}/stage
+  // Return the full axios response so callers can inspect HTTP status
+  // in addition to the envelope in response.data.
+  const response = await api.put(`/applications/${applicationId}/stage`, body);
+  return response;
+};
+
 export const applicationService = {
   fetchApplicationsByJob,
+  updateApplicationStage,
 };
 
 export default applicationService;
