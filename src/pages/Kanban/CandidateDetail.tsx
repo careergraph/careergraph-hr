@@ -105,8 +105,8 @@ export function CandidateDetail({
 
       try {
         if (tab === "overview") {
-          const data = await candidateService.fetchOverview(id, signal);
-          setOverviewData(data);
+          // const data = await candidateService.fetchOverview(id, signal);
+          // setOverviewData(data);
         } else if (tab === "experience") {
           const data = await candidateService.fetchExperience(id, signal);
           setExperienceData(data);
