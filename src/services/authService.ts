@@ -20,6 +20,7 @@ export interface ConfirmOtpPayload {
 export interface LoginPayload {
   email: string;
   password: string;
+  role: string;
 }
 
 export interface LoginResponse {
@@ -34,7 +35,7 @@ export interface ForgotPassword {
 }
 export interface VerifyOtp {
   email?: string,
-  otp?: Number
+  otp?: number
 }
 export interface ResendOTP {
   email?: string
