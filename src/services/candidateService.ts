@@ -1,39 +1,43 @@
 import api from "@/config/axiosConfig";
 import { toast } from "sonner";
 import type {
-  CandidateOverviewResponse,
   CandidateExperienceResponse,
   CandidateResumeResponse,
   CandidateMessagesResponse,
   CandidateEmailsResponse,
+  CandidateOverview,
+  CExperienceResponse,
+  OverviewExperience,
 } from "@/types/candidateTab";
+
+
 
 // Minimal candidate service to fetch tab-specific data from backend
 const fetchOverview = async (
   candidateId: string,
   signal?: AbortSignal
-): Promise<CandidateOverviewResponse | null> => {
+): Promise<CandidateOverview | null> => {
   if (!candidateId) throw new Error("fetchOverview: candidateId is required");
-  const resp = await api.get(`/candidate/${candidateId}/overview`, { signal });
+  const resp = await api.get(`/candidates/${candidateId}/overview`, { signal });
   // If backend returns non-200, show a soft warning and return null so UI falls back to local data.
   if (resp.status !== 200) {
     toast.warning("Tính năng đang trong quá trình phát triển");
     return null;
   }
-  return resp.data as CandidateOverviewResponse;
+  return resp.data.data as CandidateOverview;
 };
 
 const fetchExperience = async (
   candidateId: string,
   signal?: AbortSignal
-): Promise<CandidateExperienceResponse | null> => {
+): Promise<OverviewExperience | null> => {
   if (!candidateId) throw new Error("fetchExperience: candidateId is required");
-  const resp = await api.get(`/candidate/${candidateId}/experience`, { signal });
+  const resp = await api.get(`/candidates/${candidateId}/experience`, { signal });
   if (resp.status !== 200) {
     toast.warning("Tính năng đang trong quá trình phát triển");
     return null;
   }
-  return resp.data as CandidateExperienceResponse;
+  return resp.data.data as OverviewExperience;
 };
 
 const fetchResume = async (

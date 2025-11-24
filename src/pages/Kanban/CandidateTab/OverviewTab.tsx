@@ -1,11 +1,13 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Candidate } from "@/types/candidate";
-import type { CandidateOverviewResponse } from "@/types/candidateTab";
+import type { AddressResponse, CandidateEducationResponse, CandidateOverview, CandidateOverviewResponse, ContactResponse } from "@/types/candidateTab";
 import { GraduationCap, Languages } from "lucide-react";
-
+import candidateService from "@/services/candidateService";
+import useLocation from "@/hooks/use-location";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 // OverviewTab tổng hợp thông tin chung của ứng viên.
 
 type OverviewTabProps = {
@@ -15,6 +17,8 @@ type OverviewTabProps = {
   loading?: boolean;
   error?: string | null;
 };
+
+
 
 export function OverviewTab({ candidate, overviewData, loading, error }: OverviewTabProps) {
   // If parent provided server-side overview data, show a small preview block.
@@ -43,30 +47,80 @@ export function OverviewTab({ candidate, overviewData, loading, error }: Overvie
     noticePeriod: "2 tuần",
   };
 
+  const [infoCandidateOverview, setInfoCandidateOverview] =
+  useState<CandidateOverview | null>(null);
+  const [isLoading, setIsLoading] = useState(false)
+  useEffect(() => {
+  const fetchData = async () => {
+    setIsLoading(true)
+    try {
+      const data = await candidateService.fetchOverview(candidate.candidateId);
+      if(data?.profile)
+        setInfoCandidateOverview(data);
+    } catch (e) {
+      console.error("Fetch overview error", e);
+    }
+    setIsLoading(false)
+  };
+
+  fetchData();
+}, [candidate.candidateId]);
+
+
+
+
+const primaryAddress: AddressResponse | undefined =
+    infoCandidateOverview?.profile.addresses?.find(
+      (a) => a.addressType === "HOME_ADDRESS"
+    ) ?? infoCandidateOverview?.profile.addresses?.[0];
+
+  // 🔹 Gọi hook lấy danh sách tỉnh/huyện theo code
+  const {
+    provinces,
+    districts,
+    // wards, // nếu cần sau này
+    loadingProvinces,
+    loadingDistricts,
+  } = useLocation(primaryAddress?.province, primaryAddress?.district);
+
+  // 🔹 Convert code -> tên hiển thị
+  const locationText = useMemo(() => {
+    if (!primaryAddress) return "Chưa cập nhật";
+
+    const provinceName =
+      provinces.find(
+        (p) => String(p.code) === String(primaryAddress.province)
+      )?.name ?? "";
+
+    const districtName =
+      districts.find(
+        (d) => String(d.code) === String(primaryAddress.district)
+      )?.name ?? "";
+
+    // Nếu đang loading hoặc chưa map ra tên thì fallback
+    if (loadingProvinces || loadingDistricts) return "Đang tải địa chỉ...";
+
+    return [districtName, provinceName].filter(Boolean).join(", ") || "Chưa cập nhật";
+  }, [primaryAddress, provinces, districts, loadingProvinces, loadingDistricts]);
+
+
   const shownOverview = overviewData ?? mockOverview;
   const overviewSections = useMemo(() => {
-    // Chuẩn hóa dữ liệu các khối thông tin để render động.
-    const topSkills = (
-      candidate.skills?.length ? candidate.skills : candidate.labels
-    ).slice(0, 4);
-
     return [
       {
         id: "job",
-        title: "Thông tin công việc",
+        title: "Thông tin công việc mong muốn",
         description:
-          "Thông tin liên quan tới vị trí, lương và phạm vi công việc",
+          "Thông tin liên quan tới vị trí, lương và phạm vi công việc mong muốn",
         items: [
-          { label: "Vị trí", value: candidate.position },
+          { label: "Vị trí", value: infoCandidateOverview?.jobCriteria.desiredPosition },
           {
             label: "Mức lương mong muốn",
-            value: candidate.salaryExpectation ?? "Không có",
+            value: salaryExpectation(infoCandidateOverview?.jobCriteria.salaryExpectationMin,infoCandidateOverview?.jobCriteria.salaryExpectationMax ),
           },
-          { label: "Hình thức làm việc", value: candidate.workType },
-          { label: "Ngành nghề", value: candidate.industry },
-          { label: "Nơi làm việc", value: candidate.workLocation },
-          { label: "Cấp bậc hiện tại", value: candidate.currentLevel },
-          { label: "Cấp bậc mong muốn", value: candidate.desiredLevel },
+          { label: "Hình thức làm việc", value: showListTag(infoCandidateOverview?.jobCriteria.workTypes) },
+          { label: "Ngành nghề", value: showListTag(infoCandidateOverview?.jobCriteria.industries) },
+          { label: "Nơi làm việc", value: showListTag(infoCandidateOverview?.jobCriteria.locations) },
         ],
       },
       {
@@ -74,47 +128,83 @@ export function OverviewTab({ candidate, overviewData, loading, error }: Overvie
         title: "Thông tin cá nhân",
         description: "Hồ sơ nhân khẩu học và thông tin liên hệ của ứng viên",
         items: [
-          { label: "Tuổi", value: `${candidate.age}` },
-          { label: "Giới tính", value: candidate.gender },
-          { label: "Tình trạng hôn nhân", value: candidate.maritalStatus },
-          { label: "Email", value: candidate.email },
-          { label: "Điện thoại", value: candidate.phone ?? "Không có" },
+          { label: "Ngày sinh", value: `${infoCandidateOverview?.profile.dateOfBirth}` },
+          { label: "Giới tính", value: infoCandidateOverview?.profile.gender === "MALE" ? "Nam" : "Nữ" },
+          { label: "Tình trạng hôn nhân", value: infoCandidateOverview?.profile.isMarried === false ? "Độc thân" : "Đã lập gia đình" },
+          { label: "Email", value: infoCandidateOverview?.profile.email },
+          { label: "Điện thoại", value: getPhone(infoCandidateOverview?.profile.contacts) ?? "Không có" },
           {
-            label: "Địa điểm",
-            value: `${candidate.location.city}, ${candidate.location.province}`,
-          },
-          { label: "Địa chỉ", value: candidate.address ?? "Không có" },
-        ],
-      },
-      {
-        id: "preference",
-        title: "Nguyện vọng & năng lực",
-        description: "Mục tiêu nghề nghiệp và tổng quan kinh nghiệm",
-        items: [
-          { label: "Học vấn", value: candidate.education },
-          { label: "Số năm kinh nghiệm", value: candidate.yearsOfExperience },
-          { label: "Kinh nghiệm", value: candidate.experience },
-          { label: "Lương kỳ vọng", value: candidate.desiredSalary },
-          {
-            label: "Ngôn ngữ",
-            value: candidate.languages?.join(", ") ?? "Chưa cập nhật",
-          },
-          {
-            label: "Kỹ năng",
-            value: topSkills.length ? topSkills.join(", ") : "Chưa cập nhật",
-          },
-          { label: "Hoạt động gần nhất", value: candidate.lastActive },
+            label: "Địa chỉ",
+             value: locationText,
+          }
         ],
       },
     ];
-  }, [candidate]);
+  }, [candidate, infoCandidateOverview, locationText]);
 
-  const skills = candidate.skills?.length ? candidate.skills : candidate.labels;
+  function getPhone(contacts?: ContactResponse[]): string | undefined {
+    if (!contacts || contacts.length === 0) return undefined;
+
+    const primary = contacts.find(
+      (c) => c.contactType === "PHONE" && c.isPrimary === true
+    );
+    if (primary) return primary.value;
+
+    const anyPhone = contacts.find((c) => c.contactType === "PHONE");
+    return anyPhone?.value;
+  }
+  function salaryExpectation(a: number | undefined,b: number | undefined){
+    return (a && b) ? a + " - " + b : "Không có";
+  }
+  function showListTag(tags?: string[]) {
+    if (!tags || tags.length === 0) {
+      return <span className="text-slate-400 text-sm">Không có</span>;
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {tags.map((tag) => (
+          <span
+            key={tag}
+            className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+          >
+            {tag}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+
+const formatMonthYear = (dateStr?: string): string => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return `${d.getMonth() + 1}/${d.getFullYear()}`;
+};
+
+const formatEducationPeriod = (edu: CandidateEducationResponse | null | undefined): string => {
+  if (!edu) return "Chưa cập nhật";
+
+  const start = formatMonthYear(edu.startDate);
+  const end = edu.isCurrent
+    ? "Hiện tại"
+    : edu.endDate
+    ? formatMonthYear(edu.endDate)
+    : "";
+
+  if (!start && !end) return "Chưa cập nhật";
+  if (!end) return start;
+  return `${start} - ${end}`;
+};
+
+
+
   return (
     <ScrollArea className="h-full px-5 pb-10 pt-5 sm:px-8">
       {/* Loading / error / server-preview for overview tab (optional) */}
-      {loading ? (
-        <div className="mb-4 px-3 py-2 text-sm text-slate-500">Đang tải dữ liệu tổng quan...</div>
+      {isLoading ? (
+        <LoadingSpinner message="Đang tải dữ liệu tổng quan..." variant="overlay" size="sm" />
       ) : error ? (
         <div className="text-sm text-indigo-500">Thông báo: Tính năng đang trong quá trình hoàn thiện!</div>
       ) : (
@@ -180,11 +270,12 @@ export function OverviewTab({ candidate, overviewData, loading, error }: Overvie
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                     {item.label}
                   </p>
-                  <p className="mt-1 text-sm font-medium text-slate-600">
+                  <div className="mt-1 text-sm font-medium text-slate-600">
                     {item.value}
-                  </p>
+                  </div>
                 </div>
               ))}
+
             </div>
           </div>
         ))}
@@ -192,30 +283,62 @@ export function OverviewTab({ candidate, overviewData, loading, error }: Overvie
 
       <Separator className="my-6" />
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-1">
         {/* Khối học vấn và ngôn ngữ. */}
         <div className="rounded-2xl border border-slate-100 bg-gradient-to-br from-slate-900/95 to-slate-800/90 p-6 text-white shadow-lg">
           <div className="flex items-center gap-3">
             <GraduationCap className="h-5 w-5 text-white/80" />
             <h4 className="text-sm font-semibold uppercase tracking-wider text-white/80">
-              Học vấn & Ngôn ngữ
+              Học vấn
             </h4>
           </div>
-          <div className="mt-4 space-y-3 text-sm text-white/80">
-            <p>
-              <span className="text-white/60">Học vấn: </span>
-              {candidate.education}
-            </p>
-            <p>
-              <span className="text-white/60">Trình độ học vấn: </span>
-              {candidate.educationLevel ?? "Chưa cập nhật"}
-            </p>
-            <p>
-              <span className="text-white/60">Ngôn ngữ: </span>
-              {candidate.languages?.join(", ") ?? "Chưa cập nhật"}
-            </p>
+
+          <div className="mt-4 space-y-5 text-sm text-white/80">
+            {infoCandidateOverview?.educations && infoCandidateOverview?.educations.length > 0 ? (
+              infoCandidateOverview?.educations.map((edu) => (
+                <div
+                  key={edu.id}
+                  className="rounded-xl border border-white/10 bg-white/5 p-4 shadow-sm"
+                >
+                  <p className="text-base font-semibold text-white">
+                    {edu.officialName || "Tên trường chưa cập nhật"}
+                  </p>
+
+                  <p className="mt-1 text-white/80">
+                    <span className="text-white/60">Ngành học: </span>
+                    {edu.major || "Chưa cập nhật"}
+                  </p>
+
+                  <p className="mt-1 text-white/80">
+                    <span className="text-white/60">Bằng cấp: </span>
+                    {edu.degreeTitle || "Chưa cập nhật"}
+                  </p>
+
+                  <p className="mt-1 text-white/80">
+                    <span className="text-white/60">Thời gian: </span>
+                    {formatEducationPeriod(edu)}
+                  </p>
+
+                  {edu.description && (
+                    <p className="mt-2 text-white/70">
+                      <span className="text-white/60">Mô tả: </span>
+                      {edu.description}
+                    </p>
+                  )}
+
+                  {edu.isCurrent && (
+                    <p className="mt-2 inline-block rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-300">
+                      Đang theo học
+                    </p>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p className="text-white/60">Chưa có thông tin học vấn</p>
+            )}
           </div>
         </div>
+
 
         {/* Khối kỹ năng nổi bật. */}
         <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-6 shadow-inner">
@@ -226,13 +349,13 @@ export function OverviewTab({ candidate, overviewData, loading, error }: Overvie
             </h4>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {skills.map((skill) => (
+            {infoCandidateOverview?.skills?.map((skill) => (
               <Badge
-                key={skill}
+                key={skill.skillId}
                 variant="outline"
                 className="border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600"
               >
-                {skill}
+                {skill.skillName}
               </Badge>
             ))}
           </div>

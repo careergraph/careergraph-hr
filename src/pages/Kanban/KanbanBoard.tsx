@@ -104,7 +104,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           // SCREENING is returned by the API for candidates who have been
           // reviewed and should appear in the 'Liên hệ' column in the UI.
           SCREENING: "meeting",
-          SCHEDULED: "meeting",
+          INTERVIEW_SCHEDULED: "meeting",
           INVITED: "meeting",
           INTERVIEW: "interview",
           TRIAL: "trial",
@@ -121,6 +121,8 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           );
           const candidateObj =
             (app["candidate"] as Record<string, unknown>) || {};
+
+          const candidateId = normalizeString(candidateObj["candidateId"]);
           const jobObj = (app["job"] as Record<string, unknown>) || {};
 
           const firstName = normalizeString(candidateObj["firstName"]);
@@ -144,6 +146,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
 
           const candidate: Candidate = {
             id: applicationId,
+            candidateId: candidateId,
             ticketId: applicationId,
             jobId: normalizeString(jobObj["id"] || jobId),
             name,

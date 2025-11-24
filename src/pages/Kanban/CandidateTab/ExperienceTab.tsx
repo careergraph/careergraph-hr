@@ -2,7 +2,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Candidate } from "@/types/candidate";
 import { CalendarClock } from "lucide-react";
-import type { CandidateExperienceResponse, TimelineEvent } from "@/types/candidateTab";
+import type { CandidateExperienceResponse, CExperienceResponse, OverviewExperience, TimelineEvent } from "@/types/candidateTab";
+import { useEffect, useState } from "react";
+import candidateService from "@/services/candidateService";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 // ExperienceTab liệt kê timeline tương tác và mô tả kinh nghiệm ứng viên.
 
@@ -12,6 +15,8 @@ type ExperienceTabProps = {
   loading?: boolean;
   error?: string | null;
 };
+
+
 
 export function ExperienceTab({ candidate, experienceData, loading, error }: ExperienceTabProps) {
   // Provide a full mock so the experience tab is visually complete when server data is absent.
@@ -30,21 +35,60 @@ export function ExperienceTab({ candidate, experienceData, loading, error }: Exp
     ],
   };
 
+
+  const formatMonthYear = (dateStr?: string): string => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return `${d.getMonth() + 1}/${d.getFullYear()}`;
+};
+
+const formatExpPeriod = (exp: CExperienceResponse): string => {
+  const from = formatMonthYear(exp.startDate);
+  const to = exp.isCurrent
+    ? "Hiện tại"
+    : exp.endDate
+    ? formatMonthYear(exp.endDate)
+    : "";
+
+  if (!from && !to) return "Chưa cập nhật";
+  return `${from} - ${to}`;
+};
+
+
   const shownExperience = experienceData ?? mockExperience;
+  const [isLoading, setIsLoading] = useState(false)
+  const [overviewExperiences, setOverviewExperiences] = useState<OverviewExperience | null>(null);
+    
+    useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true)
+      try {
+        const data = await candidateService.fetchExperience(candidate.candidateId);
+        setOverviewExperiences(data);
+      } catch (e) {
+        console.error("Fetch overview error", e);
+      }
+      setIsLoading(false)
+    };
+  
+    fetchData();
+  }, [candidate.candidateId]);
 
   return (
     <ScrollArea className="h-full px-5 pb-10 pt-5 sm:px-8">
-      {loading ? (
-        <div className="mb-4 px-3 py-2 text-sm text-slate-500">Đang tải lịch sử kinh nghiệm...</div>
+      {isLoading ? (
+        <LoadingSpinner message="Đang tải lịch sử kinh nghiệm..." variant="overlay" size="sm" />
       ) : error ? (
         <div className="text-sm text-indigo-500">Thông báo: Tính năng đang trong quá trình hoàn thiện!</div>
       ) : (
         <div className="mb-4 space-y-3">
           <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
             <h4 className="text-sm font-semibold text-slate-700">Tổng quan kinh nghiệm</h4>
-            <p className="mt-2 text-sm text-slate-600">{shownExperience.summary ?? candidate.experience}</p>
-            {shownExperience.totalYears ? (
-              <p className="mt-1 text-xs text-slate-500">Tổng số năm kinh nghiệm: {shownExperience.totalYears}</p>
+            {/* Dự tính phát triển AI để làm tổng quan */}
+            {/* <p className="mt-2 text-sm text-slate-600">{shownExperience.summary ?? candidate.experience}</p> */}
+            {overviewExperiences?.totalYear ? (
+              <p className="mt-1 text-xs text-slate-500">Tổng số năm kinh nghiệm: {overviewExperiences?.totalYear}</p>
             ) : null}
           </div>
 
@@ -115,11 +159,64 @@ export function ExperienceTab({ candidate, experienceData, loading, error }: Exp
 
       {/* Tóm tắt kinh nghiệm tổng quan. */}
       <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-6">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
-          Kinh nghiệm tổng hợp
-        </h3>
-        <p className="mt-3 text-sm text-slate-600">{candidate.experience}</p>
+  <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+    Kinh nghiệm tổng hợp
+  </h3>
+
+      <div className="mt-4 space-y-4">
+        {overviewExperiences?.experiences && overviewExperiences?.experiences.length > 0 ? (
+          overviewExperiences?.experiences.map((exp) => (
+            <div
+              key={exp.id}
+              className="rounded-xl bg-white border border-slate-200 p-4 shadow-sm"
+            >
+              {/* Chức danh */}
+              <p className="text-base font-semibold text-slate-800">
+                {exp.jobTitle || "Chưa cập nhật"}
+              </p>
+
+              {/* Công ty */}
+              <p className="text-sm text-slate-600 mt-1">
+                <span className="font-medium">Công ty: </span>
+                {exp.companyName || "Chưa cập nhật"}
+              </p>
+
+              {/* Thời gian làm việc */}
+              <p className="text-sm text-slate-600 mt-1">
+                <span className="font-medium">Thời gian: </span>
+                {formatExpPeriod(exp)}
+              </p>
+
+              {/* Mức lương nếu có */}
+              {exp.salary !== null && exp.salary > 0 && (
+                <p className="text-sm text-slate-600 mt-1">
+                  <span className="font-medium">Mức lương: </span>
+                  {exp.salary.toLocaleString("vi-VN")} VND
+                </p>
+              )}
+
+              {/* Mô tả kinh nghiệm */}
+              {exp.description && (
+                <p className="text-sm text-slate-600 mt-2">
+                  <span className="font-medium">Mô tả: </span>
+                  {exp.description}
+                </p>
+              )}
+
+              {/* Tag Đang làm việc */}
+              {exp.isCurrent && (
+                <span className="mt-3 inline-block rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
+                  Đang làm việc
+                </span>
+              )}
+            </div>
+          ))
+        ) : (
+          <p className="text-sm text-slate-500">Chưa có kinh nghiệm</p>
+        )}
       </div>
+    </div>
+
     </ScrollArea>
   );
 }

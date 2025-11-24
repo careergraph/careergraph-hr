@@ -192,6 +192,7 @@ export default function SignInForm() {
       const response = await authService.login({
         email: values.email.trim(),
         password: values.password,
+        role: "HR"
       });
 
       
