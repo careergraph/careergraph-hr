@@ -1,12 +1,10 @@
 import api from "@/config/axiosConfig";
 import { toast } from "sonner";
 import type {
-  CandidateExperienceResponse,
   CandidateResumeResponse,
   CandidateMessagesResponse,
   CandidateEmailsResponse,
   CandidateOverview,
-  CExperienceResponse,
   OverviewExperience,
 } from "@/types/candidateTab";
 
@@ -42,15 +40,20 @@ const fetchExperience = async (
 
 const fetchResume = async (
   candidateId: string,
+  applicationId: string,
   signal?: AbortSignal
 ): Promise<CandidateResumeResponse | null> => {
   if (!candidateId) throw new Error("fetchResume: candidateId is required");
-  const resp = await api.get(`/candidate/${candidateId}/resume`, { signal });
+  const resp = await api.get(`/candidates/${candidateId}/application/${applicationId}/resume`, { signal });
   if (resp.status !== 200) {
     toast.warning("Tính năng đang trong quá trình phát triển");
     return null;
   }
-  return resp.data as CandidateResumeResponse;
+  const data = resp.data.data;
+  return {
+    id: data.applicationId,
+    resumeUrl: data.url,
+  } as CandidateResumeResponse;
 };
 
 const fetchMessages = async (

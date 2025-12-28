@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +63,9 @@ export function CandidateDetail({
         ? [
             {
               label: "Kinh nghiệm",
-              value: candidate.experience,
+              value: candidate.experience
+                ? `${candidate.experience} years`
+                : "Chưa có",
               icon: <Sparkles className="h-4 w-4" />,
               accent: "bg-amber-100 text-amber-600",
             },
@@ -86,11 +89,17 @@ export function CandidateDetail({
   // Local state to hold per-tab fetched data and loading states.
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string | null>>({});
-  const [overviewData, setOverviewData] = useState<CandidateOverviewResponse | null>(null);
-  const [experienceData, setExperienceData] = useState<CandidateExperienceResponse | null>(null);
-  const [resumeData, setResumeData] = useState<CandidateResumeResponse | null>(null);
-  const [messagesData, setMessagesData] = useState<CandidateMessagesResponse | null>(null);
-  const [emailsData, setEmailsData] = useState<CandidateEmailsResponse | null>(null);
+  const [overviewData] = useState<CandidateOverviewResponse | null>(null);
+  const [experienceData, setExperienceData] =
+    useState<CandidateExperienceResponse | null>(null);
+  const [resumeData, setResumeData] = useState<CandidateResumeResponse | null>(
+    null
+  );
+  const [messagesData, setMessagesData] =
+    useState<CandidateMessagesResponse | null>(null);
+  const [emailsData, setEmailsData] = useState<CandidateEmailsResponse | null>(
+    null
+  );
 
   const loadTab = useCallback(
     async (tab: string) => {
@@ -99,7 +108,7 @@ export function CandidateDetail({
       const controller = new AbortController();
       const signal = controller.signal;
 
-  // record of active tab is not needed locally; server data/state handled separately
+      // record of active tab is not needed locally; server data/state handled separately
       setLoading((s) => ({ ...s, [tab]: true }));
       setErrors((s) => ({ ...s, [tab]: null }));
 
@@ -111,7 +120,7 @@ export function CandidateDetail({
           const data = await candidateService.fetchExperience(id, signal);
           setExperienceData(data);
         } else if (tab === "cv") {
-          const data = await candidateService.fetchResume(id, signal);
+          const data = await candidateService.fetchResume(candidate.candidateId, id, signal);
           setResumeData(data);
         } else if (tab === "messages") {
           const data = await candidateService.fetchMessages(id, signal);
@@ -249,24 +258,56 @@ export function CandidateDetail({
                   <TabsTrigger value="email">Email</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="overview" className="flex-1 overflow-hidden">
-                  <OverviewTab candidate={candidate} overviewData={overviewData} loading={loading?.overview} error={errors?.overview} />
+                <TabsContent
+                  value="overview"
+                  className="flex-1 overflow-hidden"
+                >
+                  <OverviewTab
+                    candidate={candidate}
+                    overviewData={overviewData}
+                    loading={loading?.overview}
+                    error={errors?.overview}
+                  />
                 </TabsContent>
 
-                <TabsContent value="experience" className="flex-1 overflow-hidden">
-                  <ExperienceTab candidate={candidate} experienceData={experienceData} loading={loading?.experience} error={errors?.experience} />
+                <TabsContent
+                  value="experience"
+                  className="flex-1 overflow-hidden"
+                >
+                  <ExperienceTab
+                    candidate={candidate}
+                    experienceData={experienceData}
+                    loading={loading?.experience}
+                    error={errors?.experience}
+                  />
                 </TabsContent>
 
                 <TabsContent value="cv" className="flex-1 overflow-hidden">
-                  <CvTab resumeData={resumeData} loading={loading?.cv} error={errors?.cv} />
+                  <CvTab
+                    resumeData={resumeData}
+                    loading={loading?.cv}
+                    error={errors?.cv}
+                  />
                 </TabsContent>
 
-                <TabsContent value="messages" className="flex-1 overflow-hidden">
-                  <MessagesTab messagesData={messagesData} loading={loading?.messages} error={errors?.messages} />
+                <TabsContent
+                  value="messages"
+                  className="flex-1 overflow-hidden"
+                >
+                  <MessagesTab
+                    messagesData={messagesData}
+                    loading={loading?.messages}
+                    error={errors?.messages}
+                  />
                 </TabsContent>
 
                 <TabsContent value="email" className="flex-1 overflow-hidden">
-                  <EmailTab candidate={candidate} emailsData={emailsData} loading={loading?.email} error={errors?.email} />
+                  <EmailTab
+                    candidate={candidate}
+                    emailsData={emailsData}
+                    loading={loading?.email}
+                    error={errors?.email}
+                  />
                 </TabsContent>
               </Tabs>
             </div>
