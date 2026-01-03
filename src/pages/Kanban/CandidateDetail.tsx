@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -159,6 +159,7 @@ export function CandidateDetail({
           side="right"
           className="w-full border-l border-slate-200/50 bg-white p-0 sm:max-w-[90vw] lg:max-w-[70vw] xl:max-w-[65rem]"
         >
+          <SheetTitle className="sr-only">Chi tiết ứng viên</SheetTitle>
           <div className="flex h-full flex-col overflow-hidden">
             {/* Phần đầu hiển thị thông tin tổng quan ứng viên. */}
             <div className="border-b border-slate-100 bg-white px-6 py-6 sm:px-8">
