@@ -1,0 +1,52 @@
+﻿import { useState } from "react";
+import { CandidateDetail } from "@/pages/SuggestionCandidate/CandidateDetail";
+import { Candidate } from "@/types/candidate";
+import { initialCandidates } from "@/data/candidateData";
+import PageMeta from "@/components/common/PageMeta";
+import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import CandidateHorizontalList from "@/pages/SuggestionCandidate/CandidateHorizontalList";
+import SearchCandidate from "./SearchCandidate";
+
+// SuggestionCandidate hiá»ƒn thá»‹ danh sÃ¡ch gá»£i Ã½ vÃ  chi tiáº¿t á»©ng viÃªn.
+
+const SuggestionCandidate = () => {
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(
+    null
+  );
+
+  // Search vaÌ€ filter candidate
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [searchQuery, setSearchQuery] = useState("");
+  // Lá»c á»©ng viÃªn theo tÃªn hoáº·c vá»‹ trÃ­ dá»±a trÃªn tá»« khÃ³a.
+  const filteredCandidates = initialCandidates.filter(
+    (candidate) =>
+      candidate.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      candidate.position.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="min-h-screen bg-background px-6 py-6">
+      {/* Thiáº¿t láº­p metadata vÃ  breadcrumb cho trang gá»£i Ã½ á»©ng viÃªn. */}
+      <PageMeta title="HR - CareerGraph" description="HR - CareerGraph" />
+      <PageBreadcrumb pageTitle="TÃ¬m á»©ng viÃªn" />
+
+      {/* Khu vá»±c tÃ¬m kiáº¿m á»©ng viÃªn. */}
+      <SearchCandidate />
+
+      {/* Danh sÃ¡ch á»©ng viÃªn gá»£i Ã½ phÃ­a trÃªn. */}
+      <CandidateHorizontalList
+        candidates={filteredCandidates}
+        selectedCandidate={selectedCandidate}
+        setSelectedCandidate={setSelectedCandidate}
+      />
+
+      {/* Khu vá»±c hiá»ƒn thá»‹ chi tiáº¿t á»©ng viÃªn Ä‘Ã£ chá»n. */}
+      <div className="w-full">
+        <CandidateDetail candidate={selectedCandidate} />
+      </div>
+    </div>
+  );
+};
+
+export default SuggestionCandidate;
+
