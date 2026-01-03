@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Select,
   SelectContent,
@@ -9,16 +8,41 @@ import {
 import { Search, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import useLocation from "@/hooks/use-location";
+import { CandidateFilterRequest } from "@/types/suggestionCandidate";
 
 // SearchCandidate cung cấp bộ lọc từ khóa và địa điểm cho danh sách ứng viên.
 
-const SearchCandidate = () => {
-  // Search và filter candidate
-  const [searchQuery, setSearchQuery] = useState("");
+interface SearchCandidateProps {
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
+  filters: CandidateFilterRequest;
+  onFilterChange: (filters: Partial<CandidateFilterRequest>) => void;
+}
 
-  // Gọi hook lấy location
-  const [selectedProvince, setSelectedProvince] = useState<string>("all");
+const SearchCandidate = ({
+  searchQuery,
+  onSearchChange,
+  filters,
+  onFilterChange,
+}: SearchCandidateProps) => {
+  // Gọi hook lấy location
   const { provinces, loadingProvinces } = useLocation();
+
+  const handleProvinceChange = (value: string) => {
+    if (value === "all") {
+      onFilterChange({ locations: undefined });
+    } else {
+      const province = provinces.find((p) => p.code.toString() === value);
+      if (province) {
+        onFilterChange({ locations: [province.name] });
+      }
+    }
+  };
+
+  const selectedProvince =
+    filters.locations && filters.locations.length > 0
+      ? provinces.find((p) => p.name === filters.locations![0])?.code.toString() || "all"
+      : "all";
 
   return (
     <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
@@ -29,9 +53,9 @@ const SearchCandidate = () => {
           <div className="flex-1 max-w relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
-              placeholder="Vị trí cần tuyển"
+              placeholder="Vị trí cần tuyển (VD: Frontend Developer, Marketing...)"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => onSearchChange(e.target.value)}
               className="pl-10 h-12 text-base rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-300"
             />
           </div>
@@ -40,7 +64,7 @@ const SearchCandidate = () => {
           <div className="flex-shrink-0">
             <Select
               value={selectedProvince}
-              onValueChange={(value) => setSelectedProvince(value)}
+              onValueChange={handleProvinceChange}
             >
               <SelectTrigger className="w-[200px] h-12 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-300 flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-muted-foreground" />
