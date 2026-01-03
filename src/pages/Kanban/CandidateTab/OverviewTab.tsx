@@ -20,7 +20,7 @@ type OverviewTabProps = {
 
 
 
-export function OverviewTab({ candidate, overviewData, loading, error }: OverviewTabProps) {
+export function OverviewTab({ candidate, overviewData, error }: OverviewTabProps) {
   // If parent provided server-side overview data, show a small preview block.
   // This is intentionally minimal: main rendering still uses the `candidate` shape.
   // Provide a complete mock object so the UI remains populated when backend
@@ -140,6 +140,7 @@ const primaryAddress: AddressResponse | undefined =
         ],
       },
     ];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidate, infoCandidateOverview, locationText]);
 
   function getPhone(contacts?: ContactResponse[]): string | undefined {
