@@ -209,46 +209,47 @@ const formatEducationPeriod = (edu: CandidateEducationResponse | null | undefine
       ) : error ? (
         <div className="text-sm text-indigo-500">Thông báo: Tính năng đang trong quá trình hoàn thiện!</div>
       ) : (
-        <div className="mb-4 grid gap-3 rounded-md border border-slate-100 bg-slate-50 p-3 text-sm text-slate-700">
-          {shownOverview.profileSummary ? (
-            <div>
-              <h4 className="text-xs font-semibold text-slate-600">Tóm tắt hồ sơ</h4>
-              <p className="mt-1 text-sm text-slate-600">{shownOverview.profileSummary}</p>
-            </div>
-          ) : null}
+        <div></div>
+        // <div className="mb-4 grid gap-3 rounded-md border border-slate-100 bg-slate-50 p-3 text-sm text-slate-700">
+        //   {shownOverview.profileSummary ? (
+        //     <div>
+        //       <h4 className="text-xs font-semibold text-slate-600">Tóm tắt hồ sơ</h4>
+        //       <p className="mt-1 text-sm text-slate-600">{shownOverview.profileSummary}</p>
+        //     </div>
+        //   ) : null}
 
-          {shownOverview.skills?.length ? (
-            <div>
-              <h4 className="text-xs font-semibold text-slate-600">Kỹ năng</h4>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {shownOverview.skills.map((s) => (
-                  <span key={s} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700 border border-slate-100">
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
+        //   {shownOverview.skills?.length ? (
+        //     <div>
+        //       <h4 className="text-xs font-semibold text-slate-600">Kỹ năng</h4>
+        //       <div className="mt-2 flex flex-wrap gap-2">
+        //         {shownOverview.skills.map((s) => (
+        //           <span key={s} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700 border border-slate-100">
+        //             {s}
+        //           </span>
+        //         ))}
+        //       </div>
+        //     </div>
+        //   ) : null}
 
-          {shownOverview.certifications?.length ? (
-            <div>
-              <h4 className="text-xs font-semibold text-slate-600">Chứng chỉ</h4>
-              <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
-                {shownOverview.certifications.join(", ")}
-              </div>
-            </div>
-          ) : null}
+        //   {shownOverview.certifications?.length ? (
+        //     <div>
+        //       <h4 className="text-xs font-semibold text-slate-600">Chứng chỉ</h4>
+        //       <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+        //         {shownOverview.certifications.join(", ")}
+        //       </div>
+        //     </div>
+        //   ) : null}
 
-          {shownOverview.education ? (
-            <div>
-              <h4 className="text-xs font-semibold text-slate-600">Học vấn (server)</h4>
-              <p className="mt-1 text-sm text-slate-600">
-                {shownOverview.education.degree ?? ""} {shownOverview.education.major ? `- ${shownOverview.education.major}` : ""}
-                {shownOverview.education.school ? ` • ${shownOverview.education.school}` : ""}
-              </p>
-            </div>
-          ) : null}
-        </div>
+        //   {shownOverview.education ? (
+        //     <div>
+        //       <h4 className="text-xs font-semibold text-slate-600">Học vấn (server)</h4>
+        //       <p className="mt-1 text-sm text-slate-600">
+        //         {shownOverview.education.degree ?? ""} {shownOverview.education.major ? `- ${shownOverview.education.major}` : ""}
+        //         {shownOverview.education.school ? ` • ${shownOverview.education.school}` : ""}
+        //       </p>
+        //     </div>
+        //   ) : null}
+        // </div>
       )}
       {/* Danh sách các nhóm thông tin tổng quan. */}
       <div className="space-y-6">
