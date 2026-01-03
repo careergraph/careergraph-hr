@@ -20,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import { initialCandidates, columns } from "@/data/candidateData";
 import { applicationService } from "@/services/applicationService";
 import { toast } from "sonner";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { Status as CandidateStatusType } from "@/types/candidate";
 
 // KanbanBoard tổ chức danh sách ứng viên theo trạng thái và hỗ trợ kéo thả.
@@ -81,7 +80,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
 
     (async () => {
       try {
-  // We don't render a loading UI here in the board; keep silent in console.
+        // We don't render a loading UI here in the board; keep silent in console.
 
         // Call the backend: GET /applications?jobId=...
         const resp = await applicationService.fetchApplicationsByJob(
@@ -243,9 +242,9 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
       } catch (err: unknown) {
         if (signal.aborted) return;
         console.error("Error loading applications:", err);
-        } finally {
-          /* no-op; avoid console spam in production */
-        }
+      } finally {
+        /* no-op; avoid console spam in production */
+      }
     })();
 
     return () => controller.abort();
@@ -424,6 +423,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           dragSnapshotRef.current = null;
         }
         setDragSourceStatus(null);
+        toast.warning("Thao tác không hợp lệ");
         return;
       }
     }
@@ -507,10 +507,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     }
 
     // Map local status -> backend stage string
-    const statusToStage: Record<
-      CandidateStatus,
-      string
-    > = {
+    const statusToStage: Record<CandidateStatus, string> = {
       apply: "APPLIED",
       meeting: "SCHEDULED",
       interview: "INTERVIEW",
@@ -534,10 +531,15 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
       if (resp && resp.status >= 200 && resp.status < 300) {
         // Backend success -> now update local UI to reflect new status
         setCandidates((prev) => {
-          const currentLocal = prev.find((c) => c.id === moveRequest.candidateId);
+          const currentLocal = prev.find(
+            (c) => c.id === moveRequest.candidateId
+          );
           if (!currentLocal) return prev;
           const filtered = prev.filter((c) => c.id !== moveRequest.candidateId);
-          const updatedCandidate = { ...currentLocal, status: moveRequest.targetStatus };
+          const updatedCandidate = {
+            ...currentLocal,
+            status: moveRequest.targetStatus,
+          };
 
           if (moveRequest.targetCandidateId) {
             const targetIndex = filtered.findIndex(
@@ -577,11 +579,15 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
       const getErrorMessage = (e: unknown) => {
         if (!e || typeof e !== "object") return "Lỗi khi cập nhật trạng thái";
         const maybeResp = (e as { response?: unknown }).response;
-        if (!maybeResp || typeof maybeResp !== "object") return "Lỗi khi cập nhật trạng thái";
+        if (!maybeResp || typeof maybeResp !== "object")
+          return "Lỗi khi cập nhật trạng thái";
         const data = (maybeResp as { data?: unknown }).data;
-        if (!data || typeof data !== "object") return "Lỗi khi cập nhật trạng thái";
+        if (!data || typeof data !== "object")
+          return "Lỗi khi cập nhật trạng thái";
         const message = (data as { message?: unknown }).message;
-        return typeof message === "string" ? message : "Lỗi khi cập nhật trạng thái";
+        return typeof message === "string"
+          ? message
+          : "Lỗi khi cập nhật trạng thái";
       };
 
       toast.error(getErrorMessage(err));
@@ -662,12 +668,10 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           <div className="absolute inset-0 bg-black/40" />
 
           <div className="relative z-10 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-            {isProcessing ? (
-              <LoadingSpinner message="Đang cập nhật trạng thái..." variant="overlay" size="sm" />
-            ) : null}
-
             <div className="text-center">
-              <h3 className="text-lg font-semibold">Xác nhận chuyển trạng thái</h3>
+              <h3 className="text-lg font-semibold">
+                Xác nhận chuyển trạng thái
+              </h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 {pendingCandidate
                   ? `Bạn có chắc chắn muốn chuyển ${pendingCandidate.name} sang cột "${targetColumnTitle}"?`
@@ -676,7 +680,11 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={handleCancelMove} disabled={isProcessing}>
+              <Button
+                variant="outline"
+                onClick={handleCancelMove}
+                disabled={isProcessing}
+              >
                 Huỷ
               </Button>
               <Button
