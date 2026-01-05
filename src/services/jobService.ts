@@ -142,7 +142,7 @@ const mapJobToPayload = (job: Partial<Job>): JobPayload => {
         ? "STANDARD"
         : (job.promotionType as string | undefined),
     // Khi tạo hoặc lưu nháp phải gắn trạng thái DRAFT theo định dạng backend.
-    status: toUpperSnake(Status.DRAFT),
+    // status: toUpperSnake(Status.DRAFT),
     numberOfPositions: job.numberOfPositions,
     expiryDate: job.expiryDate,
     benefits: sanitizeArray(job.benefits),
