@@ -1,0 +1,23 @@
+# ============================================
+# CareerGraph HR - Docker Compose
+# ============================================
+# Chạy riêng: docker compose up -d
+# Build: docker compose up -d --build
+
+services:
+  careergraph-hr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/careergraph/api/v1}
+    container_name: careergraph-hr
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    networks:
+      - careergraph-network
+
+networks:
+  careergraph-network:
+    driver: bridge
