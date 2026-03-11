@@ -29,6 +29,7 @@ import type { Interview, InterviewStatus } from "@/types/interview";
 const STATUS_TO_CALENDAR_LEVEL: Record<InterviewStatus, CalendarLevel> = {
   SCHEDULED: "Primary",
   CONFIRMED: "Success",
+  PENDING_RESCHEDULE: "Warning",
   IN_PROGRESS: "Warning",
   COMPLETED: "Success",
   CANCELLED: "Danger",
