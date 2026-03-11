@@ -1,4 +1,4 @@
-import ComponentCard from "@/common/ComponentCard";
+import ComponentCard from "@/components/common/ComponentCard";
 import FileInput from "../input/FileInput";
 import Label from "../Label";
 

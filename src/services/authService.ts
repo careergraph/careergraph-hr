@@ -88,7 +88,12 @@ const authService = {
   resetPassword: async(payload: ResetPassword) => {
     const res = await api.put("/auth/reset-password", payload);
     return res.data;
-  }
+  },
+
+  googleLogin: async (idToken: string) => {
+    const response = await api.post("/auth/google-login", { idToken, role: "HR" });
+    return response.data as LoginResponse;
+  },
 };
 
 export default authService;

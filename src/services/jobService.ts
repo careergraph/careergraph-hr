@@ -337,6 +337,11 @@ const jobService = {
     return unwrapResponse(response.data);
   },
 
+  getJobById: async (jobId: string) => {
+    const response = await api.get(`/jobs/${jobId}`);
+    return unwrapResponse(response.data);
+  },
+
   getJobForCompany: async (companyId: string) => {
     if (!companyId) {
       throw new Error("Thiếu mã công ty để tải danh sách công việc.");

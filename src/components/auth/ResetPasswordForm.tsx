@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,9 +34,6 @@ const resolveErrorMessage = (error: unknown): string => {
 
 export default function ResetPasswordForm() {
   const navigate = useNavigate();
-  const location = useLocation() as unknown as {
-    state?: { email?: string };
-  };
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);

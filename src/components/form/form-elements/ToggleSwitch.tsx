@@ -1,4 +1,4 @@
-import ComponentCard from "@/common/ComponentCard";
+import ComponentCard from "@/components/common/ComponentCard";
 import Switch from "../switch/Switch";
 
 export default function ToggleSwitch() {

@@ -22,7 +22,6 @@ import {
   CheckCircle,
   XCircle,
   GraduationCap,
-  Building2,
   Calendar,
   Loader2,
 } from "lucide-react";

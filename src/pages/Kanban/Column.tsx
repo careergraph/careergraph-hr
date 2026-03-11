@@ -70,7 +70,7 @@ export const Column = ({
   const style = COLUMN_STYLES[id] ?? COLUMN_STYLES.apply;
 
   return (
-    <div className="relative flex w-[300px] flex-none flex-col">
+    <div className="relative flex min-w-[280px] flex-1 flex-col">
       {/* Hiệu ứng gradient đầu cột. */}
       <div
         className={`absolute inset-x-6 top-0 z-10 h-1 rounded-full bg-gradient-to-r ${style.accent} opacity-40`}

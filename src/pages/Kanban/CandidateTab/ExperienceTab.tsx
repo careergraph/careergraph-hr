@@ -16,7 +16,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 type ExperienceTabProps = {
   candidate: Candidate;
-  experienceData?: CandidateExperienceResponse | null;
+  experienceData?: CandidateExperienceResponse | OverviewExperience | null;
   loading?: boolean;
   error?: string | null;
 };
@@ -134,7 +134,7 @@ export function ExperienceTab({
             ) : null}
           </div>
 
-          {shownExperience.timeline?.length ? (
+          {shownExperience && 'timeline' in shownExperience && shownExperience.timeline?.length ? (
             <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
               <h4 className="text-sm font-semibold text-slate-700">
                 Mốc lịch sử

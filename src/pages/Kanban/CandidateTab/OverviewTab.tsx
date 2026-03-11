@@ -20,11 +20,13 @@ type OverviewTabProps = {
 
 
 
-export function OverviewTab({ candidate, overviewData, error }: OverviewTabProps) {
+export function OverviewTab({ candidate, error }: OverviewTabProps) {
   // If parent provided server-side overview data, show a small preview block.
   // This is intentionally minimal: main rendering still uses the `candidate` shape.
   // Provide a complete mock object so the UI remains populated when backend
   // hasn't returned data yet. Backend can implement the same shape.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // @ts-expect-error: Keeping mock for future use
   const mockOverview: CandidateOverviewResponse = {
     id: candidate.id,
     profileSummary:
@@ -103,8 +105,6 @@ const primaryAddress: AddressResponse | undefined =
     return [districtName, provinceName].filter(Boolean).join(", ") || "Chưa cập nhật";
   }, [primaryAddress, provinces, districts, loadingProvinces, loadingDistricts]);
 
-
-  const shownOverview = overviewData ?? mockOverview;
   const overviewSections = useMemo(() => {
     return [
       {

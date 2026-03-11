@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type FullCalendar from "@fullcalendar/react";
 import { DateSelectArg, EventClickArg, EventContentArg, DatesSetArg } from "@fullcalendar/core";
 import { CalendarClock, CalendarDays, Clock3, UserRound } from "lucide-react";
@@ -23,6 +23,31 @@ import {
   toDate,
 } from "../../lib/calendar-utils";
 import { CalendarEvent } from "@/types/calendar";
+import { useInterviewStore } from "@/stores/interviewStore";
+import type { Interview, InterviewStatus } from "@/types/interview";
+
+const STATUS_TO_CALENDAR_LEVEL: Record<InterviewStatus, CalendarLevel> = {
+  SCHEDULED: "Primary",
+  CONFIRMED: "Success",
+  IN_PROGRESS: "Warning",
+  COMPLETED: "Success",
+  CANCELLED: "Danger",
+  NO_SHOW: "Danger",
+};
+
+const mapInterviewToCalendarEvent = (interview: Interview): CalendarEvent => ({
+  id: interview.id,
+  title: `${interview.type === "ONLINE" ? "Online" : "Offline"} - ${interview.candidateName}`,
+  start: interview.scheduledAt,
+  end: interview.endAt,
+  allDay: false,
+  extendedProps: {
+    calendar: STATUS_TO_CALENDAR_LEVEL[interview.interviewStatus] ?? DEFAULT_EVENT_LEVEL,
+    candidate: interview.candidateName,
+    location: interview.location ?? interview.meetingLink,
+    notes: interview.notes,
+  },
+});
 
 // Calendar điều phối bảng lịch, sidebar thống kê và modal chỉnh sửa lịch hẹn.
 
@@ -57,56 +82,24 @@ const Calendar = () => {
   const calendarRef = useRef<FullCalendar | null>(null);
   const { isOpen, openModal, closeModal } = useModal();
 
+  const { calendarEvents: interviewEvents, fetchCalendarEvents } = useInterviewStore();
+
+  const loadCalendarData = useCallback((year?: number, month?: number) => {
+    const now = new Date();
+    fetchCalendarEvents(year ?? now.getFullYear(), (month ?? now.getMonth()) + 1);
+  }, [fetchCalendarEvents]);
+
   useEffect(() => {
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const nextWeek = new Date(today);
-    nextWeek.setDate(nextWeek.getDate() + 3);
+    loadCalendarData();
+  }, [loadCalendarData]);
 
-    const initialEvents: CalendarEvent[] = [
-      {
-        id: "1",
-        title: "Phỏng vấn kỹ thuật - Nguyễn Văn A",
-        start: formatDateForInput(today),
-        allDay: true,
-        extendedProps: {
-          calendar: "Danger",
-          candidate: "Nguyễn Văn A",
-          location: "Phòng họp Aurora - Tầng 5",
-          notes: "Pair-programming với Tech Lead và review CV",
-        },
-      },
-      {
-        id: "2",
-        title: "Trao đổi offer - Trần Thu Hà",
-        start: formatDateForInput(tomorrow),
-        allDay: true,
-        extendedProps: {
-          calendar: "Success",
-          candidate: "Trần Thu Hà",
-          location: "Google Meet",
-          notes: "Chia sẻ chi tiết gói lương, phúc lợi và thời gian nhận việc",
-        },
-      },
-      {
-        id: "3",
-        title: "Phỏng vấn HR - Lê Minh Quân",
-        start: formatDateForInput(nextWeek),
-        end: formatDateForInput(nextWeek),
-        allDay: true,
-        extendedProps: {
-          calendar: "Primary",
-          candidate: "Lê Minh Quân",
-          location: "Văn phòng - Tầng 7",
-          notes: "Phỏng vấn văn hoá và trao đổi kỳ vọng",
-        },
-      },
-    ];
-
-    setEvents(initialEvents);
-    setActiveEvent(initialEvents[0]);
-  }, []);
+  useEffect(() => {
+    const mapped = interviewEvents.map(mapInterviewToCalendarEvent);
+    setEvents(mapped);
+    if (mapped.length > 0 && !activeEvent) {
+      setActiveEvent(mapped[0]);
+    }
+  }, [interviewEvents]);
 
   const sortedEvents = useMemo(() => {
     return [...events].sort((a, b) => {
@@ -185,6 +178,8 @@ const Calendar = () => {
   const handleDatesSet = (arg: DatesSetArg) => {
     setCurrentRangeTitle(arg.view.title);
     setActiveView(arg.view.type);
+    const midDate = new Date((arg.start.getTime() + arg.end.getTime()) / 2);
+    loadCalendarData(midDate.getFullYear(), midDate.getMonth());
   };
 
   const resetModalFields = () => {
@@ -415,6 +410,7 @@ const Calendar = () => {
         onEndDateChange={setEventEndDate}
         onLocationChange={setEventLocation}
         onNotesChange={setEventNotes}
+        onInterviewCreated={() => loadCalendarData()}
       />
     </>
   );

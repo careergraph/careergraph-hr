@@ -3,6 +3,7 @@ import { Candidate, Status as CandidateStatus } from "@/types/candidate";
 
 export const initialCandidates: Candidate[] = [
   {
+    candidateId: "CAND-001",
     id: "1",
     ticketId: "TCK-001",
     jobId: "1",
@@ -54,6 +55,7 @@ export const initialCandidates: Candidate[] = [
     industry: "IT Phần mềm, Bán lẻ/Bán sỉ, Kinh doanh",
   },
   {
+    candidateId: "CAND-002",
     id: "2",
     ticketId: "TCK-002",
     jobId: "1",
@@ -97,6 +99,7 @@ export const initialCandidates: Candidate[] = [
     industry: "Cơ khí/Kỹ thuật",
   },
   {
+    candidateId: "CAND-003",
     id: "3",
     ticketId: "TCK-003",
     jobId: "2",
@@ -141,6 +144,7 @@ export const initialCandidates: Candidate[] = [
     industry: "Bán hàng/Kinh doanh",
   },
   {
+    candidateId: "CAND-004",
     id: "4",
     ticketId: "TCK-004",
     jobId: "2",
@@ -191,6 +195,7 @@ export const initialCandidates: Candidate[] = [
     industry: "Hành chính/Nhân sự",
   },
   {
+    candidateId: "CAND-005",
     id: "5",
     ticketId: "TCK-005",
     jobId: "3",

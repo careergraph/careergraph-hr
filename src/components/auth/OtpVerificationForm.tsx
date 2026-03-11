@@ -61,7 +61,7 @@ export default function OtpVerificationForm() {
 
   const { secondsLeft, canResend, startOrSync } = useOtpCountdown();
 
-  const { control, handleSubmit, formState, setValue } = useForm<OtpFormValues>({
+  const { control, handleSubmit, formState } = useForm<OtpFormValues>({
     resolver: zodResolver(otpSchema),
     defaultValues: {
       otp: "",

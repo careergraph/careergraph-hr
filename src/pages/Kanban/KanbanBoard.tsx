@@ -21,6 +21,8 @@ import { initialCandidates, columns } from "@/data/candidateData";
 import { applicationService } from "@/services/applicationService";
 import { toast } from "sonner";
 import { Status as CandidateStatusType } from "@/types/candidate";
+import ScheduleInterviewKanbanModal from "./ScheduleInterviewKanbanModal";
+import type { Interview } from "@/types/interview";
 
 // KanbanBoard tổ chức danh sách ứng viên theo trạng thái và hỗ trợ kéo thả.
 
@@ -60,6 +62,8 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
   const dragSnapshotRef = useRef<Candidate[] | null>(null);
   // Cờ giúp phân biệt đóng dialog do xác nhận hay hủy.
   const didConfirmRef = useRef(false);
+  // State for interview scheduling modal (shown when moving to "interview" column)
+  const [showInterviewModal, setShowInterviewModal] = useState(false);
 
   useEffect(() => {
     setCandidates(filterByJob(initialCandidates));
@@ -607,7 +611,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100/60 p-6">
+    <div className="bg-gradient-to-br from-slate-50 via-white to-slate-100/60 p-6">
       {/* Vùng bảng Kanban với từng cột trạng thái và overlay kéo thả. */}
       <div className="mx-auto max-w-[1640px] space-y-6">
         <DndContext
@@ -617,7 +621,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex items-start gap-5 overflow-x-auto pb-4">
+          <div className="flex items-start gap-5 overflow-x-auto pb-4" style={{ minHeight: "calc(100vh - 260px)" }}>
             {columns.map((column) => (
               <Column
                 key={column.id}
@@ -663,6 +667,63 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
         at a very high z-index so it's always visible.
       */}
       {moveRequest ? (
+        moveRequest.targetStatus === "interview" ? (
+          <ScheduleInterviewKanbanModal
+            open={showInterviewModal || moveRequest.targetStatus === "interview"}
+            onClose={() => {
+              handleCancelMove();
+              setShowInterviewModal(false);
+            }}
+            onScheduled={async (_applicationId: string, _interview: Interview) => {
+              // After interview is scheduled, also update the application stage
+              if (!moveRequest) return;
+              setIsProcessing(true);
+              const current = candidates.find(
+                (c) => c.id === moveRequest.candidateId
+              );
+              if (!current) {
+                setMoveRequest(null);
+                setIsProcessing(false);
+                setShowInterviewModal(false);
+                return;
+              }
+              try {
+                const resp =
+                  await applicationService.updateApplicationStage(
+                    current.id,
+                    { stage: "INTERVIEW", note: current.description ?? "" }
+                  );
+                if (resp && resp.status >= 200 && resp.status < 300) {
+                  setCandidates((prev) => {
+                    const currentLocal = prev.find(
+                      (c) => c.id === moveRequest.candidateId
+                    );
+                    if (!currentLocal) return prev;
+                    const filtered = prev.filter(
+                      (c) => c.id !== moveRequest.candidateId
+                    );
+                    const updatedCandidate = {
+                      ...currentLocal,
+                      status: "interview" as CandidateStatusType,
+                    };
+                    filtered.push(updatedCandidate);
+                    return filtered;
+                  });
+                  dragSnapshotRef.current = null;
+                }
+              } catch {
+                // Interview was created but stage update failed — still close
+              } finally {
+                setMoveRequest(null);
+                setIsProcessing(false);
+                setShowInterviewModal(false);
+              }
+            }}
+            jobId={jobId || ""}
+            preselectedApplicationId={moveRequest.candidateId}
+            preselectedCandidateName={pendingCandidate?.name}
+          />
+        ) : (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center">
           {/* backdrop */}
           <div className="absolute inset-0 bg-black/40" />
@@ -699,6 +760,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
             </div>
           </div>
         </div>
+        )
       ) : null}
     </div>
   );

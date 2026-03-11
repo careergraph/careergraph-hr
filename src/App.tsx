@@ -1,9 +1,13 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import SignIn from "@/pages/AuthPages/SignIn";
 import SignUp from "@/pages/AuthPages/SignUp";
 import Verify from "@/pages/AuthPages/Verify";
 import UserProfiles from "@/pages/Profile/UserProfiles";
 import Calendar from "@/pages/Calendar/Calendar";
+import InterviewList from "@/pages/Interview/InterviewList";
+import InterviewDetail from "@/pages/Interview/InterviewDetail";
+import InterviewRoom from "@/pages/Interview/InterviewRoom";
 import AppLayout from "@/layout/AppLayout";
 import { ScrollToTop } from "@/components/common/ScrollToTop";
 import Home from "@/pages/Dashboard/Home";
@@ -18,9 +22,11 @@ import LandingPage from "@/pages/Landing/LandingPage";
 import ForgotPassword from "./pages/AuthPages/ForgotPassword";
 import ResetPassword from "./pages/AuthPages/ResetPassword";
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
 export default function App() {
   return (
-    <>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <Toaster richColors />
       <Router>
         <ScrollToTop />
@@ -32,6 +38,9 @@ export default function App() {
               <Route path="/dashboard" element={<Home />} />
               <Route path="/profile" element={<UserProfiles />} />
               <Route path="/calendar" element={<Calendar />} />
+              <Route path="/interviews" element={<InterviewList />} />
+              <Route path="/interviews/:id" element={<InterviewDetail />} />
+              <Route path="/interview/room/:roomCode" element={<InterviewRoom />} />
               <Route path="/kanbans" element={<Candidates />} />
               <Route path="/kanbans/:jobId" element={<Candidates />} />
               <Route path="/jobs" element={<JobsGrid />} />
@@ -49,6 +58,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
-    </>
+    </GoogleOAuthProvider>
   );
 }

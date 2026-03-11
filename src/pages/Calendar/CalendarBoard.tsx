@@ -27,7 +27,7 @@ interface CalendarBoardProps {
   onEventClick: (event: EventClickArg) => void;
   onDatesSet: (arg: DatesSetArg) => void;
   events: EventInput[];
-  renderEventContent: (eventInfo: EventContentArg) => EventContentArg;
+  renderEventContent: (eventInfo: EventContentArg) => React.JSX.Element;
 }
 
 const VIEW_LABELS: Record<string, string> = {

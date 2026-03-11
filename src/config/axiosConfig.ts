@@ -27,7 +27,7 @@ const authExemptEndpoints = [
   "/auth/register",
   "/auth/register/hr",
   "/auth/confirm-otp",
-  "/auth/refresh-token",
+  "/auth/refresh",
 ];
 
 const refreshClient = axios.create({
@@ -72,7 +72,7 @@ const getAccessTokenFromResponse = (data: unknown): string | null => {
 
 const refreshAccessToken = async (): Promise<string | null> => {
   try {
-    const response = await refreshClient.post("/auth/refresh-token");
+    const response = await refreshClient.post("/auth/refresh");
     return getAccessTokenFromResponse(response.data);
   } catch {
     return null;

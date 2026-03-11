@@ -1,0 +1,401 @@
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router";
+import PageMeta from "@/components/common/PageMeta";
+import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import { useInterviewStore } from "@/stores/interviewStore";
+import { interviewService } from "@/services/interviewService";
+import type { InterviewTimeProposal } from "@/types/interview";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import FeedbackModal from "./FeedbackModal";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Monitor,
+  User,
+  ArrowLeft,
+  MessageSquare,
+  CalendarClock,
+  Check,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+
+const STATUS_STYLES: Record<string, string> = {
+  SCHEDULED: "bg-blue-100 text-blue-700",
+  CONFIRMED: "bg-green-100 text-green-700",
+  PENDING_RESCHEDULE: "bg-purple-100 text-purple-700",
+  IN_PROGRESS: "bg-yellow-100 text-yellow-700",
+  COMPLETED: "bg-gray-100 text-gray-700",
+  CANCELLED: "bg-red-100 text-red-600",
+  NO_SHOW: "bg-orange-100 text-orange-700",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  SCHEDULED: "Đã lên lịch",
+  CONFIRMED: "Đã xác nhận",
+  PENDING_RESCHEDULE: "Chờ xác nhận lại",
+  IN_PROGRESS: "Đang diễn ra",
+  COMPLETED: "Hoàn thành",
+  CANCELLED: "Đã hủy",
+  NO_SHOW: "Vắng mặt",
+};
+
+export default function InterviewDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const {
+    selectedInterview,
+    isLoading,
+    fetchInterviewById,
+    cancelInterview,
+    completeInterview,
+  } = useInterviewStore();
+
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [proposals, setProposals] = useState<InterviewTimeProposal[]>([]);
+  const [processingProposal, setProcessingProposal] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (id) fetchInterviewById(id);
+  }, [id, fetchInterviewById]);
+
+  // Load proposals when interview is in PENDING_RESCHEDULE
+  useEffect(() => {
+    if (selectedInterview?.interviewStatus === "PENDING_RESCHEDULE" && selectedInterview?.id) {
+      interviewService
+        .fetchProposals(selectedInterview.id)
+        .then((res) => setProposals(res?.data ?? []))
+        .catch(() => setProposals([]));
+    } else {
+      setProposals([]);
+    }
+  }, [selectedInterview?.id, selectedInterview?.interviewStatus]);
+
+  if (isLoading || !selectedInterview) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  const iv = selectedInterview;
+  const scheduledDate = new Date(iv.scheduledAt);
+  const endDate = new Date(iv.endAt);
+  const isActive = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE"].includes(iv.interviewStatus);
+  const isCompleted = iv.interviewStatus === "COMPLETED";
+
+  const handleCancel = async () => {
+    try {
+      await cancelInterview(iv.id, "Hủy bởi HR");
+      toast.success("Đã hủy phỏng vấn");
+      if (id) fetchInterviewById(id);
+    } catch {
+      toast.error("Lỗi khi hủy phỏng vấn");
+    }
+  };
+
+  const handleComplete = async () => {
+    try {
+      await completeInterview(iv.id);
+      toast.success("Đã hoàn thành phỏng vấn");
+      if (id) fetchInterviewById(id);
+    } catch {
+      toast.error("Lỗi khi hoàn thành phỏng vấn");
+    }
+  };
+
+  const handleAcceptProposal = async (proposalId: string) => {
+    setProcessingProposal(proposalId);
+    try {
+      const res = await interviewService.acceptProposal(iv.id, proposalId);
+      toast.success("Đã chấp nhận đề xuất — lịch mới đã được tạo");
+      const newId = res?.data?.id;
+      if (newId) navigate(`/interviews/${newId}`);
+      else if (id) fetchInterviewById(id);
+    } catch {
+      toast.error("Lỗi khi chấp nhận đề xuất");
+    } finally {
+      setProcessingProposal(null);
+    }
+  };
+
+  const handleRejectProposal = async (proposalId: string) => {
+    setProcessingProposal(proposalId);
+    try {
+      await interviewService.rejectProposal(iv.id, proposalId);
+      toast.success("Đã từ chối đề xuất");
+      const res = await interviewService.fetchProposals(iv.id);
+      setProposals(res?.data ?? []);
+      if (id) fetchInterviewById(id);
+    } catch {
+      toast.error("Lỗi khi từ chối đề xuất");
+    } finally {
+      setProcessingProposal(null);
+    }
+  };
+
+  return (
+    <>
+      <PageMeta title="Chi tiết phỏng vấn | CareerGraph HR" description="Chi tiết phỏng vấn" />
+      <PageBreadcrumb pageTitle="Chi tiết phỏng vấn" />
+
+      <div className="space-y-6">
+        <Button variant="ghost" onClick={() => navigate("/interviews")} className="gap-1">
+          <ArrowLeft className="h-4 w-4" /> Quay lại
+        </Button>
+
+        {/* Header */}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              Phỏng vấn: {iv.candidateName}
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{iv.jobTitle}</p>
+          </div>
+          <Badge className={STATUS_STYLES[iv.interviewStatus] ?? ""} variant="secondary">
+            {STATUS_LABELS[iv.interviewStatus] ?? iv.interviewStatus}
+          </Badge>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Info card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Thông tin phỏng vấn</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                <Calendar className="h-4 w-4" />
+                {scheduledDate.toLocaleDateString("vi-VN", {
+                  weekday: "long",
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                })}
+              </div>
+              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                <Clock className="h-4 w-4" />
+                {scheduledDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                {" – "}
+                {endDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                {" "}({iv.durationMinutes} phút)
+              </div>
+              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                {iv.type === "ONLINE" ? (
+                  <>
+                    <Monitor className="h-4 w-4" /> Online
+                    {iv.meetingLink && (
+                      <button
+                        onClick={() => navigate(`/interview/room/${iv.meetingLink}`)}
+                        className="ml-2 inline-flex items-center gap-1 font-mono text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                      >
+                        <Monitor className="h-3 w-3" /> Vào phòng
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <MapPin className="h-4 w-4" /> {iv.location ?? "Offline"}
+                  </>
+                )}
+              </div>
+              {iv.notes && (
+                <div className="mt-2 rounded-lg bg-gray-50 dark:bg-gray-900 p-3 text-gray-600 dark:text-gray-300 text-xs">
+                  {iv.notes}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Participants */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Người tham gia</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                <User className="h-4 w-4" />
+                <span className="font-medium">Ứng viên:</span> {iv.candidateName}
+              </div>
+              {iv.interviewers?.map((p) => (
+                <div key={p.id} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                  <User className="h-4 w-4" />
+                  <span className="font-medium">{p.role === "INTERVIEWER" ? "Phỏng vấn viên" : p.role}:</span>{" "}
+                  {p.name}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Feedback section */}
+        {iv.feedback && iv.feedback.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" /> Đánh giá
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {iv.feedback.map((fb) => (
+                  <div key={fb.id} className="rounded-lg border p-4 dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                        {fb.reviewerName}
+                      </span>
+                      <Badge variant="outline">{fb.recommendation.replace("_", " ")}</Badge>
+                    </div>
+                    <div className="flex gap-4 text-xs text-gray-500 mb-2">
+                      <span>Tổng: {fb.overallRating}/5</span>
+                      {fb.technicalScore && <span>Kỹ thuật: {fb.technicalScore}/10</span>}
+                      {fb.communicationScore && <span>Giao tiếp: {fb.communicationScore}/10</span>}
+                    </div>
+                    {fb.strengths && (
+                      <p className="text-xs text-green-600 dark:text-green-400">
+                        + {fb.strengths}
+                      </p>
+                    )}
+                    {fb.weaknesses && (
+                      <p className="text-xs text-red-500 dark:text-red-400">
+                        - {fb.weaknesses}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Proposals section */}
+        {proposals.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <CalendarClock className="h-4 w-4" /> Đề xuất thời gian từ ứng viên
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {proposals.map((p) => {
+                  const isPending = p.proposalStatus === "PENDING";
+                  const isProcessing = processingProposal === p.id;
+                  return (
+                    <div
+                      key={p.id}
+                      className={`flex items-center justify-between rounded-lg border p-4 dark:border-gray-700 ${
+                        p.proposalStatus === "ACCEPTED"
+                          ? "border-green-300 bg-green-50 dark:bg-green-900/20"
+                          : p.proposalStatus === "REJECTED"
+                          ? "border-red-200 bg-red-50/50 dark:bg-red-900/10 opacity-60"
+                          : ""
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-100">
+                          <Calendar className="h-4 w-4" />
+                          {new Date(p.proposedDate).toLocaleDateString("vi-VN", {
+                            weekday: "long",
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                          <Clock className="h-4 w-4" />
+                          {p.proposedStartTime?.slice(0, 5)}
+                          {p.proposedDurationMinutes && ` (${p.proposedDurationMinutes} phút)`}
+                        </div>
+                        {p.notes && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            💬 {p.notes}
+                          </p>
+                        )}
+                        {!isPending && (
+                          <Badge
+                            className={
+                              p.proposalStatus === "ACCEPTED"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-600"
+                            }
+                            variant="secondary"
+                          >
+                            {p.proposalStatus === "ACCEPTED" ? "Đã chấp nhận" : "Đã từ chối"}
+                          </Badge>
+                        )}
+                      </div>
+                      {isPending && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-green-600 border-green-300 hover:bg-green-50"
+                            disabled={isProcessing}
+                            onClick={() => handleAcceptProposal(p.id)}
+                          >
+                            <Check className="h-4 w-4 mr-1" /> Chấp nhận
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 border-red-300 hover:bg-red-50"
+                            disabled={isProcessing}
+                            onClick={() => handleRejectProposal(p.id)}
+                          >
+                            <X className="h-4 w-4 mr-1" /> Từ chối
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          {iv.type === "ONLINE" && iv.meetingLink && isActive && (
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => navigate(`/interview/room/${iv.meetingLink}`)}
+            >
+              <Monitor className="h-4 w-4 mr-1" /> Tham gia phỏng vấn
+            </Button>
+          )}
+          {isActive && (
+            <>
+              <Button onClick={handleComplete}>Hoàn thành</Button>
+              <Button variant="destructive" onClick={handleCancel}>
+                Hủy phỏng vấn
+              </Button>
+            </>
+          )}
+          {isCompleted && (
+            <Button onClick={() => setShowFeedback(true)}>
+              <MessageSquare className="h-4 w-4 mr-1" /> Thêm đánh giá
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {showFeedback && (
+        <FeedbackModal
+          open={showFeedback}
+          onClose={() => {
+            setShowFeedback(false);
+            if (id) fetchInterviewById(id);
+          }}
+          interviewId={iv.id}
+          candidateName={iv.candidateName}
+        />
+      )}
+    </>
+  );
+}

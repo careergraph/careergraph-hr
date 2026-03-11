@@ -9,7 +9,7 @@ import { ChevronLeftIcon } from "@/icons";
 import Label from "@/components/form/Label";
 import Input from "@/components/form/input/InputField";
 import authService from "@/services/authService";
-import { saveOtpContext, getOtpContext } from "@/utils/otpStorage";
+import { saveOtpContext } from "@/utils/otpStorage";
 
 const schema = z.object({
   email: z.string({ required_error: "Email là bắt buộc" }).email("Email không hợp lệ"),

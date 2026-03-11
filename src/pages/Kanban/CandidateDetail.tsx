@@ -24,6 +24,7 @@ import type {
   CandidateResumeResponse,
   CandidateMessagesResponse,
   CandidateEmailsResponse,
+  OverviewExperience,
 } from "@/types/candidateTab";
 import { formatDate } from "@/lib/candidateDataUtils";
 
@@ -91,7 +92,7 @@ export function CandidateDetail({
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [overviewData] = useState<CandidateOverviewResponse | null>(null);
   const [experienceData, setExperienceData] =
-    useState<CandidateExperienceResponse | null>(null);
+    useState<CandidateExperienceResponse | OverviewExperience | null>(null);
   const [resumeData, setResumeData] = useState<CandidateResumeResponse | null>(
     null
   );

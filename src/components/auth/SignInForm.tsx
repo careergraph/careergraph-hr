@@ -183,6 +183,38 @@ export default function SignInForm() {
   const { setAccessToken, setUser, updateUser, setCompany, setIsAuthenticating, isAuthenticating } =
     useAuthStore();
 
+  const handleGoogleLogin = async (idToken: string) => {
+    setIsAuthenticating(true);
+    try {
+      const response = await authService.googleLogin(idToken);
+      const token = extractAccessToken(response);
+      if (!token) {
+        throw new Error("Không nhận được access token từ phản hồi.");
+      }
+      setAccessToken(token);
+      const authUser = extractAuthUser(response, "");
+      setUser(authUser);
+
+      try {
+        const currentCompany = await companyService.getMyCompany();
+        if (currentCompany) {
+          setCompany(currentCompany);
+          updateUser({ company: currentCompany, companyId: currentCompany.id });
+        }
+      } catch (err) {
+        console.error("Không thể tải dữ liệu công ty", err);
+      }
+
+      toast.success("Đăng nhập Google thành công!");
+      navigate("/dashboard");
+    } catch (error) {
+      const message = resolveErrorMessage(error);
+      toast.error(message);
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
   const onSubmit = async (values: SignInFormValues) => {
     setIsAuthenticating(true);
 
@@ -270,7 +302,11 @@ export default function SignInForm() {
           </div>
           <div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
-              <GoogleAuth />
+              <GoogleAuth
+                onSuccess={handleGoogleLogin}
+                onError={() => toast.error("Đăng nhập Google thất bại")}
+                text="signin_with"
+              />
               <XAuth />
             </div>
             <div className="relative py-3 sm:py-5">
