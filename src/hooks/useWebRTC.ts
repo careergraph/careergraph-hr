@@ -21,7 +21,6 @@ export interface JoinRequest {
   socketId: string;
   userId: string;
   email?: string;
-  fullName?: string;
 }
 
 export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {

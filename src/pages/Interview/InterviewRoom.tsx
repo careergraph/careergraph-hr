@@ -566,7 +566,9 @@ export default function InterviewRoom() {
                 className="flex items-center gap-2 rounded-lg bg-gray-800 px-3 py-2"
               >
               <div className="flex flex-col">
-                <span className="text-sm font-medium text-gray-200">{req.fullName || req.userId}</span>
+                <span className="text-sm font-medium text-gray-200">
+                  {interview?.candidateName || req.email || req.userId}
+                </span>
                 {req.email && (
                   <span className="text-xs text-gray-400">{req.email}</span>
                 )}
