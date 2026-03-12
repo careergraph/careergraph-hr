@@ -1,0 +1,17 @@
+{
+  "name": "careergraph-rtc",
+  "version": "1.0.0",
+  "description": "WebRTC signaling server for CareerGraph interviews",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.8.0"
+  }
+}
