@@ -20,7 +20,7 @@ const io = new Server(server, {
 // ── Room state ──────────────────────────────────────────────
 // rooms: Map<roomCode, Set<socketId>>           — admitted peers
 // hosts: Map<roomCode, socketId>                — the HR host socket
-// waitingRoom: Map<roomCode, Map<socketId, { userId }>>  — pending candidates
+// waitingRoom: Map<roomCode, Map<socketId, { userId, email }>>  — pending candidates
 const rooms = new Map();
 const hosts = new Map();
 const waitingRoom = new Map();
@@ -88,19 +88,19 @@ io.on("connection", (socket) => {
       const waiting = waitingRoom.get(roomCode);
       if (waiting && waiting.size > 0) {
         for (const [wSocketId, info] of waiting) {
-          socket.emit("join-request", { socketId: wSocketId, userId: info.userId, email: info.email || "", fullName: info.fullName || "" });
+          socket.emit("join-request", { socketId: wSocketId, userId: info.userId, email: info.email || "" });
         }
       }
     } else {
       // Candidate: check if host is present. If no host yet, go to waiting room.
       // If host exists, send join request for approval.
       if (!waitingRoom.has(roomCode)) waitingRoom.set(roomCode, new Map());
-      waitingRoom.get(roomCode).set(socket.id, { userId, email: socket.data.user.email || "", fullName: socket.data.user.fullName || "" });
+      waitingRoom.get(roomCode).set(socket.id, { userId, email: socket.data.user.email || "" });
       socket.data.roomCode = roomCode;
 
       const hostSocketId = hosts.get(roomCode);
       if (hostSocketId) {
-        io.to(hostSocketId).emit("join-request", { socketId: socket.id, userId, email: socket.data.user.email || "", fullName: socket.data.user.fullName || "" });
+        io.to(hostSocketId).emit("join-request", { socketId: socket.id, userId, email: socket.data.user.email || "" });
         socket.emit("waiting-for-host", { status: "pending" });
       } else {
         socket.emit("waiting-for-host", { status: "no-host" });
