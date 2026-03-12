@@ -75,13 +75,29 @@ export default function ScheduleInterviewKanbanModal({
       .fetchUnscheduledByJob(jobId)
       .then((resp) => {
         const apps: UnscheduledApp[] = resp?.data ?? [];
+        // If preselected candidate is not in unscheduled list, add a synthetic entry
+        // so the form still works for the dragged candidate
+        if (
+          preselectedApplicationId &&
+          !apps.find((a) => a.applicationId === preselectedApplicationId)
+        ) {
+          apps.unshift({
+            applicationId: preselectedApplicationId,
+            candidateId: "",
+            candidateName: preselectedCandidateName || "Ứng viên",
+            candidateEmail: "",
+            jobTitle: "",
+            currentStage: "",
+            appliedDate: "",
+          });
+        }
         setUnscheduledApps(apps);
       })
       .catch(() => {
         setUnscheduledApps([]);
       })
       .finally(() => setLoadingApps(false));
-  }, [open, jobId]);
+  }, [open, jobId, preselectedApplicationId, preselectedCandidateName]);
 
   // Pre-select the dragged candidate
   useEffect(() => {

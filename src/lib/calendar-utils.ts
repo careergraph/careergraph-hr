@@ -104,6 +104,16 @@ export const formatDateForInput = (
   return `${year}-${month}-${day}`;
 };
 
+export const formatTimeForInput = (
+  value: string | number | number[] | Date | null | undefined
+): string => {
+  const date = toDate(value);
+  if (!date) return "";
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+};
+
 export const formatEventDateRange = (
   start: string | number | number[] | Date | null | undefined,
   end: string | number | number[] | Date | null | undefined

@@ -199,7 +199,12 @@ export default function SignInForm() {
         const currentCompany = await companyService.getMyCompany();
         if (currentCompany) {
           setCompany(currentCompany);
-          updateUser({ company: currentCompany, companyId: currentCompany.id });
+          updateUser({
+            company: currentCompany,
+            companyId: currentCompany.id,
+            role: currentCompany.role,
+            email: currentCompany.email,
+          });
         }
       } catch (err) {
         console.error("Không thể tải dữ liệu công ty", err);
@@ -239,15 +244,16 @@ export default function SignInForm() {
       setUser(authUser);
 
       try {
-        // We only need the company details here. The account/profile
-        // hydration from `/accounts/me` was removed to avoid duplicate
-        // network calls; other parts of the app will hydrate user info as
-        // needed.
         const currentCompany = await companyService.getMyCompany();
 
         if (currentCompany) {
           setCompany(currentCompany);
-          updateUser({ company: currentCompany, companyId: currentCompany.id });
+          updateUser({
+            company: currentCompany,
+            companyId: currentCompany.id,
+            role: currentCompany.role,
+            email: currentCompany.email ?? values.email.trim(),
+          });
         }
       } catch (currentError) {
         console.error("Không thể tải dữ liệu công ty", currentError);

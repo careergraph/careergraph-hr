@@ -63,6 +63,8 @@ const mapCompany = (raw: Record<string, unknown>): CompanyProfile => {
     followers: typeof raw.noOfFollowers === "number" ? raw.noOfFollowers : undefined,
     following: typeof raw.noOfFollowing === "number" ? raw.noOfFollowing : undefined,
     connections: typeof raw.noOfConnections === "number" ? raw.noOfConnections : undefined,
+    role: typeof raw.role === "string" ? raw.role : undefined,
+    email: typeof raw.email === "string" ? raw.email : undefined,
     addresses,
     contacts,
   };

@@ -27,6 +27,8 @@ export interface CompanyProfile {
   followers?: number;
   following?: number;
   connections?: number;
+  role?: string;
+  email?: string;
   addresses?: CompanyAddress[];
   contacts?: CompanyContact[];
 }

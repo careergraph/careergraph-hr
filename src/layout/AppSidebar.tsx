@@ -10,6 +10,7 @@ import {
   ListIcon,
   TableIcon,
   UserCircleIcon,
+  VideoIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
@@ -52,6 +53,11 @@ const navItems: NavItem[] = [
     icon: <TableIcon />,
     // subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
     path: "/jobs",
+  },
+  {
+    icon: <VideoIcon />,
+    name: "Phỏng vấn",
+    path: "/interviews",
   },
 ];
 

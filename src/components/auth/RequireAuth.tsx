@@ -24,7 +24,8 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ redirectTo = "/signin" }) => 
   // the auth flow.
 
   useEffect(() => {
-    if (!accessToken || company) return;
+    // Re-fetch if we have no company OR if user.role is missing (stale cache)
+    if (!accessToken || (company && user?.role)) return;
 
     let isMounted = true;
 
@@ -35,7 +36,12 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ redirectTo = "/signin" }) => 
 
         if (profile) {
           setCompany(profile);
-          updateUser({ company: profile, companyId: profile.id });
+          updateUser({
+            company: profile,
+            companyId: profile.id,
+            role: profile.role,
+            email: profile.email,
+          });
         }
       } catch (error) {
         console.error("Không thể tải thông tin công ty", error);

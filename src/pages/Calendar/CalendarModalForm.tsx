@@ -4,6 +4,7 @@ import {
   CALENDAR_LEVEL_META,
   CALENDAR_VARIANT_STYLES,
   CalendarLevel,
+  formatTimeForInput,
 } from "../../lib/calendar-utils";
 import { CalendarEvent } from "@/types/calendar";
 import type { InterviewType, CreateInterviewRequest } from "@/types/interview";
@@ -152,6 +153,14 @@ export const CalendarModalForm = ({
       setUnscheduledApps([]);
     }
   }, [isOpen]);
+
+  // Initialize startTime from editing event (edit mode)
+  useEffect(() => {
+    if (editingEvent?.start) {
+      const time = formatTimeForInput(editingEvent.start);
+      if (time) setStartTime(time);
+    }
+  }, [editingEvent]);
 
   // Sync candidate name when selecting from dropdown
   const selectedApp = unscheduledApps.find(
@@ -447,19 +456,21 @@ export const CalendarModalForm = ({
                   min={isCreateMode ? new Date().toISOString().split("T")[0] : undefined}
                 />
               </div>
-              {isCreateMode ? (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground" htmlFor="event-start-time">
-                    Giờ bắt đầu
-                  </label>
-                  <Input
-                    id="event-start-time"
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
-                </div>
-              ) : (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="event-start-time">
+                  Giờ bắt đầu
+                </label>
+                <Input
+                  id="event-start-time"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {!isCreateMode && (
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground" htmlFor="event-end-date">
                     Ngày kết thúc
@@ -471,20 +482,46 @@ export const CalendarModalForm = ({
                     onChange={(e) => onEndDateChange(e.target.value)}
                   />
                 </div>
-              )}
-            </div>
+                {editingEvent?.extendedProps?.location && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      Hình thức / Link phỏng vấn
+                    </label>
+                    {(() => {
+                      const loc = editingEvent.extendedProps.location;
+                      const isLink = loc.startsWith("http") || loc.startsWith("/interview/room/");
+                      return isLink ? (
+                        <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5 dark:border-blue-800 dark:bg-blue-900/20">
+                          <Video className="h-4 w-4 shrink-0 text-blue-600" />
+                          <a
+                            href={loc.startsWith("http") ? loc : `${window.location.origin}${loc}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 truncate text-sm text-blue-700 underline dark:text-blue-300"
+                          >
+                            {loc}
+                          </a>
+                        </div>
+                      ) : (
+                        <Input value={loc} readOnly className="bg-muted" />
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
-              {(isCreateMode ? interviewType === "OFFLINE" : true) && (
+              {isCreateMode && interviewType === "OFFLINE" && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground" htmlFor="event-location">
-                    {isCreateMode ? "Địa điểm" : "Địa điểm / Hình thức"}
+                    Địa điểm
                   </label>
                   <Input
                     id="event-location"
                     value={eventLocation}
                     onChange={(e) => onLocationChange(e.target.value)}
-                    placeholder={isCreateMode ? "Ví dụ: Phòng họp tầng 5" : "Ví dụ: Google Meet / Văn phòng"}
+                    placeholder="Ví dụ: Phòng họp tầng 5"
                   />
                 </div>
               )}
