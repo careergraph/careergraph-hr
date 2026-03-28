@@ -26,6 +26,7 @@ export interface JoinRequest {
 export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
   const socketRef = useRef<Socket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const remoteSocketIdRef = useRef<string | null>(null);
   const pendingCandidates = useRef<RTCIceCandidateInit[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
   localStreamRef.current = localStream;
@@ -44,14 +45,28 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
   const closePeer = useCallback(() => {
     pcRef.current?.close();
     pcRef.current = null;
+    remoteSocketIdRef.current = null;
     setRemoteStream(null);
     setConnected(false);
+  }, []);
+
+  const renegotiate = useCallback(async () => {
+    const socket = socketRef.current;
+    const pc = pcRef.current;
+    const remoteSocketId = remoteSocketIdRef.current;
+    if (!socket?.connected || !pc || !remoteSocketId) return;
+    if (pc.signalingState !== "stable") return;
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    socket.emit("offer", { to: remoteSocketId, offer: pc.localDescription });
   }, []);
 
   // ── Create peer connection ───────────────────────────
   const createPeer = useCallback(
     (socket: Socket, remoteSocketId: string, initiator: boolean) => {
       closePeer();
+      remoteSocketIdRef.current = remoteSocketId;
 
       const pc = new RTCPeerConnection(ICE_SERVERS);
       pcRef.current = pc;
@@ -148,6 +163,7 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
 
     // Receive offer
     socket.on("offer", async ({ from, offer }: { from: string; offer: RTCSessionDescriptionInit }) => {
+      remoteSocketIdRef.current = from;
       const pc = createPeer(socket, from, false);
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
@@ -210,13 +226,34 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
     };
   }, [roomCode, token, createPeer, closePeer]);
 
-  // ── Create peer when localStream becomes available ───
+  // ── Sync local tracks to active peer and renegotiate ──
   useEffect(() => {
-    const socket = socketRef.current;
-    if (!localStream || !socket?.connected || !remotePeerId) return;
-    if (pcRef.current && pcRef.current.connectionState !== "closed") return;
-    createPeer(socket, remotePeerId, true);
-  }, [localStream, remotePeerId, createPeer]);
+    const pc = pcRef.current;
+    if (!localStream || !pc || pc.connectionState === "closed") return;
+
+    let changed = false;
+    const senders = pc.getSenders();
+
+    localStream.getTracks().forEach((track) => {
+      const sender = senders.find((s) => s.track?.kind === track.kind);
+      if (!sender) {
+        pc.addTrack(track, localStream);
+        changed = true;
+        return;
+      }
+
+      if (sender.track !== track) {
+        sender.replaceTrack(track);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      renegotiate().catch((err) => {
+        console.error("[useWebRTC] renegotiate failed:", err);
+      });
+    }
+  }, [localStream, peerCount, remotePeerId, renegotiate]);
 
   // ── Replace track (for screen sharing) ───────────────
   const replaceTrack = useCallback(

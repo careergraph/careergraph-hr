@@ -50,6 +50,10 @@ export default function InterviewRoom() {
   const [recording, setRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const recordingDrawIntervalRef = useRef<number | null>(null);
+  const recordingAudioContextRef = useRef<AudioContext | null>(null);
+  const recordingDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
 
   // Kick confirmation
   const [showKickConfirm, setShowKickConfirm] = useState(false);
@@ -78,7 +82,7 @@ export default function InterviewRoom() {
     emitRecordingStopped,
     remotePeerId,
   } = useWebRTC({
-    roomCode: roomCode ?? "",
+    roomCode: joined && roomCode ? roomCode : "",
     token: accessToken ?? "",
     localStream: localStream,
   });
@@ -89,6 +93,13 @@ export default function InterviewRoom() {
       remoteVideoRef.current.srcObject = remoteStream;
     }
   }, [remoteStream]);
+
+  // Re-bind local stream whenever local video element is remounted (lobby <-> in-call).
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream, joined]);
 
   // Fetch interview info by room code
   useEffect(() => {
@@ -147,38 +158,92 @@ export default function InterviewRoom() {
   };
 
   const startCamera = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error("Trình duyệt không hỗ trợ truy cập camera/microphone");
+      return false;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      let stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
+
+      if (!stream || stream.getTracks().length === 0) {
+        const videoOnly = await navigator.mediaDevices
+          .getUserMedia({ video: true, audio: false })
+          .catch(() => null);
+        const audioOnly = await navigator.mediaDevices
+          .getUserMedia({ video: false, audio: true })
+          .catch(() => null);
+
+        if (videoOnly || audioOnly) {
+          stream = new MediaStream([
+            ...(videoOnly?.getVideoTracks() ?? []),
+            ...(audioOnly?.getAudioTracks() ?? []),
+          ]);
+          toast.warning("Chỉ truy cập được một phần thiết bị (camera hoặc microphone)");
+        }
+      }
+
+      if (!stream || stream.getTracks().length === 0) {
+        toast.error("Không có camera/microphone khả dụng");
+        return false;
+      }
+
+      localStream?.getTracks().forEach((t) => t.stop());
       setLocalStream(stream);
       cameraTrackRef.current = stream.getVideoTracks()[0] ?? null;
+      setCameraOn(stream.getVideoTracks().some((t) => t.enabled));
+      setMicOn(stream.getAudioTracks().some((t) => t.enabled));
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
-    } catch {
-      toast.error("Không thể truy cập camera/microphone");
+      return true;
+    } catch (error: any) {
+      const message =
+        error?.name === "NotAllowedError"
+          ? "Bạn đã chặn quyền camera/microphone. Hãy cho phép quyền trong trình duyệt"
+          : "Không thể truy cập camera/microphone";
+      toast.error(message);
+      return false;
     }
   };
 
+  const hasUsableTrack = (stream: MediaStream | null) => {
+    if (!stream) return false;
+    return stream.getTracks().some((t) => t.readyState === "live");
+  };
+
   const handleJoin = async () => {
-    if (!localStream || localStream.getTracks().every(t => t.readyState === "ended")) {
-      await startCamera();
+    let ready = hasUsableTrack(localStream);
+    if (!ready) {
+      ready = await startCamera();
     }
+    if (!ready) return;
     setJoined(true);
   };
 
   const toggleCamera = () => {
     if (localStream) {
-      localStream.getVideoTracks().forEach((t) => (t.enabled = !t.enabled));
+      const videoTracks = localStream.getVideoTracks();
+      if (videoTracks.length === 0) {
+        toast.error("Không tìm thấy camera trên thiết bị");
+        return;
+      }
+      videoTracks.forEach((t) => (t.enabled = !t.enabled));
       setCameraOn((v) => !v);
     }
   };
 
   const toggleMic = () => {
     if (localStream) {
-      localStream.getAudioTracks().forEach((t) => (t.enabled = !t.enabled));
+      const audioTracks = localStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        toast.error("Không tìm thấy microphone trên thiết bị");
+        return;
+      }
+      audioTracks.forEach((t) => (t.enabled = !t.enabled));
       setMicOn((v) => !v);
     }
   };
@@ -189,8 +254,100 @@ export default function InterviewRoom() {
     toast.success("Đã sao chép link phòng phỏng vấn");
   };
 
+  const cleanupRecordingResources = useCallback(() => {
+    if (recordingDrawIntervalRef.current) {
+      window.clearInterval(recordingDrawIntervalRef.current);
+      recordingDrawIntervalRef.current = null;
+    }
+
+    if (recordingCanvasRef.current) {
+      recordingCanvasRef.current = null;
+    }
+
+    if (recordingDestinationRef.current) {
+      recordingDestinationRef.current.stream.getTracks().forEach((t) => t.stop());
+      recordingDestinationRef.current = null;
+    }
+
+    if (recordingAudioContextRef.current) {
+      recordingAudioContextRef.current.close().catch(() => null);
+      recordingAudioContextRef.current = null;
+    }
+  }, []);
+
+  const createCompositedRecordingStream = useCallback(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1280;
+    canvas.height = 720;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    const drawFrame = () => {
+      const localVideo = localVideoRef.current;
+      const remoteVideo = remoteVideoRef.current;
+      const halfWidth = canvas.width / 2;
+
+      ctx.fillStyle = "#0b1220";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (localVideo && localVideo.readyState >= 2) {
+        ctx.drawImage(localVideo, 0, 0, halfWidth, canvas.height);
+      } else {
+        ctx.fillStyle = "#1f2937";
+        ctx.fillRect(0, 0, halfWidth, canvas.height);
+        ctx.fillStyle = "#d1d5db";
+        ctx.font = "bold 28px sans-serif";
+        ctx.fillText("HR", 40, 60);
+      }
+
+      if (remoteVideo && remoteVideo.readyState >= 2) {
+        ctx.drawImage(remoteVideo, halfWidth, 0, halfWidth, canvas.height);
+      } else {
+        ctx.fillStyle = "#111827";
+        ctx.fillRect(halfWidth, 0, halfWidth, canvas.height);
+        ctx.fillStyle = "#d1d5db";
+        ctx.font = "bold 28px sans-serif";
+        ctx.fillText("Candidate", halfWidth + 40, 60);
+      }
+    };
+
+    drawFrame();
+    recordingDrawIntervalRef.current = window.setInterval(drawFrame, 1000 / 24);
+
+    const videoStream = canvas.captureStream(24);
+    const composed = new MediaStream(videoStream.getVideoTracks());
+
+    const audioContext = new AudioContext();
+    if (audioContext.state === "suspended") {
+      await audioContext.resume();
+    }
+    const destination = audioContext.createMediaStreamDestination();
+    recordingAudioContextRef.current = audioContext;
+    recordingDestinationRef.current = destination;
+
+    const localAudioTracks = localStream?.getAudioTracks().filter((t) => t.readyState === "live") ?? [];
+    const remoteAudioTracks = remoteStream?.getAudioTracks().filter((t) => t.readyState === "live") ?? [];
+
+    if (localAudioTracks.length > 0) {
+      const localAudioStream = new MediaStream(localAudioTracks);
+      const localSource = audioContext.createMediaStreamSource(localAudioStream);
+      localSource.connect(destination);
+    }
+
+    if (remoteAudioTracks.length > 0) {
+      const remoteAudioStream = new MediaStream(remoteAudioTracks);
+      const remoteSource = audioContext.createMediaStreamSource(remoteAudioStream);
+      remoteSource.connect(destination);
+    }
+
+    destination.stream.getAudioTracks().forEach((t) => composed.addTrack(t));
+
+    recordingCanvasRef.current = canvas;
+    return composed;
+  }, [localStream, remoteStream]);
+
   // ── Manual recording ────────────────────────────────
-  const toggleRecording = useCallback(() => {
+  const toggleRecording = useCallback(async () => {
     if (recording) {
       // Stop recording
       mediaRecorderRef.current?.stop();
@@ -198,17 +355,12 @@ export default function InterviewRoom() {
       emitRecordingStopped();
       toast.info("Đã dừng ghi hình");
     } else {
-      // Start recording — combine local + remote into one stream
-      const tracks: MediaStreamTrack[] = [];
-      if (localStream) tracks.push(...localStream.getAudioTracks().filter(t => t.readyState === "live"));
-      if (localStream) tracks.push(...localStream.getVideoTracks().filter(t => t.readyState === "live"));
-      if (remoteStream) tracks.push(...remoteStream.getTracks().filter(t => t.readyState === "live"));
-      if (tracks.length === 0) {
+      // Start recording — compose local + remote video into one canvas stream
+      const combinedStream = await createCompositedRecordingStream();
+      if (!combinedStream || combinedStream.getVideoTracks().length === 0) {
         toast.error("Không có stream để ghi hình. Hãy bật camera hoặc microphone trước.");
         return;
       }
-
-      const combinedStream = new MediaStream(tracks);
       const recorder = new MediaRecorder(combinedStream, {
         mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
           ? "video/webm;codecs=vp9,opus"
@@ -228,6 +380,7 @@ export default function InterviewRoom() {
         a.click();
         URL.revokeObjectURL(url);
         recordedChunksRef.current = [];
+        cleanupRecordingResources();
       };
 
       recorder.start(1000);
@@ -236,7 +389,7 @@ export default function InterviewRoom() {
       emitRecordingStarted();
       toast.success("Đang ghi hình...");
     }
-  }, [recording, localStream, remoteStream, roomCode, emitRecordingStarted, emitRecordingStopped]);
+  }, [recording, roomCode, emitRecordingStarted, emitRecordingStopped, createCompositedRecordingStream, cleanupRecordingResources]);
 
   // ── Kick candidate ──────────────────────────────────
   const handleKickConfirm = useCallback(() => {
@@ -252,6 +405,7 @@ export default function InterviewRoom() {
     if (recording) {
       mediaRecorderRef.current?.stop();
       emitRecordingStopped();
+      cleanupRecordingResources();
     }
     localStream?.getTracks().forEach((t) => t.stop());
     setLocalStream(null);
@@ -270,6 +424,7 @@ export default function InterviewRoom() {
       if (recording) {
         mediaRecorderRef.current?.stop();
         emitRecordingStopped();
+        cleanupRecordingResources();
       }
       localStream?.getTracks().forEach((t) => t.stop());
       setLocalStream(null);
@@ -284,7 +439,7 @@ export default function InterviewRoom() {
       setEnding(false);
       setShowEndConfirm(false);
     }
-  }, [interview, recording, localStream, emitRecordingStopped, navigate]);
+  }, [interview, recording, localStream, emitRecordingStopped, navigate, cleanupRecordingResources]);
 
   const toggleScreenShare = async () => {
     if (screenSharing) {

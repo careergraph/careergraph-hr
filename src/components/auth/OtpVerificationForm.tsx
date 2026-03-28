@@ -115,15 +115,15 @@ export default function OtpVerificationForm() {
     setFormError(null);
     try {
       if (values.purpose === "verify_email") {
-        await authService.verifyOTPRegister({ email: initialEmail,otp: Number(values.otp.trim()) });
+        await authService.verifyOTPRegister({ email: initialEmail.trim().toLowerCase(), otp: values.otp.trim() });
         toast.success("Xác thực email thành công! Bạn có thể đăng nhập.");
         clearOtpContext();
         navigate(initialRedirectTo, { state: { email: initialEmail } });
       } else {
         // reset_password: xác thực OTP, BE trả resetToken
         await authService.verifyOTPResetPassword({
-          email: initialEmail,
-          otp: Number(values.otp.trim()),
+          email: initialEmail.trim().toLowerCase(),
+          otp: values.otp.trim(),
         });
         toast.success("OTP hợp lệ! Vui lòng đặt lại mật khẩu.");
         // chuyển qua form đặt mật khẩu, kèm token

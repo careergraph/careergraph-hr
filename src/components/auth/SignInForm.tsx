@@ -263,7 +263,7 @@ export default function SignInForm() {
       navigate("/dashboard");
     } catch (error: Error | any) {
       if (!token) {
-        if(error?.status === 505){
+        if (error?.status === 403 || error?.status === 505) {
           saveOtpContext({email: values.email.trim(),purpose: "verify_email",redirectTo: "/signin", })
           navigate("/verify-otp", {
             replace: true,

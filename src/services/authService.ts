@@ -35,7 +35,7 @@ export interface ForgotPassword {
 }
 export interface VerifyOtp {
   email?: string,
-  otp?: number
+  otp?: string
 }
 export interface ResendOTP {
   email?: string
@@ -59,7 +59,7 @@ const authService = {
 
   confirmOtp: async (payload: ConfirmOtpPayload) => {
     // Xác thực mã OTP sau khi đăng ký.
-    const response = await api.post("/auth/confirm-otp", payload);
+    const response = await api.post("/auth/confirm-otp-register", payload);
     // Endpoint trả về thông điệp thành công/ token tùy cấu hình backend.
     return response.data;
   },

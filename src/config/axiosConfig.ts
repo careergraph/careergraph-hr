@@ -26,7 +26,13 @@ const authExemptEndpoints = [
   "/auth/login",
   "/auth/register",
   "/auth/register/hr",
-  "/auth/confirm-otp",
+  "/auth/confirm-otp-register",
+  "/auth/confirm-otp-reset-password",
+  "/auth/forgot-password",
+  "/auth/resend-otp",
+  "/auth/ttl-otp",
+  "/auth/reset-password",
+  "/auth/google-login",
   "/auth/refresh",
 ];
 
