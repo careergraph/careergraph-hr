@@ -19,9 +19,6 @@ services:
       - "traefik.http.routers.rtc.entrypoints=websecure"
       - "traefik.http.routers.rtc.tls.certresolver=le"
       - "traefik.http.services.rtc.loadbalancer.server.port=${RTC_PORT_CONTAINER:-4000}"
-    depends_on:
-      careergraph-api:
-        condition: service_started
     networks:
       - careergraph-network
       - proxy
