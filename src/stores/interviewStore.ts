@@ -26,7 +26,7 @@ interface InterviewState {
   clearError: () => void;
 }
 
-export const useInterviewStore = create<InterviewState>()((set, get) => ({
+export const useInterviewStore = create<InterviewState>()((set) => ({
   interviews: [],
   calendarEvents: [],
   selectedInterview: null,

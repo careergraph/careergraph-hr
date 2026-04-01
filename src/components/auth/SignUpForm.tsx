@@ -66,6 +66,10 @@ export default function SignUpForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
+  const handleGoogleSignUp = () => {
+    toast.info("Đăng ký bằng Google sẽ được hỗ trợ sớm.");
+  };
+
   const { control, handleSubmit, formState, reset } = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -140,7 +144,7 @@ export default function SignUpForm() {
 
           <div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
-              <GoogleAuth />
+              <GoogleAuth onSuccess={handleGoogleSignUp} text="signup_with" />
               <XAuth />
             </div>
             <div className="relative py-3 sm:py-5">
