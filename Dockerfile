@@ -12,8 +12,10 @@ RUN yarn install --frozen-lockfile
 COPY . .
 
 # Build args for env vars at build time
-ARG VITE_API_BASE_URL=http://localhost:8080/careergraph/api/v1
+ARG VITE_API_BASE_URL=https://api.thinz.io.vn:8080/careergraph/api/v1
+ARG VITE_RTC_URL=https://api.thinz.io.vn:4000
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_RTC_URL=$VITE_RTC_URL
 
 RUN yarn build
 
