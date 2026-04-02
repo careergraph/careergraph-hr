@@ -1,0 +1,24 @@
+name: careergraph-rtc
+
+services:
+  careergraph-rtc:
+    image: ${DOCKER_IMAGE:-thinz/careergraph-rtc:latest}
+    pull_policy: always
+    container_name: careergraph-rtc
+    restart: unless-stopped
+    ports:
+      - "${RTC_PORT_EXPOSE:-4000}:${RTC_PORT_CONTAINER:-4000}"
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rtc.rule=Host(`rtc.thinz.io.vn`)"
+      - "traefik.http.routers.rtc.entrypoints=websecure"
+      - "traefik.http.routers.rtc.tls.certresolver=le"
+      - "traefik.http.services.rtc.loadbalancer.server.port=4000"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
