@@ -27,6 +27,7 @@ import { interviewService } from "@/services/interviewService";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { useAuthStore } from "@/stores/authStore";
 import type { Interview } from "@/types/interview";
+import FeedbackModal from "./FeedbackModal";
 
 const EARLY_JOIN_MINUTES = 15;
 
@@ -61,12 +62,19 @@ export default function InterviewRoom() {
   // End meeting confirmation
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [isUploadingRecording, setIsUploadingRecording] = useState(false);
 
   // Interview info & early join state
   const [interview, setInterview] = useState<Interview | null>(null);
   const [loading, setLoading] = useState(true);
   const [canJoin, setCanJoin] = useState(false);
   const [countdown, setCountdown] = useState("");
+
+  const getCompanyOwnerId = () => {
+    const userObj = (user ?? null) as Record<string, unknown> | null;
+    return typeof userObj?.companyId === "string" ? userObj.companyId : "";
+  };
 
   // WebRTC peer connection
   const {
@@ -346,6 +354,47 @@ export default function InterviewRoom() {
     return composed;
   }, [localStream, remoteStream]);
 
+  const uploadRecordingBlob = useCallback(
+    async (blob: Blob) => {
+      const ownerId = getCompanyOwnerId();
+      if (!ownerId) {
+        toast.warning("Không tìm thấy companyId, không thể upload bản ghi");
+        return null;
+      }
+
+      setIsUploadingRecording(true);
+      try {
+        const resp = await interviewService.uploadInterviewRecording({
+          file: blob,
+          ownerType: "company",
+          ownerId,
+          fileName: `interview-${roomCode}-${Date.now()}.webm`,
+        });
+
+        const uploadedUrl =
+          typeof resp?.url === "string"
+            ? resp.url
+            : typeof resp?.data?.url === "string"
+              ? resp.data.url
+              : "";
+
+        if (uploadedUrl) {
+          toast.success("Đã upload bản ghi phỏng vấn");
+          return uploadedUrl;
+        }
+
+        toast.warning("Upload bản ghi không trả về URL hợp lệ");
+        return null;
+      } catch {
+        toast.error("Upload bản ghi thất bại");
+        return null;
+      } finally {
+        setIsUploadingRecording(false);
+      }
+    },
+    [roomCode, user]
+  );
+
   // ── Manual recording ────────────────────────────────
   const toggleRecording = useCallback(async () => {
     if (recording) {
@@ -373,14 +422,22 @@ export default function InterviewRoom() {
       };
       recorder.onstop = () => {
         const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `interview-${roomCode}-${Date.now()}.webm`;
-        a.click();
-        URL.revokeObjectURL(url);
         recordedChunksRef.current = [];
         cleanupRecordingResources();
+
+        uploadRecordingBlob(blob).then((uploadedUrl) => {
+          if (uploadedUrl) {
+            return;
+          }
+
+          // Fallback local download if upload fails.
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `interview-${roomCode}-${Date.now()}.webm`;
+          a.click();
+          URL.revokeObjectURL(url);
+        });
       };
 
       recorder.start(1000);
@@ -389,7 +446,7 @@ export default function InterviewRoom() {
       emitRecordingStarted();
       toast.success("Đang ghi hình...");
     }
-  }, [recording, roomCode, emitRecordingStarted, emitRecordingStopped, createCompositedRecordingStream, cleanupRecordingResources]);
+  }, [recording, roomCode, emitRecordingStarted, emitRecordingStopped, createCompositedRecordingStream, cleanupRecordingResources, uploadRecordingBlob]);
 
   // ── Kick candidate ──────────────────────────────────
   const handleKickConfirm = useCallback(() => {
@@ -431,15 +488,15 @@ export default function InterviewRoom() {
       setJoined(false);
       setScreenSharing(false);
       setRecording(false);
-      toast.success("Phỏng vấn đã kết thúc");
-      navigate("/interviews");
+      toast.success("Phỏng vấn đã kết thúc. Vui lòng đánh giá ứng viên");
+      setShowFeedbackModal(true);
     } catch {
       toast.error("Không thể kết thúc phỏng vấn");
     } finally {
       setEnding(false);
       setShowEndConfirm(false);
     }
-  }, [interview, recording, localStream, emitRecordingStopped, navigate, cleanupRecordingResources]);
+  }, [interview, recording, localStream, emitRecordingStopped, cleanupRecordingResources]);
 
   const toggleScreenShare = async () => {
     if (screenSharing) {
@@ -593,7 +650,7 @@ export default function InterviewRoom() {
               autoPlay
               playsInline
               muted
-              className="h-full w-full object-cover"
+              className="h-full w-full bg-black object-contain"
             />
             {!localStream && (
               <div className="absolute inset-0 flex items-center justify-center">
@@ -646,7 +703,7 @@ export default function InterviewRoom() {
 
   // In-call UI
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-gray-950">
+    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-gray-950">
       {/* Top bar */}
       <div className="flex items-center justify-between border-b border-gray-800 px-4 py-2">
         <div className="flex items-center gap-3">
@@ -677,7 +734,7 @@ export default function InterviewRoom() {
 
       {/* Host control panel — always visible */}
       <div className="border-b border-gray-800 bg-gray-900/50 px-4 py-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
             {/* Admission requests */}
             <div className="flex items-center gap-2">
@@ -708,6 +765,7 @@ export default function InterviewRoom() {
             size="sm"
             className="bg-red-600 hover:bg-red-700 text-white"
             onClick={() => setShowEndConfirm(true)}
+            disabled={isUploadingRecording}
           >
             <PhoneOff className="h-4 w-4 mr-1" /> Kết thúc phỏng vấn
           </Button>
@@ -749,16 +807,16 @@ export default function InterviewRoom() {
       </div>
 
       {/* Video grid */}
-      <div className="flex-1 p-4">
-        <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="flex-1 min-h-0 p-3 md:p-4">
+        <div className="grid h-full min-h-0 grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
           {/* Local video */}
-          <div className="relative overflow-hidden rounded-2xl bg-gray-800">
+          <div className="relative min-h-[220px] overflow-hidden rounded-2xl bg-gray-800">
             <video
               ref={localVideoRef}
               autoPlay
               playsInline
               muted
-              className="h-full w-full object-cover"
+              className="h-full w-full bg-black object-contain"
             />
             {!cameraOn && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
@@ -778,13 +836,13 @@ export default function InterviewRoom() {
           </div>
 
           {/* Remote video */}
-          <div className="relative overflow-hidden rounded-2xl bg-gray-800">
+          <div className="relative min-h-[220px] overflow-hidden rounded-2xl bg-gray-800">
             {remoteStream ? (
               <video
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className="h-full w-full object-cover"
+                className="h-full w-full bg-black object-contain"
               />
             ) : (
               <div className="flex h-full items-center justify-center">
@@ -844,7 +902,7 @@ export default function InterviewRoom() {
       )}
 
       {/* Bottom controls */}
-      <div className="flex items-center justify-center gap-3 border-t border-gray-800 px-4 py-4">
+      <div className="flex flex-wrap items-center justify-center gap-3 border-t border-gray-800 px-4 py-4">
         <Button
           size="icon"
           variant={cameraOn ? "outline" : "destructive"}
@@ -901,7 +959,7 @@ export default function InterviewRoom() {
               <Button
                 className="bg-red-600 hover:bg-red-700 w-full"
                 onClick={handleEndMeeting}
-                disabled={ending}
+                disabled={ending || isUploadingRecording}
               >
                 {ending ? "Đang xử lý..." : "Kết thúc phỏng vấn (hoàn thành)"}
               </Button>
@@ -923,6 +981,18 @@ export default function InterviewRoom() {
           </div>
         </div>
       )}
+
+      {showFeedbackModal && interview?.id ? (
+        <FeedbackModal
+          open={showFeedbackModal}
+          onClose={() => {
+            setShowFeedbackModal(false);
+            navigate("/interviews");
+          }}
+          interviewId={interview.id}
+          candidateName={interview.candidateName}
+        />
+      ) : null}
     </div>
   );
 }

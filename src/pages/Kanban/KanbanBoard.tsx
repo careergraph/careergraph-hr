@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 
 import { initialCandidates, columns } from "@/data/candidateData";
 import { applicationService } from "@/services/applicationService";
+import { interviewService } from "@/services/interviewService";
 import { toast } from "sonner";
 import { Status as CandidateStatusType } from "@/types/candidate";
 import ScheduleInterviewKanbanModal from "./ScheduleInterviewKanbanModal";
@@ -108,6 +109,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           // reviewed and should appear in the 'Liên hệ' column in the UI.
           SCREENING: "meeting",
           INTERVIEW_SCHEDULED: "meeting",
+          PENDING_RESCHEDULE: "meeting",
           INVITED: "meeting",
           INTERVIEW: "interview",
           TRIAL: "trial",
@@ -237,12 +239,66 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
             educationLevel: normalizeString(
               candidateObj["educationLevel"] || undefined
             ),
+            hasInterviewed: false,
+            interviewScore: undefined,
           } as Candidate;
 
           return candidate;
         });
 
-        setCandidates(mapped);
+        const mappedWithInterviewMeta = await Promise.all(
+          mapped.map(async (candidate) => {
+            if (candidate.status !== "interview") {
+              return candidate;
+            }
+
+            try {
+              const interviewResp = await interviewService.fetchInterviewsByApplication(
+                candidate.id
+              );
+              const interviews = Array.isArray(interviewResp?.data)
+                ? interviewResp.data
+                : Array.isArray(interviewResp)
+                  ? interviewResp
+                  : [];
+
+              const completedInterviews = interviews.filter(
+                (iv: { interviewStatus?: string }) => iv?.interviewStatus === "COMPLETED"
+              );
+
+              const ratings = completedInterviews
+                .flatMap((iv: { feedback?: Array<{ overallRating?: number }> }) =>
+                  Array.isArray(iv.feedback)
+                    ? iv.feedback
+                        .map((f) => (typeof f?.overallRating === "number" ? f.overallRating : null))
+                        .filter((v): v is number => v !== null)
+                    : []
+                );
+
+              const interviewScore =
+                ratings.length > 0
+                  ? ratings.reduce((sum: number, value: number) => sum + value, 0) / ratings.length
+                  : undefined;
+
+              const labels = candidate.hasInterviewed
+                ? candidate.labels
+                : completedInterviews.length > 0
+                  ? [...candidate.labels, "da-phong-van"]
+                  : candidate.labels;
+
+              return {
+                ...candidate,
+                labels,
+                hasInterviewed: completedInterviews.length > 0,
+                interviewScore,
+              };
+            } catch {
+              return candidate;
+            }
+          })
+        );
+
+        setCandidates(mappedWithInterviewMeta);
       } catch (err: unknown) {
         if (signal.aborted) return;
         console.error("Error loading applications:", err);
@@ -463,8 +519,34 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
 
   // Filter candidates by status
   const getCandidatesByStatus = useCallback(
-    (status: CandidateStatus) =>
-      candidates.filter((candidate) => candidate.status === status),
+    (status: CandidateStatus) => {
+      const candidatesByStatus = candidates.filter(
+        (candidate) => candidate.status === status
+      );
+
+      if (status !== "interview") {
+        return candidatesByStatus;
+      }
+
+      return [...candidatesByStatus].sort((a, b) => {
+        const aInterviewed = a.hasInterviewed ? 1 : 0;
+        const bInterviewed = b.hasInterviewed ? 1 : 0;
+        if (aInterviewed !== bInterviewed) {
+          return bInterviewed - aInterviewed;
+        }
+
+        const aScore = typeof a.interviewScore === "number" ? a.interviewScore : -1;
+        const bScore = typeof b.interviewScore === "number" ? b.interviewScore : -1;
+        if (aScore !== bScore) {
+          return bScore - aScore;
+        }
+
+        return (
+          new Date(b.lastActive || b.appliedDate).getTime() -
+          new Date(a.lastActive || a.appliedDate).getTime()
+        );
+      });
+    },
     [candidates]
   );
 

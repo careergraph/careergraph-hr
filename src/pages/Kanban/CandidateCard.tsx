@@ -157,6 +157,16 @@ export function CandidateCard({
                   {candidate.location.city}
                 </span>
               ) : null}
+              {candidate.hasInterviewed ? (
+                <Badge className="bg-emerald-500/10 px-2 py-0 text-[10px] font-semibold uppercase text-emerald-600 ring-1 ring-emerald-500/30">
+                  Da phong van
+                </Badge>
+              ) : null}
+              {typeof candidate.interviewScore === "number" ? (
+                <Badge className="bg-blue-500/10 px-2 py-0 text-[10px] font-semibold uppercase text-blue-600 ring-1 ring-blue-500/30">
+                  Diem {candidate.interviewScore.toFixed(1)}/5
+                </Badge>
+              ) : null}
             </div>
           </div>
         </div>

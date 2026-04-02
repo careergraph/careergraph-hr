@@ -71,6 +71,8 @@ export interface Candidate {
   hasPurchased?: boolean;
 
   educationLevel?: string;
+  hasInterviewed?: boolean;
+  interviewScore?: number;
 }
 
 export interface Column {

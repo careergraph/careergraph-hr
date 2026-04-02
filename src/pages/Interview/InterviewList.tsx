@@ -7,11 +7,13 @@ import FeedbackModal from "./FeedbackModal";
 import type { Interview} from "@/types/interview";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { interviewService } from "@/services/interviewService";
 
 const STATUS_TABS: { value: string; label: string }[] = [
   { value: "", label: "Tất cả" },
   { value: "SCHEDULED", label: "Đã lên lịch" },
   { value: "CONFIRMED", label: "Đã xác nhận" },
+  { value: "PENDING_RESCHEDULE", label: "Chờ xác nhận lại" },
   { value: "COMPLETED", label: "Hoàn thành" },
   { value: "CANCELLED", label: "Đã hủy" },
 ];
@@ -56,6 +58,58 @@ export default function InterviewList() {
     [completeInterview]
   );
 
+  const handleAcceptProposal = useCallback(
+    async (interviewId: string) => {
+      try {
+        const proposalsResp = await interviewService.fetchProposals(interviewId);
+        const proposals = Array.isArray(proposalsResp?.data)
+          ? proposalsResp.data
+          : Array.isArray(proposalsResp)
+            ? proposalsResp
+            : [];
+
+        const pendingProposal = proposals.find((p: { proposalStatus?: string }) => p?.proposalStatus === "PENDING");
+        if (!pendingProposal?.id) {
+          toast.warning("Không còn đề xuất lịch chờ duyệt");
+          return;
+        }
+
+        await interviewService.acceptProposal(interviewId, pendingProposal.id);
+        toast.success("Đã chấp nhận đề xuất lịch mới");
+        await fetchInterviews({ status: statusFilter || undefined });
+      } catch {
+        toast.error("Không thể chấp nhận đề xuất");
+      }
+    },
+    [fetchInterviews, statusFilter]
+  );
+
+  const handleRejectProposal = useCallback(
+    async (interviewId: string) => {
+      try {
+        const proposalsResp = await interviewService.fetchProposals(interviewId);
+        const proposals = Array.isArray(proposalsResp?.data)
+          ? proposalsResp.data
+          : Array.isArray(proposalsResp)
+            ? proposalsResp
+            : [];
+
+        const pendingProposal = proposals.find((p: { proposalStatus?: string }) => p?.proposalStatus === "PENDING");
+        if (!pendingProposal?.id) {
+          toast.warning("Không còn đề xuất lịch chờ duyệt");
+          return;
+        }
+
+        await interviewService.rejectProposal(interviewId, pendingProposal.id);
+        toast.success("Đã từ chối đề xuất lịch mới");
+        await fetchInterviews({ status: statusFilter || undefined });
+      } catch {
+        toast.error("Không thể từ chối đề xuất");
+      }
+    },
+    [fetchInterviews, statusFilter]
+  );
+
   return (
     <>
       <PageMeta title="Phỏng vấn | CareerGraph HR" description="Quản lý lịch phỏng vấn" />
@@ -95,6 +149,8 @@ export default function InterviewList() {
                 onCancel={handleCancel}
                 onComplete={handleComplete}
                 onFeedback={(iv) => setFeedbackInterview(iv)}
+                onAcceptReschedule={handleAcceptProposal}
+                onRejectReschedule={handleRejectProposal}
               />
             ))}
           </div>

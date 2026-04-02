@@ -17,7 +17,9 @@ import { ExperienceTab } from "./CandidateTab/ExperienceTab";
 import { CvTab } from "./CandidateTab/CvTab";
 import { MessagesTab } from "./CandidateTab/MessagesTab";
 import { EmailTab } from "./CandidateTab/EmailTab";
+import { InterviewReviewTab } from "./CandidateTab/InterviewReviewTab";
 import { candidateService } from "@/services/candidateService";
+import { interviewService } from "@/services/interviewService";
 import type {
   CandidateOverviewResponse,
   CandidateExperienceResponse,
@@ -27,6 +29,7 @@ import type {
   OverviewExperience,
 } from "@/types/candidateTab";
 import { formatDate } from "@/lib/candidateDataUtils";
+import type { Interview } from "@/types/interview";
 
 // CandidateDetail hiển thị panel chi tiết của ứng viên trong Kanban.
 
@@ -101,6 +104,7 @@ export function CandidateDetail({
   const [emailsData, setEmailsData] = useState<CandidateEmailsResponse | null>(
     null
   );
+  const [interviewReviews, setInterviewReviews] = useState<Interview[]>([]);
 
   const loadTab = useCallback(
     async (tab: string) => {
@@ -129,6 +133,14 @@ export function CandidateDetail({
         } else if (tab === "email") {
           const data = await candidateService.fetchEmails(id, signal);
           setEmailsData(data);
+        } else if (tab === "interview-review") {
+          const data = await interviewService.fetchInterviewsByApplication(id);
+          const interviews = Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data)
+              ? data
+              : [];
+          setInterviewReviews(interviews);
         }
       } catch (err: unknown) {
         // Ignore abort errors; use a lightweight type guard to extract name/message
@@ -255,6 +267,7 @@ export function CandidateDetail({
                   <TabsTrigger value="overview">Thông tin chi tiết</TabsTrigger>
                   <TabsTrigger value="experience">Kinh nghiệm</TabsTrigger>
                   <TabsTrigger value="cv">CV</TabsTrigger>
+                  <TabsTrigger value="interview-review">Danh gia phong van</TabsTrigger>
                   <TabsTrigger value="messages">Tin nhắn</TabsTrigger>
                   <TabsTrigger value="email">Email</TabsTrigger>
                 </TabsList>
@@ -288,6 +301,17 @@ export function CandidateDetail({
                     resumeData={resumeData}
                     loading={loading?.cv}
                     error={errors?.cv}
+                  />
+                </TabsContent>
+
+                <TabsContent
+                  value="interview-review"
+                  className="flex-1 overflow-hidden"
+                >
+                  <InterviewReviewTab
+                    interviews={interviewReviews}
+                    loading={loading?.["interview-review"]}
+                    error={errors?.["interview-review"]}
                   />
                 </TabsContent>
 

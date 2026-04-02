@@ -93,6 +93,25 @@ const fetchByRoomCode = async (roomCode: string) => {
   return response.data;
 };
 
+const uploadInterviewRecording = async (params: {
+  file: Blob;
+  ownerType: "company" | "candidate";
+  ownerId: string;
+  fileName?: string;
+}) => {
+  const formData = new FormData();
+  const fileName = params.fileName || `interview-recording-${Date.now()}.webm`;
+  formData.append("file", params.file, fileName);
+  formData.append("ownerType", params.ownerType);
+  formData.append("idd", params.ownerId);
+  formData.append("fileType", "VIDEO");
+
+  const response = await api.post("/media/video", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+};
+
 export const interviewService = {
   fetchInterviews,
   fetchInterviewById,
@@ -109,6 +128,7 @@ export const interviewService = {
   acceptProposal,
   rejectProposal,
   fetchByRoomCode,
+  uploadInterviewRecording,
 };
 
 export default interviewService;

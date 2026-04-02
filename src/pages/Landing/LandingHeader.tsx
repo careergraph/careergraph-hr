@@ -23,6 +23,7 @@ export function LandingHeader({
   authenticated,
   userName,
 }: LandingHeaderProps) {
+  const candidateSiteUrl = import.meta.env.VITE_CLIENT_SITE_URL || "https://thinz.io.vn";
   const [activeSection, setActiveSection] = useState<string>(navItems[0].id);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -140,12 +141,13 @@ export function LandingHeader({
           >
             Đăng nhập
           </Link>
-          <Link
-            to="/signup"
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+
+          <a
+            href={candidateSiteUrl}
+            className="hidden rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 lg:inline-flex"
           >
-            Đăng ký miễn phí
-          </Link>
+            Sang trang ứng viên
+          </a>
         </div>
       )}
       </div>

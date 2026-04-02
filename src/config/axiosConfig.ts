@@ -10,8 +10,34 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
   "http://localhost:8080/careergraph/api/v1";
 
+const DEFAULT_API_CONTEXT_PATH = "/careergraph/api/v1";
+
+const normalizeApiBaseUrl = (rawBaseUrl: string): string => {
+  let normalized = rawBaseUrl.trim();
+
+  if (
+    typeof window !== "undefined" &&
+    window.location.protocol === "https:" &&
+    normalized.startsWith("http://")
+  ) {
+    normalized = `https://${normalized.slice("http://".length)}`;
+  }
+
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.pathname === "/" || parsed.pathname === "") {
+      parsed.pathname = DEFAULT_API_CONTEXT_PATH;
+    }
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return normalized.replace(/\/$/, "");
+  }
+};
+
+const RESOLVED_API_BASE_URL = normalizeApiBaseUrl(API_BASE_URL);
+
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: RESOLVED_API_BASE_URL,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -37,7 +63,7 @@ const authExemptEndpoints = [
 ];
 
 const refreshClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: RESOLVED_API_BASE_URL,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",

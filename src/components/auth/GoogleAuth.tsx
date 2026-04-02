@@ -7,6 +7,16 @@ interface GoogleAuthProps {
 }
 
 const GoogleAuth: React.FC<GoogleAuthProps> = ({ onSuccess, onError, text = "signin_with" }) => {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const isClientIdValid =
+    typeof clientId === "string" &&
+    clientId.trim().length > 0 &&
+    clientId.includes(".apps.googleusercontent.com");
+
+  if (!isClientIdValid) {
+    return null;
+  }
+
   return (
     <GoogleLogin
       onSuccess={(credentialResponse) => {

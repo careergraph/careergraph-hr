@@ -15,6 +15,8 @@ interface InterviewCardProps {
   onCancel?: (id: string) => void;
   onComplete?: (id: string) => void;
   onFeedback?: (interview: Interview) => void;
+  onAcceptReschedule?: (id: string) => void;
+  onRejectReschedule?: (id: string) => void;
   onClick?: (interview: Interview) => void;
 }
 
@@ -43,6 +45,8 @@ export default function InterviewCard({
   onCancel,
   onComplete,
   onFeedback,
+  onAcceptReschedule,
+  onRejectReschedule,
   onClick,
 }: InterviewCardProps) {
   const scheduledDate = new Date(interview.scheduledAt);
@@ -141,6 +145,7 @@ export default function InterviewCard({
 
       {interview.type === "ONLINE" && interview.meetingLink && isActive && (
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             navigate(`/interview/room/${interview.meetingLink}`);
@@ -149,6 +154,34 @@ export default function InterviewCard({
         >
           <ExternalLink className="h-3.5 w-3.5" /> Tham gia phỏng vấn
         </button>
+      )}
+
+      {interview.interviewStatus === "PENDING_RESCHEDULE" && (
+        <div className="mt-3 flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 bg-emerald-600 text-white hover:bg-emerald-700"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAcceptReschedule?.(interview.id);
+            }}
+          >
+            Chấp nhận lịch mới
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 border-red-300 text-red-600 hover:bg-red-50"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRejectReschedule?.(interview.id);
+            }}
+          >
+            Từ chối
+          </Button>
+        </div>
       )}
     </div>
   );
