@@ -10,8 +10,10 @@ import Label from "@/components/form/Label";
 import Input from "@/components/form/input/InputField";
 import Checkbox from "@/components/form/input/Checkbox";
 import GoogleAuth from "./GoogleAuth";
-import XAuth from "./XAuth";
-import authService from "@/services/authService";
+import authService, { LoginResponse } from "@/services/authService";
+import companyService from "@/services/companyService";
+import { useAuthStore } from "@/stores/authStore";
+import type { AuthUser, CompanyProfile } from "@/types/account";
 import { saveOtpContext } from "@/utils/otpStorage";
 
 const signUpSchema = z.object({
@@ -60,14 +62,111 @@ const resolveErrorMessage = (error: unknown): string => {
   return "Đăng ký không thành công. Vui lòng thử lại.";
 };
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const traverseForMatch = (
+  source: unknown,
+  predicate: (candidate: Record<string, unknown>) => boolean
+): Record<string, unknown> | null => {
+  const stack: unknown[] = [source];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (Array.isArray(current)) { stack.push(...current); continue; }
+    if (!isObject(current)) continue;
+    if (predicate(current)) return current;
+    stack.push(...Object.values(current));
+  }
+  return null;
+};
+
+const extractAccessToken = (payload: LoginResponse): string | null => {
+  if (!payload) return null;
+  const tokenRecord = traverseForMatch(payload, (c) =>
+    typeof c.accessToken === "string" ||
+    typeof c["access_token"] === "string" ||
+    (typeof c.token === "string" && c.token.includes("."))
+  );
+  if (!tokenRecord) return null;
+  if (typeof tokenRecord.accessToken === "string") return tokenRecord.accessToken;
+  if (typeof tokenRecord["access_token"] === "string") return tokenRecord["access_token"] as string;
+  if (typeof tokenRecord.token === "string") return tokenRecord.token;
+  return null;
+};
+
+const extractAuthUser = (payload: LoginResponse, fallbackEmail: string): AuthUser | null => {
+  if (!payload) return fallbackEmail ? { email: fallbackEmail } : null;
+  const userRecord = traverseForMatch(payload, (c) => {
+    if (typeof c.email === "string" && c.email.includes("@")) return true;
+    const hasName = typeof c.firstName === "string" || typeof c.lastName === "string";
+    const hasId = typeof c.id === "string" || typeof c.companyId === "string";
+    return hasName && hasId;
+  });
+  if (!userRecord) return fallbackEmail ? { email: fallbackEmail } : null;
+  const user: AuthUser = { ...(userRecord as AuthUser) };
+  if (!user.email && fallbackEmail) user.email = fallbackEmail;
+  const embeddedCompany = traverseForMatch(payload, (c) =>
+    typeof c.companyId === "string" ||
+    (typeof c.name === "string" && ("avatar" in c || "cover" in c))
+  );
+  if (!user.company && embeddedCompany) {
+    user.company = {
+      id: typeof embeddedCompany.companyId === "string" ? embeddedCompany.companyId : undefined,
+      name: typeof embeddedCompany.name === "string" ? embeddedCompany.name : undefined,
+      avatar: typeof embeddedCompany.avatar === "string" ? embeddedCompany.avatar : undefined,
+      cover: typeof embeddedCompany.cover === "string" ? embeddedCompany.cover : undefined,
+      size: typeof embeddedCompany.size === "string" ? embeddedCompany.size : undefined,
+      website: typeof embeddedCompany.website === "string" ? embeddedCompany.website : undefined,
+    } satisfies CompanyProfile;
+    if (!user.companyId && user.company?.id) user.companyId = user.company.id;
+  }
+  return user;
+};
+
 export default function SignUpForm() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
-  const handleGoogleSignUp = () => {
-    toast.info("Đăng ký bằng Google sẽ được hỗ trợ sớm.");
+  const { setAccessToken, setUser, updateUser, setCompany, setIsAuthenticating } =
+    useAuthStore();
+
+  const handleGoogleSignUp = async (idToken: string) => {
+    setIsAuthenticating(true);
+    try {
+      const response = await authService.googleLogin(idToken);
+      const token = extractAccessToken(response);
+      if (!token) {
+        throw new Error("Không nhận được access token từ phản hồi.");
+      }
+      setAccessToken(token);
+      const authUser = extractAuthUser(response, "");
+      setUser(authUser);
+
+      try {
+        const currentCompany = await companyService.getMyCompany();
+        if (currentCompany) {
+          setCompany(currentCompany);
+          updateUser({
+            company: currentCompany,
+            companyId: currentCompany.id,
+            role: currentCompany.role,
+            email: currentCompany.email,
+          });
+        }
+      } catch (err) {
+        console.error("Không thể tải dữ liệu công ty", err);
+      }
+
+      toast.success("Đăng nhập Google thành công!");
+      navigate("/dashboard");
+    } catch (error) {
+      const message = resolveErrorMessage(error);
+      toast.error(message);
+    } finally {
+      setIsAuthenticating(false);
+    }
   };
 
   const { control, handleSubmit, formState, reset } = useForm<SignUpFormValues>({
@@ -143,9 +242,8 @@ export default function SignUpForm() {
           </div>
 
           <div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
+            <div className="flex justify-center">
               <GoogleAuth onSuccess={handleGoogleSignUp} text="signup_with" />
-              <XAuth />
             </div>
             <div className="relative py-3 sm:py-5">
               <div className="absolute inset-0 flex items-center">

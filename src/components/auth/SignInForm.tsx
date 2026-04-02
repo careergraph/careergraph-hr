@@ -11,7 +11,6 @@ import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Button from "../custom/button/Button";
 import GoogleAuth from "./GoogleAuth";
-import XAuth from "./XAuth";
 import authService, { LoginResponse } from "@/services/authService";
 import companyService from "@/services/companyService";
 import { useAuthStore } from "@/stores/authStore";
@@ -307,13 +306,12 @@ export default function SignInForm() {
             </p>
           </div>
           <div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
+            <div className="flex justify-center">
               <GoogleAuth
                 onSuccess={handleGoogleLogin}
                 onError={() => toast.error("Đăng nhập Google thất bại")}
                 text="signin_with"
               />
-              <XAuth />
             </div>
             <div className="relative py-3 sm:py-5">
               <div className="absolute inset-0 flex items-center">
@@ -321,7 +319,7 @@ export default function SignInForm() {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="p-2 text-gray-400 bg-white dark:bg-gray-900 sm:px-5 sm:py-2">
-                  Or
+                  Hoặc
                 </span>
               </div>
             </div>
