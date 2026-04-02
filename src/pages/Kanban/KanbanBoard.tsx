@@ -703,7 +703,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex items-start gap-5 overflow-x-auto pb-4" style={{ minHeight: "calc(100vh - 260px)" }}>
+          <div className="flex min-h-[calc(100vh-260px)] items-start gap-5 overflow-x-auto pb-4">
             {columns.map((column) => (
               <Column
                 key={column.id}
