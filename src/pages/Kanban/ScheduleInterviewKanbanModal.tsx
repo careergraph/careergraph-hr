@@ -1,11 +1,5 @@
-import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { useEffect, useRef, useState } from "react";
+import { Modal } from "@/components/custom/modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +56,7 @@ export default function ScheduleInterviewKanbanModal({
   const [type, setType] = useState<InterviewType>("ONLINE");
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   // Result state after scheduling
   const [scheduledResult, setScheduledResult] = useState<Interview | null>(null);
@@ -166,6 +161,13 @@ export default function ScheduleInterviewKanbanModal({
     ? `${window.location.origin}/interview/room/${scheduledResult.meetingLink}`
     : null;
 
+  const openDatePicker = () => {
+    const input = dateInputRef.current as (HTMLInputElement & {
+      showPicker?: () => void;
+    }) | null;
+    input?.showPicker?.();
+  };
+
   const handleCopyLink = () => {
     if (meetingUrl) {
       navigator.clipboard.writeText(meetingUrl);
@@ -176,238 +178,249 @@ export default function ScheduleInterviewKanbanModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Video className="h-5 w-5 text-blue-600" />
+    <Modal isOpen={open} onClose={handleClose} className="max-w-[600px] p-0">
+      <div className="flex max-h-[90vh] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-[0_30px_80px_rgba(0,0,0,0.35)]">
+        <div className="flex items-center gap-2 border-b border-border/60 px-6 py-5">
+          <Video className="h-5 w-5 text-blue-600" />
+          <h2 className="text-lg font-semibold text-foreground">
             Lên lịch phỏng vấn
-          </DialogTitle>
-        </DialogHeader>
+          </h2>
+        </div>
 
-        {/* Success state: show meeting link */}
-        {scheduledResult ? (
-          <div className="space-y-4 py-2">
-            <div className="flex items-center gap-2 rounded-lg bg-green-50 p-4 dark:bg-green-900/20">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="font-medium text-green-800 dark:text-green-300">
-                  Đã lên lịch phỏng vấn thành công!
-                </p>
-                <p className="text-sm text-green-600 dark:text-green-400">
-                  {displayName} -{" "}
-                  {new Date(scheduledResult.scheduledAt).toLocaleString("vi-VN")}
-                </p>
-              </div>
-            </div>
-
-            {scheduledResult.type === "ONLINE" && meetingUrl && (
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">
-                  Link phòng phỏng vấn WebRTC
-                </Label>
-                <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-                  <Video className="h-4 w-4 shrink-0 text-blue-600" />
-                  <span className="flex-1 truncate text-sm text-blue-700 dark:text-blue-300">
-                    {meetingUrl}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCopyLink}
-                    className="shrink-0"
-                  >
-                    {copied ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => window.open(meetingUrl, "_blank")}
-                    className="shrink-0"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          {/* Success state: show meeting link */}
+          {scheduledResult ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 p-4">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="font-medium text-green-900">
+                    Đã lên lịch phỏng vấn thành công!
+                  </p>
+                  <p className="text-sm text-green-700">
+                    {displayName} -{" "}
+                    {new Date(scheduledResult.scheduledAt).toLocaleString("vi-VN")}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Chia sẻ link này với ứng viên để tham gia phỏng vấn online
-                </p>
               </div>
-            )}
 
-            {scheduledResult.type === "OFFLINE" && scheduledResult.location && (
-              <div className="rounded-lg border p-3">
-                <p className="text-sm text-muted-foreground">
-                  <span className="font-medium">Địa điểm:</span>{" "}
-                  {scheduledResult.location}
-                </p>
-              </div>
-            )}
+              {scheduledResult.type === "ONLINE" && meetingUrl && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">
+                    Link phòng phỏng vấn WebRTC
+                  </Label>
+                  <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                    <Video className="h-4 w-4 shrink-0 text-blue-600" />
+                    <span className="flex-1 truncate text-sm text-blue-700">
+                      {meetingUrl}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleCopyLink}
+                      className="shrink-0"
+                    >
+                      {copied ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => window.open(meetingUrl, "_blank")}
+                      className="shrink-0"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Chia sẻ link này với ứng viên để tham gia phỏng vấn online
+                  </p>
+                </div>
+              )}
 
-            <DialogFooter>
-              <Button onClick={handleClose}>Đóng</Button>
-            </DialogFooter>
-          </div>
-        ) : (
-          <>
-            {/* Candidate selector */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                <Users className="h-4 w-4" />
-                Chọn ứng viên
-              </Label>
-              {loadingApps ? (
-                <div className="rounded-lg border p-3 text-center text-sm text-muted-foreground">
-                  Đang tải danh sách ứng viên...
+              {scheduledResult.type === "OFFLINE" && scheduledResult.location && (
+                <div className="rounded-lg border p-3">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium">Địa điểm:</span>{" "}
+                    {scheduledResult.location}
+                  </p>
                 </div>
-              ) : unscheduledApps.length === 0 ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
-                  Tất cả ứng viên của job này đã được lên lịch phỏng vấn
-                </div>
-              ) : (
-                <Select value={selectedAppId} onValueChange={setSelectedAppId} disabled={!!preselectedApplicationId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn ứng viên chưa lên lịch..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {unscheduledApps.map((app) => (
-                      <SelectItem
-                        key={app.applicationId}
-                        value={app.applicationId}
-                      >
-                        <div className="flex flex-col">
-                          <span>{app.candidateName}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {app.candidateEmail}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               )}
             </div>
-
-            {selectedApp && (
-              <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  <span className="font-medium">Ứng viên:</span>{" "}
-                  {selectedApp.candidateName}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  <span className="font-medium">Email:</span>{" "}
-                  {selectedApp.candidateEmail}
-                </p>
-                {selectedApp.jobTitle && (
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
-                    <span className="font-medium">Vị trí:</span>{" "}
-                    {selectedApp.jobTitle}
-                  </p>
+          ) : (
+            <div className="space-y-4">
+              {/* Candidate selector */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <Users className="h-4 w-4" />
+                  Chọn ứng viên
+                </Label>
+                {loadingApps ? (
+                  <div className="rounded-lg border p-3 text-center text-sm text-muted-foreground">
+                    Đang tải danh sách ứng viên...
+                  </div>
+                ) : unscheduledApps.length === 0 ? (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                    Tất cả ứng viên của job này đã được lên lịch phỏng vấn
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedAppId}
+                    onValueChange={setSelectedAppId}
+                    disabled={!!preselectedApplicationId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn ứng viên chưa lên lịch..." />
+                    </SelectTrigger>
+                    <SelectContent className="border border-slate-200 bg-white text-slate-900">
+                      {unscheduledApps.map((app) => (
+                        <SelectItem
+                          key={app.applicationId}
+                          value={app.applicationId}
+                        >
+                          <div className="flex flex-col">
+                            <span>{app.candidateName}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {app.candidateEmail}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
-            )}
 
-            {/* Scheduling form */}
-            <div className="grid gap-4 py-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="kanban-interview-date">Ngày</Label>
-                  <Input
-                    id="kanban-interview-date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="kanban-interview-time">Giờ bắt đầu</Label>
-                  <Input
-                    id="kanban-interview-time"
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Thời lượng (phút)</Label>
-                  <Select
-                    value={String(duration)}
-                    onValueChange={(v) => setDuration(Number(v))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="30">30 phút</SelectItem>
-                      <SelectItem value="45">45 phút</SelectItem>
-                      <SelectItem value="60">60 phút</SelectItem>
-                      <SelectItem value="90">90 phút</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Hình thức</Label>
-                  <Select
-                    value={type}
-                    onValueChange={(v) => setType(v as InterviewType)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ONLINE">
-                        <span className="flex items-center gap-1.5">
-                          <Video className="h-3.5 w-3.5" />
-                          Online (WebRTC)
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="OFFLINE">Offline</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {type === "OFFLINE" && (
-                <div className="space-y-2">
-                  <Label htmlFor="kanban-interview-location">Địa điểm</Label>
-                  <Input
-                    id="kanban-interview-location"
-                    placeholder="Ví dụ: Phòng họp tầng 5"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                  />
-                </div>
-              )}
-
-              {type === "ONLINE" && (
-                <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/20">
-                  <p className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
-                    <Video className="h-3.5 w-3.5" />
-                    Link phòng WebRTC sẽ được tạo tự động sau khi lên lịch
+              {selectedApp && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-sm text-slate-800">
+                    <span className="font-medium">Ứng viên:</span>{" "}
+                    {selectedApp.candidateName}
                   </p>
+                  <p className="text-sm text-slate-800">
+                    <span className="font-medium">Email:</span>{" "}
+                    {selectedApp.candidateEmail}
+                  </p>
+                  {selectedApp.jobTitle && (
+                    <p className="text-sm text-slate-800">
+                      <span className="font-medium">Vị trí:</span>{" "}
+                      {selectedApp.jobTitle}
+                    </p>
+                  )}
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="kanban-interview-notes">Ghi chú</Label>
-                <Textarea
-                  id="kanban-interview-notes"
-                  placeholder="Ghi chú cho buổi phỏng vấn..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                />
+              {/* Scheduling form */}
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="kanban-interview-date">Ngày</Label>
+                    <Input
+                      ref={dateInputRef}
+                      id="kanban-interview-date"
+                      type="date"
+                      value={date}
+                      onClick={openDatePicker}
+                      onFocus={openDatePicker}
+                      onChange={(e) => setDate(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="kanban-interview-time">Giờ bắt đầu</Label>
+                    <Input
+                      id="kanban-interview-time"
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Thời lượng (phút)</Label>
+                    <Select
+                      value={String(duration)}
+                      onValueChange={(v) => setDuration(Number(v))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border border-slate-200 bg-white text-slate-900">
+                        <SelectItem value="30">30 phút</SelectItem>
+                        <SelectItem value="45">45 phút</SelectItem>
+                        <SelectItem value="60">60 phút</SelectItem>
+                        <SelectItem value="90">90 phút</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Hình thức</Label>
+                    <Select
+                      value={type}
+                      onValueChange={(v) => setType(v as InterviewType)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border border-slate-200 bg-white text-slate-900">
+                        <SelectItem value="ONLINE">
+                          <span className="flex items-center gap-1.5">
+                            <Video className="h-3.5 w-3.5" />
+                            Online (WebRTC)
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="OFFLINE">Offline</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {type === "OFFLINE" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="kanban-interview-location">Địa điểm</Label>
+                    <Input
+                      id="kanban-interview-location"
+                      placeholder="Ví dụ: Phòng họp tầng 5"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {type === "ONLINE" && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                    <p className="flex items-center gap-1.5 text-xs text-blue-700">
+                      <Video className="h-3.5 w-3.5" />
+                      Link phòng WebRTC sẽ được tạo tự động sau khi lên lịch
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="kanban-interview-notes">Ghi chú</Label>
+                  <Textarea
+                    id="kanban-interview-notes"
+                    placeholder="Ghi chú cho buổi phỏng vấn..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={2}
+                  />
+                </div>
               </div>
             </div>
+          )}
+        </div>
 
-            <DialogFooter>
+        <div className="flex flex-wrap justify-end gap-3 border-t border-border/60 px-6 py-5">
+          {scheduledResult ? (
+            <Button onClick={handleClose}>Đóng</Button>
+          ) : (
+            <>
               <Button
                 variant="outline"
                 onClick={handleClose}
@@ -421,10 +434,10 @@ export default function ScheduleInterviewKanbanModal({
               >
                 {isLoading ? "Đang xử lý..." : "Lên lịch phỏng vấn"}
               </Button>
-            </DialogFooter>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+            </>
+          )}
+        </div>
+      </div>
+    </Modal>
   );
 }

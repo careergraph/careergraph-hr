@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CALENDAR_LEVELS,
   CALENDAR_LEVEL_META,
@@ -103,6 +103,8 @@ export const CalendarModalForm = ({
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [loadingApps, setLoadingApps] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const startDateInputRef = useRef<HTMLInputElement>(null);
+  const endDateInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch jobs when modal opens in create mode
   useEffect(() => {
@@ -205,9 +207,14 @@ export const CalendarModalForm = ({
     }
   };
 
+  const openDatePicker = (input: HTMLInputElement | null) => {
+    const typedInput = input as (HTMLInputElement & { showPicker?: () => void }) | null;
+    typedInput?.showPicker?.();
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-[760px] p-0">
-      <div className="flex max-h-[80vh] flex-col overflow-hidden rounded-3xl bg-card">
+      <div className="flex max-h-[80vh] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-[0_30px_80px_rgba(0,0,0,0.35)]">
         <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
           <div>
             <h2 className="text-lg font-semibold text-foreground">
@@ -217,13 +224,13 @@ export const CalendarModalForm = ({
               Ghi rõ thông tin để ứng viên và đội ngũ phối hợp hiệu quả.
             </p>
           </div>
-          <Badge className="bg-brand-500/10 text-brand-600 pr-15">
+          <Badge className="bg-brand-500/15 text-brand-700 pr-15">
             <CalendarClock className="mr-1 size-3.5" />
             Lịch tuyển dụng
           </Badge>
         </div>
         <ScrollArea className="flex-1 h-full px-6 py-6 overflow-y-auto">
-          <div className="grid gap-5 pr-4">
+          <div className="grid gap-5 p-4">
             {/* ========== CREATE MODE: Job → Candidate → Type ========== */}
             {isCreateMode && (
               <>
@@ -246,7 +253,7 @@ export const CalendarModalForm = ({
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn công việc..." />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="border border-gray-400 bg-white text-slate-900">
                         {jobs.map((job) => (
                           <SelectItem key={job.id} value={job.id}>
                             {job.title}
@@ -277,7 +284,7 @@ export const CalendarModalForm = ({
                         <SelectTrigger>
                           <SelectValue placeholder="Chọn ứng viên chưa lên lịch..." />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="border border-slate-200 bg-white text-slate-900">
                           {unscheduledApps.map((app) => (
                             <SelectItem key={app.applicationId} value={app.applicationId}>
                               <div className="flex flex-col">
@@ -325,7 +332,7 @@ export const CalendarModalForm = ({
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="border border-slate-200 bg-white text-slate-900">
                         <SelectItem value="ONLINE">
                           <span className="flex items-center gap-1.5">
                             <Video className="h-3.5 w-3.5" />
@@ -345,7 +352,7 @@ export const CalendarModalForm = ({
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="border border-slate-200 bg-white text-slate-900">
                         <SelectItem value="30">30 phút</SelectItem>
                         <SelectItem value="45">45 phút</SelectItem>
                         <SelectItem value="60">60 phút</SelectItem>
@@ -451,7 +458,10 @@ export const CalendarModalForm = ({
                 <Input
                   id="event-start-date"
                   type="date"
+                  ref={startDateInputRef}
                   value={eventStartDate}
+                  onClick={() => openDatePicker(startDateInputRef.current)}
+                  onFocus={() => openDatePicker(startDateInputRef.current)}
                   onChange={(e) => onStartDateChange(e.target.value)}
                   min={isCreateMode ? new Date().toISOString().split("T")[0] : undefined}
                 />
@@ -478,7 +488,10 @@ export const CalendarModalForm = ({
                   <Input
                     id="event-end-date"
                     type="date"
+                    ref={endDateInputRef}
                     value={eventEndDate}
+                    onClick={() => openDatePicker(endDateInputRef.current)}
+                    onFocus={() => openDatePicker(endDateInputRef.current)}
                     onChange={(e) => onEndDateChange(e.target.value)}
                   />
                 </div>

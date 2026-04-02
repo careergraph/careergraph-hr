@@ -3,12 +3,9 @@ import PageMeta from "@/components/common/PageMeta";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import { useInterviewStore } from "@/stores/interviewStore";
 import InterviewCard from "./InterviewCard";
-import ScheduleInterviewModal from "./ScheduleInterviewModal";
 import FeedbackModal from "./FeedbackModal";
-import type { Interview, InterviewStatus } from "@/types/interview";
-import { Button } from "@/components/ui/button";
+import type { Interview} from "@/types/interview";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_TABS: { value: string; label: string }[] = [
