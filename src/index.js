@@ -21,9 +21,11 @@ const io = new Server(server, {
 // rooms: Map<roomCode, Set<socketId>>           — admitted peers
 // hosts: Map<roomCode, socketId>                — the HR host socket
 // waitingRoom: Map<roomCode, Map<socketId, { userId, email }>>  — pending candidates
+// admittedUsers: Map<roomCode, Set<userId>>     — candidates who were approved at least once
 const rooms = new Map();
 const hosts = new Map();
 const waitingRoom = new Map();
+const admittedUsers = new Map();
 
 // ── Auth middleware ─────────────────────────────────────────
 io.use((socket, next) => {
@@ -92,6 +94,14 @@ io.on("connection", (socket) => {
         }
       }
     } else {
+      const admitted = admittedUsers.get(roomCode);
+      if (admitted?.has(userId)) {
+        socket.emit("admitted");
+        addToRoom(socket, roomCode);
+        console.log(`[rejoin] ${userId} rejoined ${roomCode} (already admitted)`);
+        return;
+      }
+
       // Candidate: check if host is present. If no host yet, go to waiting room.
       // If host exists, send join request for approval.
       if (!waitingRoom.has(roomCode)) waitingRoom.set(roomCode, new Map());
@@ -120,6 +130,8 @@ io.on("connection", (socket) => {
 
     const target = io.sockets.sockets.get(socketId);
     if (target) {
+      if (!admittedUsers.has(roomCode)) admittedUsers.set(roomCode, new Set());
+      admittedUsers.get(roomCode).add(target.data?.user?.sub);
       target.emit("admitted");
       addToRoom(target, roomCode);
     }
@@ -147,6 +159,7 @@ io.on("connection", (socket) => {
 
     const target = io.sockets.sockets.get(socketId);
     if (target) {
+      admittedUsers.get(roomCode)?.delete(target.data?.user?.sub);
       io.to(socketId).emit("kicked");
       target.leave(roomCode);
       const roomSet = rooms.get(roomCode);
@@ -218,6 +231,13 @@ io.on("connection", (socket) => {
       // Remove host
       if (hosts.get(roomCode) === socket.id) {
         hosts.delete(roomCode);
+      }
+
+      const roomSetAfter = rooms.get(roomCode);
+      const waitingAfter = waitingRoom.get(roomCode);
+      const hasHost = hosts.has(roomCode);
+      if ((!roomSetAfter || roomSetAfter.size === 0) && (!waitingAfter || waitingAfter.size === 0) && !hasHost) {
+        admittedUsers.delete(roomCode);
       }
     }
     console.log(`[disconnect] ${userId}`);
