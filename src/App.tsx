@@ -23,41 +23,53 @@ import ForgotPassword from "./pages/AuthPages/ForgotPassword";
 import ResetPassword from "./pages/AuthPages/ResetPassword";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+const HAS_VALID_GOOGLE_CLIENT_ID =
+  GOOGLE_CLIENT_ID.trim().length > 0 && GOOGLE_CLIENT_ID.includes(".apps.googleusercontent.com");
+
+const AppRoutes = () => (
+  <>
+    <Toaster richColors />
+    <Router>
+      <ScrollToTop />
+      <Routes>
+        <Route index element={<LandingPage />} />
+
+        <Route element={<RequireAuth redirectTo="/signin" />}>
+          <Route element={<AppLayout />}>
+            <Route path="/dashboard" element={<Home />} />
+            <Route path="/profile" element={<UserProfiles />} />
+            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/interviews" element={<InterviewList />} />
+            <Route path="/interviews/:id" element={<InterviewDetail />} />
+            <Route path="/interview/room/:roomCode" element={<InterviewRoom />} />
+            <Route path="/kanbans" element={<Candidates />} />
+            <Route path="/kanbans/:jobId" element={<Candidates />} />
+            <Route path="/jobs" element={<JobsGrid />} />
+            <Route path="/jobs/new" element={<AddJob />} />
+            <Route path="/employees" element={<EmployeesTable />} />
+            <Route path="/candidates" element={<SuggestionCandidates />} />
+          </Route>
+        </Route>
+
+        <Route path="/signin" element={<SignIn />} />
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/verify-otp" element={<Verify />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
+  </>
+);
 
 export default function App() {
+  if (!HAS_VALID_GOOGLE_CLIENT_ID) {
+    return <AppRoutes />;
+  }
+
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <Toaster richColors />
-      <Router>
-        <ScrollToTop />
-        <Routes>
-          <Route index element={<LandingPage />} />
-
-          <Route element={<RequireAuth redirectTo="/signin" />}>
-            <Route element={<AppLayout />}>
-              <Route path="/dashboard" element={<Home />} />
-              <Route path="/profile" element={<UserProfiles />} />
-              <Route path="/calendar" element={<Calendar />} />
-              <Route path="/interviews" element={<InterviewList />} />
-              <Route path="/interviews/:id" element={<InterviewDetail />} />
-              <Route path="/interview/room/:roomCode" element={<InterviewRoom />} />
-              <Route path="/kanbans" element={<Candidates />} />
-              <Route path="/kanbans/:jobId" element={<Candidates />} />
-              <Route path="/jobs" element={<JobsGrid />} />
-              <Route path="/jobs/new" element={<AddJob />} />
-              <Route path="/employees" element={<EmployeesTable />} />
-              <Route path="/candidates" element={<SuggestionCandidates />} />
-            </Route>
-          </Route>
-
-          <Route path="/signin" element={<SignIn />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/verify-otp" element={<Verify />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
+      <AppRoutes />
     </GoogleOAuthProvider>
   );
 }
