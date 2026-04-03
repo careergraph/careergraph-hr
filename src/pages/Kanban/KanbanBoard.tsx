@@ -105,14 +105,17 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
         const stageToStatus: Record<string, CandidateStatusType> = {
           APPLIED: "apply",
           SUBMITTED: "apply",
-          // SCREENING is returned by the API for candidates who have been
-          // reviewed and should appear in the 'Liên hệ' column in the UI.
-          SCREENING: "meeting",
-          INTERVIEW_SCHEDULED: "meeting",
-          PENDING_RESCHEDULE: "meeting",
-          INVITED: "meeting",
+          SCREENING: "screening",
+          HR_CONTACTED: "screening",
+          SCHEDULED: "screening",
+          INTERVIEW_SCHEDULED: "interview",
+          PENDING_RESCHEDULE: "interview",
+          INVITED: "interview",
           INTERVIEW: "interview",
+          INTERVIEW_COMPLETED: "interviewed",
           TRIAL: "trial",
+          OFFER_EXTENDED: "offer",
+          OFFER_ACCEPTED: "offer",
           HIRED: "hired",
         } as const;
 
@@ -595,9 +598,11 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     // Map local status -> backend stage string
     const statusToStage: Record<CandidateStatus, string> = {
       apply: "APPLIED",
-      meeting: "SCHEDULED",
+      screening: "SCREENING",
       interview: "INTERVIEW",
+      interviewed: "INTERVIEW_COMPLETED",
       trial: "TRIAL",
+      offer: "OFFER_EXTENDED",
       hired: "HIRED",
     };
 

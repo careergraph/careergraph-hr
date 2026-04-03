@@ -93,6 +93,66 @@ const fetchByRoomCode = async (roomCode: string) => {
   return response.data;
 };
 
+// ── Room lifecycle API ──────────────────────────────────────
+
+const fetchRoom = async (roomCode: string) => {
+  const response = await api.get(`/rooms/${roomCode}`);
+  return response.data;
+};
+
+const openRoom = async (roomCode: string) => {
+  const response = await api.post(`/rooms/${roomCode}/open`);
+  return response.data;
+};
+
+const closeRoom = async (roomCode: string) => {
+  const response = await api.post(`/rooms/${roomCode}/close`);
+  return response.data;
+};
+
+const fetchRoomParticipants = async (roomCode: string) => {
+  const response = await api.get(`/rooms/${roomCode}/participants`);
+  return response.data;
+};
+
+const admitParticipant = async (roomCode: string, candidateId: string) => {
+  const response = await api.post(`/rooms/${roomCode}/participants/${candidateId}/admit`);
+  return response.data;
+};
+
+const removeParticipant = async (roomCode: string, candidateId: string) => {
+  const response = await api.post(`/rooms/${roomCode}/participants/${candidateId}/remove`);
+  return response.data;
+};
+
+const completeParticipant = async (roomCode: string, candidateId: string) => {
+  const response = await api.post(`/rooms/${roomCode}/participants/${candidateId}/complete`);
+  return response.data;
+};
+
+// ── Interview start & recordings ────────────────────────────
+
+const startInterview = async (interviewId: string) => {
+  const response = await api.post(`${BASE}/${interviewId}/start`);
+  return response.data;
+};
+
+const saveRecording = async (interviewId: string, data: {
+  fileKey: string;
+  fileSize?: number;
+  durationSeconds?: number;
+  mimeType?: string;
+  participantId?: string;
+}) => {
+  const response = await api.post(`${BASE}/${interviewId}/recordings`, data);
+  return response.data;
+};
+
+const fetchRecordings = async (interviewId: string) => {
+  const response = await api.get(`${BASE}/${interviewId}/recordings`);
+  return response.data;
+};
+
 const uploadInterviewRecording = async (params: {
   file: Blob;
   ownerType: "company" | "candidate";
@@ -129,6 +189,16 @@ export const interviewService = {
   rejectProposal,
   fetchByRoomCode,
   uploadInterviewRecording,
+  fetchRoom,
+  openRoom,
+  closeRoom,
+  fetchRoomParticipants,
+  admitParticipant,
+  removeParticipant,
+  completeParticipant,
+  startInterview,
+  saveRecording,
+  fetchRecordings,
 };
 
 export default interviewService;

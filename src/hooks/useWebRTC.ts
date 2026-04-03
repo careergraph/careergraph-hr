@@ -23,6 +23,14 @@ export interface JoinRequest {
   email?: string;
 }
 
+export type RoomStatus = "SCHEDULED" | "WAITING" | "ACTIVE" | "CLOSING" | "ENDED" | "EXPIRED";
+
+export interface PeerMediaState {
+  camera: boolean;
+  mic: boolean;
+  screen: boolean;
+}
+
 export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
   const socketRef = useRef<Socket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -40,6 +48,13 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
 
   // Track the remote peer's socket ID for kick
   const [remotePeerId, setRemotePeerId] = useState<string | null>(null);
+
+  // Room lifecycle
+  const [roomStatus, setRoomStatus] = useState<RoomStatus>("WAITING");
+  const [waitingCount, setWaitingCount] = useState(0);
+
+  // Peer media states (remote participants)
+  const [peerMediaStates, setPeerMediaStates] = useState<Record<string, PeerMediaState>>({});
 
   // ── Cleanup helpers ──────────────────────────────────
   const closePeer = useCallback(() => {
@@ -77,6 +92,10 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
         stream.getTracks().forEach((track) => {
           pc.addTrack(track, stream);
         });
+      } else {
+        // No local media — add receive-only transceivers so we can still get remote tracks
+        pc.addTransceiver("audio", { direction: "recvonly" });
+        pc.addTransceiver("video", { direction: "recvonly" });
       }
 
       // Receive remote tracks
@@ -144,8 +163,15 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
     });
 
     // Existing peers already in room — we initiate
-    socket.on("room-peers", (peers: { socketId: string }[]) => {
+    socket.on("room-peers", (peers: { socketId: string; userId?: string; isHost?: boolean; media?: PeerMediaState }[]) => {
       setPeerCount(peers.length);
+      // Update peer media states
+      const newStates: Record<string, PeerMediaState> = {};
+      for (const p of peers) {
+        if (p.media) newStates[p.socketId] = p.media;
+      }
+      setPeerMediaStates((prev) => ({ ...prev, ...newStates }));
+
       if (peers.length > 0) {
         setRemotePeerId(peers[0].socketId);
         createPeer(socket, peers[0].socketId, true);
@@ -217,6 +243,20 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
 
     socket.on("waiting-user-left", ({ socketId }: { socketId: string }) => {
       setJoinRequests((prev) => prev.filter((r) => r.socketId !== socketId));
+    });
+
+    // ── Room lifecycle events ──────────────────────────
+    socket.on("room-status-changed", ({ status }: { status: RoomStatus }) => {
+      setRoomStatus(status);
+    });
+
+    socket.on("waiting-count", ({ count }: { count: number }) => {
+      setWaitingCount(count);
+    });
+
+    // ── Peer media tracking ────────────────────────────
+    socket.on("peer-media-changed", ({ socketId, media }: { socketId: string; userId?: string; media: PeerMediaState }) => {
+      setPeerMediaStates((prev) => ({ ...prev, [socketId]: media }));
     });
 
     return () => {
@@ -294,6 +334,29 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
     socketRef.current?.emit("recording-stopped");
   }, []);
 
+  // ── Room lifecycle controls (HR host) ────────────────
+  const emitOpenRoom = useCallback(() => {
+    socketRef.current?.emit("open-room");
+  }, []);
+
+  const emitCloseRoom = useCallback(() => {
+    socketRef.current?.emit("close-room");
+  }, []);
+
+  const emitEndRoom = useCallback(() => {
+    socketRef.current?.emit("end-room");
+  }, []);
+
+  // ── Media state broadcast ────────────────────────────
+  const emitMediaStateChanged = useCallback((state: Partial<PeerMediaState>) => {
+    socketRef.current?.emit("media-state-changed", state);
+  }, []);
+
+  // ── Disable peer media (HR → candidate) ─────────────
+  const disablePeerMedia = useCallback((socketId: string, kind: "camera" | "mic") => {
+    socketRef.current?.emit("disable-peer-media", { socketId, kind });
+  }, []);
+
   return {
     remoteStream,
     connected,
@@ -306,5 +369,13 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
     emitRecordingStarted,
     emitRecordingStopped,
     remotePeerId,
+    roomStatus,
+    waitingCount,
+    peerMediaStates,
+    emitOpenRoom,
+    emitCloseRoom,
+    emitEndRoom,
+    emitMediaStateChanged,
+    disablePeerMedia,
   };
 }

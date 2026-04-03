@@ -3,7 +3,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Briefcase, Users, CheckCircle, Star, UserCheck } from "lucide-react";
+import { Briefcase, Users, CheckCircle, Star, UserCheck, FileCheck, Gift, Search } from "lucide-react";
 import { CandidateCard } from "./CandidateCard";
 import { Candidate, Status as CandidateStatus } from "@/types/candidate";
 
@@ -32,11 +32,11 @@ const COLUMN_STYLES: Record<
     badge: "bg-blue-500/10 text-blue-600",
     icon: <Briefcase className="h-5 w-5 text-blue-500" />,
   },
-  meeting: {
+  screening: {
     accent: "from-amber-400/60 via-amber-400/20 to-transparent",
     border: "border-amber-100/70",
     badge: "bg-amber-500/10 text-amber-600",
-    icon: <Users className="h-5 w-5 text-amber-500" />,
+    icon: <Search className="h-5 w-5 text-amber-500" />,
   },
   interview: {
     accent: "from-purple-500/60 via-purple-400/20 to-transparent",
@@ -44,11 +44,23 @@ const COLUMN_STYLES: Record<
     badge: "bg-purple-500/10 text-purple-600",
     icon: <UserCheck className="h-5 w-5 text-purple-500" />,
   },
+  interviewed: {
+    accent: "from-indigo-500/60 via-indigo-400/20 to-transparent",
+    border: "border-indigo-100/70",
+    badge: "bg-indigo-500/10 text-indigo-600",
+    icon: <FileCheck className="h-5 w-5 text-indigo-500" />,
+  },
   trial: {
     accent: "from-orange-500/60 via-orange-400/25 to-transparent",
     border: "border-orange-100/70",
     badge: "bg-orange-500/10 text-orange-600",
     icon: <Star className="h-5 w-5 text-orange-500" />,
+  },
+  offer: {
+    accent: "from-teal-500/60 via-teal-400/20 to-transparent",
+    border: "border-teal-100/70",
+    badge: "bg-teal-500/10 text-teal-600",
+    icon: <Gift className="h-5 w-5 text-teal-500" />,
   },
   hired: {
     accent: "from-emerald-500/60 via-emerald-400/20 to-transparent",

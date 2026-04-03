@@ -51,8 +51,9 @@ export default function InterviewCard({
 }: InterviewCardProps) {
   const scheduledDate = new Date(interview.scheduledAt);
   const endDate = new Date(interview.endAt);
-  const isActive = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE"].includes(interview.interviewStatus);
+  const isActive = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"].includes(interview.interviewStatus);
   const isCompleted = interview.interviewStatus === "COMPLETED";
+  const canJoinRoom = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(interview.interviewStatus);
   const navigate = useNavigate();
 
   return (
@@ -143,7 +144,7 @@ export default function InterviewCard({
         </div>
       )}
 
-      {interview.type === "ONLINE" && interview.meetingLink && isActive && (
+      {interview.type === "ONLINE" && interview.meetingLink && canJoinRoom && (
         <button
           type="button"
           onClick={(e) => {
@@ -152,7 +153,8 @@ export default function InterviewCard({
           }}
           className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
         >
-          <ExternalLink className="h-3.5 w-3.5" /> Tham gia phỏng vấn
+          <ExternalLink className="h-3.5 w-3.5" />
+          {interview.interviewStatus === "IN_PROGRESS" ? "Tham gia lại" : "Tham gia phỏng vấn"}
         </button>
       )}
 

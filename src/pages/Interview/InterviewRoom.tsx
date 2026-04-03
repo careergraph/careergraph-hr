@@ -22,12 +22,18 @@ import {
   X,
   ShieldAlert,
   CheckCircle2,
+  DoorOpen,
+  DoorClosed,
+  Radio,
+  ClipboardCheck,
 } from "lucide-react";
 import { interviewService } from "@/services/interviewService";
 import { useWebRTC } from "@/hooks/useWebRTC";
+import type { RoomStatus } from "@/hooks/useWebRTC";
 import { useAuthStore } from "@/stores/authStore";
 import type { Interview } from "@/types/interview";
 import FeedbackModal from "./FeedbackModal";
+import RecordingAssignModal from "./RecordingAssignModal";
 
 const EARLY_JOIN_MINUTES = 15;
 
@@ -63,7 +69,12 @@ export default function InterviewRoom() {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [ending, setEnding] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackIsPostMeeting, setFeedbackIsPostMeeting] = useState(false);
   const [isUploadingRecording, setIsUploadingRecording] = useState(false);
+
+  // Recording assign modal state
+  const [showRecordingAssignModal, setShowRecordingAssignModal] = useState(false);
+  const [pendingRecordingUrl, setPendingRecordingUrl] = useState<string | null>(null);
 
   // Interview info & early join state
   const [interview, setInterview] = useState<Interview | null>(null);
@@ -89,6 +100,14 @@ export default function InterviewRoom() {
     emitRecordingStarted,
     emitRecordingStopped,
     remotePeerId,
+    roomStatus,
+    waitingCount,
+    peerMediaStates,
+    emitOpenRoom,
+    emitCloseRoom,
+    emitEndRoom,
+    emitMediaStateChanged,
+    disablePeerMedia,
   } = useWebRTC({
     roomCode: joined && roomCode ? roomCode : "",
     token: accessToken ?? "",
@@ -165,41 +184,125 @@ export default function InterviewRoom() {
     return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
   };
 
-  const startCamera = async () => {
+  // ── Media device detection & initialization ──────────
+  // Distinguishes "no device" (allow join) from "permission denied / busy" (block join).
+  const [hasCamera, setHasCamera] = useState<boolean | null>(null);
+  const [hasMic, setHasMic] = useState<boolean | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+
+  const initMedia = async (): Promise<"ok" | "no-devices" | "error"> => {
+    setMediaError(null);
+
     if (!navigator.mediaDevices?.getUserMedia) {
-      toast.error("Trình duyệt không hỗ trợ truy cập camera/microphone");
-      return false;
+      toast.error("Trình duyệt không hỗ trợ truy cập thiết bị media");
+      setMediaError("unsupported");
+      return "error";
     }
 
+    // Step 1: Detect which device types are available
+    let devices: MediaDeviceInfo[] = [];
     try {
-      let stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+      devices = await navigator.mediaDevices.enumerateDevices();
+    } catch {
+      // enumerateDevices failed — try getUserMedia directly below
+    }
 
-      if (!stream || stream.getTracks().length === 0) {
-        const videoOnly = await navigator.mediaDevices
-          .getUserMedia({ video: true, audio: false })
-          .catch(() => null);
-        const audioOnly = await navigator.mediaDevices
-          .getUserMedia({ video: false, audio: true })
-          .catch(() => null);
+    const videoInputs = devices.filter((d) => d.kind === "videoinput");
+    const audioInputs = devices.filter((d) => d.kind === "audioinput");
+    const wantVideo = videoInputs.length > 0;
+    const wantAudio = audioInputs.length > 0;
 
-        if (videoOnly || audioOnly) {
-          stream = new MediaStream([
-            ...(videoOnly?.getVideoTracks() ?? []),
-            ...(audioOnly?.getAudioTracks() ?? []),
-          ]);
-          toast.warning("Chỉ truy cập được một phần thiết bị (camera hoặc microphone)");
+    setHasCamera(wantVideo);
+    setHasMic(wantAudio);
+
+    // No media devices at all → view-only mode, allow join
+    if (!wantVideo && !wantAudio) {
+      setCameraOn(false);
+      setMicOn(false);
+      return "no-devices";
+    }
+
+    // Step 2: Request only the devices that exist
+    localStream?.getTracks().forEach((t) => t.stop());
+
+    let stream: MediaStream | null = null;
+
+    // Try combined first if both exist
+    if (wantVideo && wantAudio) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      } catch {
+        stream = null; // Fall through to individual attempts
+      }
+    }
+
+    // If combined failed or only one type, try individually
+    if (!stream || stream.getTracks().length === 0) {
+      let videoStream: MediaStream | null = null;
+      let audioStream: MediaStream | null = null;
+      let videoError: DOMException | null = null;
+      let audioError: DOMException | null = null;
+
+      if (wantVideo) {
+        try {
+          videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        } catch (e: any) {
+          videoError = e;
         }
       }
 
-      if (!stream || stream.getTracks().length === 0) {
-        toast.error("Không có camera/microphone khả dụng");
-        return false;
+      if (wantAudio) {
+        try {
+          audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        } catch (e: any) {
+          audioError = e;
+        }
       }
 
-      localStream?.getTracks().forEach((t) => t.stop());
+      // Check for blocking errors (permission denied / device busy)
+      const blockingErrors = [videoError, audioError].filter(Boolean) as DOMException[];
+      const permissionDenied = blockingErrors.filter((e) => e.name === "NotAllowedError");
+      const deviceBusy = blockingErrors.filter((e) => e.name === "NotReadableError" || e.name === "AbortError");
+
+      if (permissionDenied.length > 0 && !videoStream && !audioStream) {
+        const msg = "Bạn đã chặn quyền truy cập camera/microphone.\nHãy mở Cài đặt trình duyệt → Quyền riêng tư → Cho phép camera/microphone cho trang này, sau đó tải lại trang.";
+        toast.error(msg, { duration: 8000 });
+        setMediaError("permission-denied");
+        return "error";
+      }
+
+      if (deviceBusy.length > 0 && !videoStream && !audioStream) {
+        const msg = "Thiết bị camera/microphone đang được sử dụng bởi ứng dụng khác.\nHãy đóng ứng dụng đó và thử lại.";
+        toast.error(msg, { duration: 8000 });
+        setMediaError("device-busy");
+        return "error";
+      }
+
+      // Build stream from what we got
+      const tracks = [
+        ...(videoStream?.getVideoTracks() ?? []),
+        ...(audioStream?.getAudioTracks() ?? []),
+      ];
+
+      if (tracks.length > 0) {
+        stream = new MediaStream(tracks);
+      }
+
+      // Report partial failures as warnings
+      if (wantVideo && !videoStream && audioStream) {
+        const reason = videoError?.name === "NotAllowedError" ? " (quyền bị chặn)" : "";
+        toast.warning(`Không thể truy cập camera${reason}. Bạn sẽ tham gia chỉ với microphone.`);
+        setHasCamera(false);
+      }
+      if (wantAudio && !audioStream && videoStream) {
+        const reason = audioError?.name === "NotAllowedError" ? " (quyền bị chặn)" : "";
+        toast.warning(`Không thể truy cập microphone${reason}. Bạn sẽ tham gia chỉ với camera.`);
+        setHasMic(false);
+      }
+    }
+
+    // Step 3: Apply stream
+    if (stream && stream.getTracks().length > 0) {
       setLocalStream(stream);
       cameraTrackRef.current = stream.getVideoTracks()[0] ?? null;
       setCameraOn(stream.getVideoTracks().some((t) => t.enabled));
@@ -207,53 +310,49 @@ export default function InterviewRoom() {
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
-      return true;
-    } catch (error: any) {
-      const message =
-        error?.name === "NotAllowedError"
-          ? "Bạn đã chặn quyền camera/microphone. Hãy cho phép quyền trong trình duyệt"
-          : "Không thể truy cập camera/microphone";
-      toast.error(message);
-      return false;
+      return "ok";
     }
-  };
 
-  const hasUsableTrack = (stream: MediaStream | null) => {
-    if (!stream) return false;
-    return stream.getTracks().some((t) => t.readyState === "live");
+    // All attempts failed but not from permission/busy — treat as no-devices
+    setCameraOn(false);
+    setMicOn(false);
+    setHasCamera(false);
+    setHasMic(false);
+    return "no-devices";
   };
 
   const handleJoin = async () => {
-    let ready = hasUsableTrack(localStream);
-    if (!ready) {
-      ready = await startCamera();
+    // If we already have usable tracks, join directly
+    if (localStream?.getTracks().some((t) => t.readyState === "live")) {
+      setJoined(true);
+      return;
     }
-    if (!ready) return;
+
+    // Try to init media
+    const result = await initMedia();
+    if (result === "error") return; // Blocking error — user must fix first
+    // "ok" or "no-devices" → allow join
     setJoined(true);
   };
 
   const toggleCamera = () => {
-    if (localStream) {
-      const videoTracks = localStream.getVideoTracks();
-      if (videoTracks.length === 0) {
-        toast.error("Không tìm thấy camera trên thiết bị");
-        return;
-      }
-      videoTracks.forEach((t) => (t.enabled = !t.enabled));
-      setCameraOn((v) => !v);
-    }
+    if (!localStream) return;
+    const videoTracks = localStream.getVideoTracks();
+    if (videoTracks.length === 0) return;
+    const newState = !videoTracks[0].enabled;
+    videoTracks.forEach((t) => (t.enabled = newState));
+    setCameraOn(newState);
+    emitMediaStateChanged({ camera: newState });
   };
 
   const toggleMic = () => {
-    if (localStream) {
-      const audioTracks = localStream.getAudioTracks();
-      if (audioTracks.length === 0) {
-        toast.error("Không tìm thấy microphone trên thiết bị");
-        return;
-      }
-      audioTracks.forEach((t) => (t.enabled = !t.enabled));
-      setMicOn((v) => !v);
-    }
+    if (!localStream) return;
+    const audioTracks = localStream.getAudioTracks();
+    if (audioTracks.length === 0) return;
+    const newState = !audioTracks[0].enabled;
+    audioTracks.forEach((t) => (t.enabled = newState));
+    setMicOn(newState);
+    emitMediaStateChanged({ mic: newState });
   };
 
   const handleCopyLink = () => {
@@ -427,6 +526,9 @@ export default function InterviewRoom() {
 
         uploadRecordingBlob(blob).then((uploadedUrl) => {
           if (uploadedUrl) {
+            // Show recording assign modal to let HR assign to a candidate
+            setPendingRecordingUrl(uploadedUrl);
+            setShowRecordingAssignModal(true);
             return;
           }
 
@@ -472,12 +574,16 @@ export default function InterviewRoom() {
     navigate("/interviews");
   };
 
-  // End meeting — mark interview as COMPLETED
+  // End meeting — mark interview as COMPLETED + end room
   const handleEndMeeting = useCallback(async () => {
     if (!interview?.id) return;
     setEnding(true);
     try {
       await interviewService.completeInterview(interview.id);
+      emitEndRoom();
+      if (roomCode) {
+        interviewService.closeRoom(roomCode).catch(() => {});
+      }
       if (recording) {
         mediaRecorderRef.current?.stop();
         emitRecordingStopped();
@@ -489,6 +595,7 @@ export default function InterviewRoom() {
       setScreenSharing(false);
       setRecording(false);
       toast.success("Phỏng vấn đã kết thúc. Vui lòng đánh giá ứng viên");
+      setFeedbackIsPostMeeting(true);
       setShowFeedbackModal(true);
     } catch {
       toast.error("Không thể kết thúc phỏng vấn");
@@ -496,16 +603,43 @@ export default function InterviewRoom() {
       setEnding(false);
       setShowEndConfirm(false);
     }
-  }, [interview, recording, localStream, emitRecordingStopped, cleanupRecordingResources]);
+  }, [interview, recording, localStream, roomCode, emitEndRoom, emitRecordingStopped, cleanupRecordingResources]);
+
+  // Close room gracefully (5-min grace period)
+  const handleCloseRoom = useCallback(() => {
+    emitCloseRoom();
+    if (roomCode) {
+      interviewService.closeRoom(roomCode).catch(() => {});
+    }
+    toast.info("Phòng đang đóng. Ứng viên có 5 phút để hoàn thành.");
+  }, [roomCode, emitCloseRoom]);
+
+  // Open room — allow candidates to join
+  const handleOpenRoom = useCallback(() => {
+    emitOpenRoom();
+    if (roomCode) {
+      interviewService.openRoom(roomCode).catch(() => {});
+    }
+    // Also start the interview if it hasn't started
+    if (interview?.id && interview?.interviewStatus !== "IN_PROGRESS") {
+      interviewService.startInterview(interview.id).catch(() => {});
+    }
+    toast.success("Phòng đã mở. Ứng viên có thể tham gia.");
+  }, [roomCode, interview, emitOpenRoom]);
 
   const toggleScreenShare = async () => {
     if (screenSharing) {
-      // Stop screen share → restore camera
-      if (cameraTrackRef.current && localStream) {
-        localStream.getVideoTracks().forEach((t) => t.stop());
-        localStream.removeTrack(localStream.getVideoTracks()[0]);
-        localStream.addTrack(cameraTrackRef.current);
-        replaceTrack(cameraTrackRef.current, "video");
+      // Stop screen share → restore camera (if we had one)
+      if (localStream) {
+        const screenTrack = localStream.getVideoTracks()[0];
+        if (screenTrack) {
+          screenTrack.stop();
+          localStream.removeTrack(screenTrack);
+        }
+        if (cameraTrackRef.current) {
+          localStream.addTrack(cameraTrackRef.current);
+          replaceTrack(cameraTrackRef.current, "video");
+        }
         if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
       }
       setScreenSharing(false);
@@ -520,14 +654,20 @@ export default function InterviewRoom() {
           localStream.addTrack(screenTrack);
           replaceTrack(screenTrack, "video");
           if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
+        } else {
+          // No local stream (no devices) — create one just for screen share
+          const newStream = new MediaStream([screenTrack]);
+          setLocalStream(newStream);
+          if (localVideoRef.current) localVideoRef.current.srcObject = newStream;
         }
 
         screenTrack.onended = () => {
-          // User clicked browser "Stop sharing" button
-          if (cameraTrackRef.current && localStream) {
+          if (localStream) {
             localStream.removeTrack(screenTrack);
-            localStream.addTrack(cameraTrackRef.current);
-            replaceTrack(cameraTrackRef.current, "video");
+            if (cameraTrackRef.current) {
+              localStream.addTrack(cameraTrackRef.current);
+              replaceTrack(cameraTrackRef.current, "video");
+            }
             if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
           }
           setScreenSharing(false);
@@ -538,6 +678,20 @@ export default function InterviewRoom() {
         // User cancelled screen share picker
       }
     }
+  };
+
+  // ── Room status badge helper ─────────────────────────
+  const roomStatusBadge = (status: RoomStatus) => {
+    const map: Record<RoomStatus, { label: string; cls: string }> = {
+      SCHEDULED: { label: "Đã lên lịch", cls: "bg-gray-600" },
+      WAITING: { label: "Chờ mở phòng", cls: "bg-yellow-600" },
+      ACTIVE: { label: "Đang diễn ra", cls: "bg-green-600" },
+      CLOSING: { label: "Đang đóng", cls: "bg-orange-600 animate-pulse" },
+      ENDED: { label: "Đã kết thúc", cls: "bg-gray-600" },
+      EXPIRED: { label: "Hết hạn", cls: "bg-gray-600" },
+    };
+    const info = map[status] || map.WAITING;
+    return <Badge className={`${info.cls} text-white text-xs`}>{info.label}</Badge>;
   };
 
   // Loading state
@@ -631,6 +785,11 @@ export default function InterviewRoom() {
 
   // Pre-join lobby
   if (!joined) {
+    const noCamera = hasCamera === false;
+    const noMic = hasMic === false;
+    const noDevices = noCamera && noMic;
+    const hasStream = localStream && localStream.getTracks().some((t) => t.readyState === "live");
+
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950">
         <div className="w-full max-w-2xl space-y-6 px-6">
@@ -652,27 +811,66 @@ export default function InterviewRoom() {
               muted
               className="h-full w-full bg-black object-contain"
             />
-            {!localStream && (
+            {!hasStream && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-700">
-                  <Video className="h-8 w-8 text-gray-400" />
+                  {noDevices ? (
+                    <VideoOff className="h-8 w-8 text-gray-500" />
+                  ) : (
+                    <Video className="h-8 w-8 text-gray-400" />
+                  )}
                 </div>
               </div>
             )}
           </div>
 
+          {/* Device status indicators */}
+          {hasCamera !== null && (
+            <div className="flex items-center justify-center gap-4 text-xs">
+              <span className={`flex items-center gap-1 ${hasCamera ? "text-green-400" : "text-gray-500"}`}>
+                {hasCamera ? <Video className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5" />}
+                {hasCamera ? "Camera sẵn sàng" : "Không có camera"}
+              </span>
+              <span className={`flex items-center gap-1 ${hasMic ? "text-green-400" : "text-gray-500"}`}>
+                {hasMic ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
+                {hasMic ? "Microphone sẵn sàng" : "Không có microphone"}
+              </span>
+            </div>
+          )}
+
+          {/* Media error message */}
+          {mediaError && (
+            <div className="mx-auto max-w-md rounded-xl bg-red-900/30 border border-red-800/50 px-4 py-3 text-center">
+              <p className="text-sm text-red-300">
+                {mediaError === "permission-denied" && "Quyền camera/microphone bị chặn. Hãy cho phép trong cài đặt trình duyệt rồi tải lại trang."}
+                {mediaError === "device-busy" && "Thiết bị đang bị ứng dụng khác chiếm dụng. Hãy đóng ứng dụng đó và thử lại."}
+                {mediaError === "unsupported" && "Trình duyệt không hỗ trợ truy cập thiết bị media."}
+              </p>
+            </div>
+          )}
+
+          {/* No-devices info banner */}
+          {noDevices && hasCamera !== null && !mediaError && (
+            <div className="mx-auto max-w-md rounded-xl bg-gray-800/80 border border-gray-700 px-4 py-3 text-center">
+              <p className="text-sm text-gray-300">
+                Không phát hiện camera và microphone. Bạn vẫn có thể tham gia ở chế độ xem để điều hành phỏng vấn.
+              </p>
+            </div>
+          )}
+
           <div className="flex items-center justify-center gap-4">
-            {!localStream ? (
-              <Button onClick={startCamera} variant="outline" className="text-white border-gray-600 hover:bg-gray-800">
-                <Video className="h-4 w-4 mr-2" /> Bật camera để kiểm tra
+            {hasCamera === null ? (
+              <Button onClick={initMedia} variant="outline" className="text-white border-gray-600 hover:bg-gray-800">
+                <Video className="h-4 w-4 mr-2" /> Kiểm tra thiết bị
               </Button>
-            ) : (
+            ) : hasStream ? (
               <>
                 <Button
                   size="icon"
                   variant={cameraOn ? "outline" : "destructive"}
                   className={cameraOn ? "border-gray-600 text-white hover:bg-gray-800" : ""}
                   onClick={toggleCamera}
+                  disabled={noCamera}
                 >
                   {cameraOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
                 </Button>
@@ -681,16 +879,21 @@ export default function InterviewRoom() {
                   variant={micOn ? "outline" : "destructive"}
                   className={micOn ? "border-gray-600 text-white hover:bg-gray-800" : ""}
                   onClick={toggleMic}
+                  disabled={noMic}
                 >
                   {micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
                 </Button>
               </>
-            )}
+            ) : null}
           </div>
 
           <div className="flex justify-center gap-3">
-            <Button onClick={handleJoin} className="bg-green-600 hover:bg-green-700 px-8">
-              Tham gia phỏng vấn
+            <Button
+              onClick={handleJoin}
+              className="bg-green-600 hover:bg-green-700 px-8"
+              disabled={!!mediaError}
+            >
+              {noDevices ? "Tham gia (chế độ xem)" : "Tham gia phỏng vấn"}
             </Button>
             <Button variant="ghost" className="text-gray-400 hover:text-white" onClick={() => navigate(-1)}>
               Quay lại
@@ -714,6 +917,7 @@ export default function InterviewRoom() {
             <Clock className="h-3.5 w-3.5" />
             {fmtElapsed(elapsed)}
           </span>
+          {roomStatusBadge(roomStatus)}
         </div>
         <div className="text-center">
           <p className="text-sm font-medium text-white">Phòng phỏng vấn</p>
@@ -723,6 +927,11 @@ export default function InterviewRoom() {
           <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white" onClick={handleCopyLink}>
             <Copy className="h-4 w-4 mr-1" /> Sao chép link
           </Button>
+          {waitingCount > 0 && (
+            <Badge className="bg-amber-600 text-white text-xs">
+              <Users className="h-3 w-3 mr-1" /> {waitingCount} chờ
+            </Badge>
+          )}
           <Badge variant="outline" className="border-gray-600 text-gray-300">
             <Users className="h-3 w-3 mr-1" /> {peerCount + 1}
           </Badge>
@@ -736,6 +945,32 @@ export default function InterviewRoom() {
       <div className="border-b border-gray-800 bg-gray-900/50 px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
+            {/* Room lifecycle buttons */}
+            {roomStatus === "WAITING" && (
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleOpenRoom}
+              >
+                <DoorOpen className="h-4 w-4 mr-1" /> Mở phòng
+              </Button>
+            )}
+            {roomStatus === "ACTIVE" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-orange-600 text-orange-400 hover:bg-orange-900/30"
+                onClick={handleCloseRoom}
+              >
+                <DoorClosed className="h-4 w-4 mr-1" /> Đóng phòng
+              </Button>
+            )}
+            {roomStatus === "CLOSING" && (
+              <Badge className="bg-orange-600 text-white animate-pulse">
+                <Radio className="h-3 w-3 mr-1" /> Đang đóng (5 phút)
+              </Badge>
+            )}
+
             {/* Admission requests */}
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium text-gray-300">
@@ -757,6 +992,20 @@ export default function InterviewRoom() {
                 onClick={() => setShowKickConfirm(true)}
               >
                 <UserX className="h-4 w-4 mr-1" /> Mời rời phòng
+              </Button>
+            )}
+            {/* In-room evaluate button */}
+            {interview?.id && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/30"
+                onClick={() => {
+                  setFeedbackIsPostMeeting(false);
+                  setShowFeedbackModal(true);
+                }}
+              >
+                <ClipboardCheck className="h-4 w-4 mr-1" /> Đánh giá
               </Button>
             )}
           </div>
@@ -854,19 +1103,52 @@ export default function InterviewRoom() {
                 </div>
               </div>
             )}
-            <div className="absolute bottom-3 left-3">
+            <div className="absolute bottom-3 left-3 flex items-center gap-2">
               <Badge className="bg-gray-900/70 text-white text-xs">Ứng viên</Badge>
+              {/* Remote peer media indicators */}
+              {remotePeerId && peerMediaStates[remotePeerId] && (
+                <>
+                  {!peerMediaStates[remotePeerId].mic && (
+                    <MicOff className="h-3.5 w-3.5 text-red-400" />
+                  )}
+                  {!peerMediaStates[remotePeerId].camera && (
+                    <VideoOff className="h-3.5 w-3.5 text-red-400" />
+                  )}
+                  {peerMediaStates[remotePeerId].screen && (
+                    <Monitor className="h-3.5 w-3.5 text-blue-400" />
+                  )}
+                </>
+              )}
             </div>
-            {/* Kick button on remote video */}
+            {/* HR controls on remote video */}
             {connected && remotePeerId && (
-              <div className="absolute top-3 right-3">
+              <div className="absolute top-3 right-3 flex items-center gap-1">
+                {/* Disable candidate camera */}
                 <Button
                   size="icon"
-                  className="h-8 w-8 rounded-full bg-red-600/80 hover:bg-red-600"
+                  className="h-7 w-7 rounded-full bg-gray-800/80 hover:bg-gray-700"
+                  onClick={() => disablePeerMedia(remotePeerId, "camera")}
+                  title="Tắt camera ứng viên"
+                >
+                  <VideoOff className="h-3.5 w-3.5 text-gray-300" />
+                </Button>
+                {/* Disable candidate mic */}
+                <Button
+                  size="icon"
+                  className="h-7 w-7 rounded-full bg-gray-800/80 hover:bg-gray-700"
+                  onClick={() => disablePeerMedia(remotePeerId, "mic")}
+                  title="Tắt mic ứng viên"
+                >
+                  <MicOff className="h-3.5 w-3.5 text-gray-300" />
+                </Button>
+                {/* Kick */}
+                <Button
+                  size="icon"
+                  className="h-7 w-7 rounded-full bg-red-600/80 hover:bg-red-600"
                   onClick={() => setShowKickConfirm(true)}
                   title="Mời ứng viên rời phòng"
                 >
-                  <UserX className="h-4 w-4" />
+                  <UserX className="h-3.5 w-3.5" />
                 </Button>
               </div>
             )}
@@ -908,6 +1190,8 @@ export default function InterviewRoom() {
           variant={cameraOn ? "outline" : "destructive"}
           className={cameraOn ? "h-12 w-12 rounded-full border-gray-600 text-white hover:bg-gray-800" : "h-12 w-12 rounded-full"}
           onClick={toggleCamera}
+          disabled={!localStream || localStream.getVideoTracks().length === 0}
+          title={!localStream || localStream.getVideoTracks().length === 0 ? "Không có camera" : undefined}
         >
           {cameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
         </Button>
@@ -916,6 +1200,8 @@ export default function InterviewRoom() {
           variant={micOn ? "outline" : "destructive"}
           className={micOn ? "h-12 w-12 rounded-full border-gray-600 text-white hover:bg-gray-800" : "h-12 w-12 rounded-full"}
           onClick={toggleMic}
+          disabled={!localStream || localStream.getAudioTracks().length === 0}
+          title={!localStream || localStream.getAudioTracks().length === 0 ? "Không có microphone" : undefined}
         >
           {micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
         </Button>
@@ -963,6 +1249,18 @@ export default function InterviewRoom() {
               >
                 {ending ? "Đang xử lý..." : "Kết thúc phỏng vấn (hoàn thành)"}
               </Button>
+              {roomStatus === "ACTIVE" && (
+                <Button
+                  variant="outline"
+                  className="border-orange-600 text-orange-400 hover:bg-orange-900/30 w-full"
+                  onClick={() => {
+                    handleCloseRoom();
+                    setShowEndConfirm(false);
+                  }}
+                >
+                  <DoorClosed className="h-4 w-4 mr-1" /> Đóng phòng (5 phút)
+                </Button>
+              )}
               <Button
                 variant="outline"
                 className="border-gray-600 text-gray-300 hover:bg-gray-700 w-full"
@@ -987,10 +1285,25 @@ export default function InterviewRoom() {
           open={showFeedbackModal}
           onClose={() => {
             setShowFeedbackModal(false);
-            navigate("/interviews");
+            if (feedbackIsPostMeeting) {
+              navigate("/interviews");
+            }
           }}
           interviewId={interview.id}
           candidateName={interview.candidateName}
+        />
+      ) : null}
+
+      {showRecordingAssignModal && interview?.id && roomCode ? (
+        <RecordingAssignModal
+          open={showRecordingAssignModal}
+          onClose={() => {
+            setShowRecordingAssignModal(false);
+            setPendingRecordingUrl(null);
+          }}
+          roomCode={roomCode}
+          recordingUrl={pendingRecordingUrl}
+          interviewId={interview.id}
         />
       ) : null}
     </div>

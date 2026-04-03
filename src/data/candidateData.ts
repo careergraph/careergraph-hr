@@ -64,7 +64,7 @@ export const initialCandidates: Candidate[] = [
     email: "vanthiep@email.com",
     phone: "0987654321",
     priority: "high",
-    status: "meeting",
+    status: "screening",
     appliedDate: "1 phút trước",
     experienceLevel: "senior",
     salaryExpectation: "15,000,000 (VND)",
@@ -242,8 +242,10 @@ export const initialCandidates: Candidate[] = [
 
 export const columns: Array<{ id: CandidateStatus; title: string }> = [
   { id: "apply", title: "Ứng tuyển" },
-  { id: "meeting", title: "Liên hệ" },
+  { id: "screening", title: "Sàng lọc" },
   { id: "interview", title: "Phỏng vấn" },
+  { id: "interviewed", title: "Đã phỏng vấn" },
   { id: "trial", title: "Thử việc" },
+  { id: "offer", title: "Offer" },
   { id: "hired", title: "Nhận chính thức" },
 ];
