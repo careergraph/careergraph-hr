@@ -14,6 +14,7 @@ import {
 import { useInterviewStore } from "@/stores/interviewStore";
 import { interviewService } from "@/services/interviewService";
 import type { CreateInterviewRequest, Interview, InterviewType } from "@/types/interview";
+import { extractApiErrorMessage } from "@/lib/error-utils";
 import { toast } from "sonner";
 import { Video, Copy, ExternalLink, CheckCircle2, Users } from "lucide-react";
 
@@ -152,8 +153,8 @@ export default function ScheduleInterviewKanbanModal({
       toast.success("Đã lên lịch phỏng vấn thành công");
       setScheduledResult(interview);
       onScheduled(selectedAppId, interview);
-    } catch {
-      toast.error("Không thể lên lịch phỏng vấn");
+    } catch (error: unknown) {
+      toast.error(extractApiErrorMessage(error, "Không thể lên lịch phỏng vấn"));
     }
   };
 

@@ -1,24 +1,24 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Modal } from "@/components/custom/modal";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useInterviewStore } from "@/stores/interviewStore";
 import { toast } from "sonner";
-import { ClipboardCheck } from "lucide-react";
+import { Check, ChevronDown, ClipboardCheck } from "lucide-react";
 
 interface FeedbackModalProps {
   open: boolean;
   onClose: () => void;
   interviewId: string;
+  initialInterviewId?: string;
   candidateName?: string;
+  candidateOptions?: Array<{
+    interviewId: string;
+    candidateName: string;
+  }>;
+  onSubmitted?: (targetInterviewId: string) => void | Promise<void>;
 }
 
 const RATINGS = [1, 2, 3, 4, 5];
@@ -28,9 +28,20 @@ export default function FeedbackModal({
   open,
   onClose,
   interviewId,
+  initialInterviewId,
   candidateName,
+  candidateOptions,
+  onSubmitted,
 }: FeedbackModalProps) {
   const { addFeedback, isLoading } = useInterviewStore();
+
+  const hasCandidateSelector = Array.isArray(candidateOptions) && candidateOptions.length > 0;
+  const [selectedInterviewId, setSelectedInterviewId] = useState(() => {
+    if (candidateOptions && candidateOptions.length > 0) {
+      return candidateOptions[0].interviewId;
+    }
+    return interviewId;
+  });
 
   const [overallRating, setOverallRating] = useState(3);
   const [technicalScore, setTechnicalScore] = useState<number | undefined>();
@@ -42,9 +53,35 @@ export default function FeedbackModal({
   const [recommendation, setRecommendation] = useState("NEXT_ROUND");
   const [notes, setNotes] = useState("");
 
+  useEffect(() => {
+    if (!open) return;
+    if (initialInterviewId && candidateOptions?.some((opt) => opt.interviewId === initialInterviewId)) {
+      setSelectedInterviewId(initialInterviewId);
+      return;
+    }
+    if (candidateOptions && candidateOptions.length > 0) {
+      setSelectedInterviewId(candidateOptions[0].interviewId);
+      return;
+    }
+    setSelectedInterviewId(interviewId);
+  }, [open, candidateOptions, interviewId, initialInterviewId]);
+
+  const selectedCandidateName = hasCandidateSelector
+    ? candidateOptions?.find((opt) => opt.interviewId === selectedInterviewId)?.candidateName
+    : candidateName;
+
+  const targetInterviewId = hasCandidateSelector ? selectedInterviewId : interviewId;
+
+  const canSubmit = targetInterviewId && targetInterviewId.trim().length > 0;
+
   const handleSubmit = async () => {
+    if (!canSubmit) {
+      toast.error("Vui lòng chọn ứng viên cần đánh giá");
+      return;
+    }
+
     try {
-      await addFeedback(interviewId, {
+      await addFeedback(targetInterviewId, {
         overallRating,
         technicalScore,
         communicationScore,
@@ -55,6 +92,11 @@ export default function FeedbackModal({
         recommendation,
         notes: notes || undefined,
       });
+
+      if (onSubmitted) {
+        await onSubmitted(targetInterviewId);
+      }
+
       toast.success("Đã gửi đánh giá thành công");
       onClose();
     } catch {
@@ -64,7 +106,7 @@ export default function FeedbackModal({
 
   return (
     <Modal isOpen={open} onClose={onClose} className="max-w-[550px] p-0">
-      <div className="flex max-h-[85vh] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-[0_30px_80px_rgba(0,0,0,0.35)]">
+      <div className="flex max-h-[85vh] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-[0_30px_80px_rgba(0,0,0,0.35)]">
         {/* Header */}
         <div className="flex items-center gap-2 border-b border-border/60 px-6 py-5">
           <ClipboardCheck className="h-5 w-5 text-blue-600" />
@@ -75,9 +117,28 @@ export default function FeedbackModal({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
-          {candidateName && (
+          {hasCandidateSelector ? (
+            <div className="space-y-2 mb-4">
+              <Label>Chọn ứng viên</Label>
+              <CustomSelect
+                value={selectedInterviewId}
+                onChange={setSelectedInterviewId}
+                placeholder="Chọn ứng viên"
+                searchable
+                searchPlaceholder="Tìm ứng viên..."
+                options={
+                  candidateOptions?.map((opt) => ({
+                    value: opt.interviewId,
+                    label: opt.candidateName,
+                  })) ?? []
+                }
+              />
+            </div>
+          ) : null}
+
+          {selectedCandidateName && (
             <p className="text-sm text-muted-foreground mb-4">
-              Ứng viên: <span className="font-medium text-slate-900">{candidateName}</span>
+              Ứng viên: <span className="font-medium text-slate-900">{selectedCandidateName}</span>
             </p>
           )}
 
@@ -135,17 +196,18 @@ export default function FeedbackModal({
 
             <div className="space-y-2">
               <Label>Đề xuất</Label>
-              <Select value={recommendation} onValueChange={setRecommendation}>
-                <SelectTrigger className="border-slate-200">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="border border-slate-200 bg-white text-slate-900">
-                  <SelectItem value="NEXT_ROUND">Vòng tiếp theo</SelectItem>
-                  <SelectItem value="EXTEND_OFFER">Gửi offer</SelectItem>
-                  <SelectItem value="REJECT">Từ chối</SelectItem>
-                  <SelectItem value="HOLD">Chờ xem xét</SelectItem>
-                </SelectContent>
-              </Select>
+              <CustomSelect
+                value={recommendation}
+                onChange={setRecommendation}
+                searchable
+                searchPlaceholder="Tìm đề xuất..."
+                options={[
+                  { value: "NEXT_ROUND", label: "Vòng tiếp theo" },
+                  { value: "EXTEND_OFFER", label: "Gửi offer" },
+                  { value: "REJECT", label: "Từ chối" },
+                  { value: "HOLD", label: "Chờ xem xét" },
+                ]}
+              />
             </div>
 
             <div className="space-y-2">
@@ -166,7 +228,7 @@ export default function FeedbackModal({
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Hủy
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>
+          <Button onClick={handleSubmit} disabled={isLoading || !canSubmit}>
             {isLoading ? "Đang gửi..." : "Gửi đánh giá"}
           </Button>
         </div>
@@ -189,21 +251,223 @@ function ScoreSelect({
   return (
     <div className="space-y-2">
       <Label>{label} (1-10)</Label>
-      <Select
+      <CustomSelect
         value={value != null ? String(value) : ""}
-        onValueChange={(v) => onChange(v ? Number(v) : undefined)}
+        onChange={(v) => onChange(v ? Number(v) : undefined)}
+        placeholder="--"
+        searchable
+        searchPlaceholder={`Tìm điểm ${label.toLowerCase()}...`}
+        noResultsText="Không tìm thấy mức điểm"
+        options={scores.map((s) => ({ value: String(s), label: String(s) }))}
+      />
+    </div>
+  );
+}
+
+interface CustomSelectOption {
+  value: string;
+  label: string;
+}
+
+interface CustomSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: CustomSelectOption[];
+  placeholder?: string;
+  searchable?: boolean;
+  searchPlaceholder?: string;
+  noResultsText?: string;
+}
+
+function CustomSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Chọn",
+  searchable = false,
+  searchPlaceholder = "Tìm kiếm...",
+  noResultsText = "Không có kết quả",
+}: CustomSelectProps) {
+  const [open, setOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [menuStyle, setMenuStyle] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    openUpward: boolean;
+  } | null>(null);
+
+  const computeMenuStyle = () => {
+    if (!triggerRef.current) return null;
+
+    const rect = triggerRef.current.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - rect.bottom;
+    const estimatedMenuHeight = 250;
+    const openUpward = spaceBelow < estimatedMenuHeight && rect.top > estimatedMenuHeight;
+
+    return {
+      top: openUpward ? rect.top : rect.bottom,
+      left: rect.left,
+      width: rect.width,
+      openUpward,
+    };
+  };
+
+  const selectedLabel = useMemo(() => {
+    return options.find((item) => item.value === value)?.label ?? "";
+  }, [options, value]);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable) return options;
+    const keyword = searchText.trim().toLowerCase();
+    if (!keyword) return options;
+    return options.filter((option) => option.label.toLowerCase().includes(keyword));
+  }, [options, searchable, searchText]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const updateMenuPosition = () => {
+      const nextStyle = computeMenuStyle();
+      if (nextStyle) setMenuStyle(nextStyle);
+    };
+
+    updateMenuPosition();
+
+    const onClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const clickedTrigger = rootRef.current?.contains(target);
+      const clickedMenu = menuRef.current?.contains(target);
+      if (!clickedTrigger && !clickedMenu) {
+        setOpen(false);
+      }
+    };
+
+    const onEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onClickOutside);
+    document.addEventListener("keydown", onEsc);
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+
+    return () => {
+      document.removeEventListener("mousedown", onClickOutside);
+      document.removeEventListener("keydown", onEsc);
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !menuStyle || !menuRef.current) return;
+
+    const menuEl = menuRef.current;
+    menuEl.style.left = `${menuStyle.left}px`;
+    menuEl.style.width = `${menuStyle.width}px`;
+
+    if (menuStyle.openUpward) {
+      menuEl.style.top = `${menuStyle.top - 4}px`;
+      menuEl.style.transform = "translateY(-100%)";
+    } else {
+      menuEl.style.top = `${menuStyle.top + 4}px`;
+      menuEl.style.transform = "none";
+    }
+  }, [open, menuStyle]);
+
+  useEffect(() => {
+    if (!open) {
+      setMenuStyle(null);
+      setSearchText("");
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !searchable) return;
+
+    const timer = window.setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [open, searchable]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        className="flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm transition-colors hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        onClick={() => {
+          if (open) {
+            setOpen(false);
+            return;
+          }
+
+          const nextStyle = computeMenuStyle();
+          if (nextStyle) setMenuStyle(nextStyle);
+          setOpen(true);
+        }}
       >
-        <SelectTrigger>
-          <SelectValue placeholder="--" />
-        </SelectTrigger>
-        <SelectContent>
-          {scores.map((s) => (
-            <SelectItem key={s} value={String(s)}>
-              {s}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        <span className={selectedLabel ? "text-slate-900" : "text-slate-400"}>
+          {selectedLabel || placeholder}
+        </span>
+        <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && menuStyle && createPortal(
+        <div
+          ref={menuRef}
+          className="fixed z-[100001] max-h-56 overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-xl"
+        >
+          {searchable && (
+            <div className="sticky top-0 z-[1] border-b border-slate-200 bg-white px-2 py-2">
+              <input
+                ref={searchInputRef}
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                placeholder={searchPlaceholder}
+                className="h-8 w-full rounded-md border border-slate-200 px-2 text-sm text-slate-900 outline-none focus:border-blue-400"
+              />
+            </div>
+          )}
+
+          {filteredOptions.map((option) => {
+            const selected = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors ${
+                  selected
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-slate-700 hover:bg-slate-100"
+                }`}
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+              >
+                <span>{option.label}</span>
+                {selected ? <Check className="h-4 w-4" /> : null}
+              </button>
+            );
+          })}
+
+          {filteredOptions.length === 0 && (
+            <p className="px-3 py-2 text-sm text-slate-400">{noResultsText}</p>
+          )}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

@@ -87,6 +87,7 @@ export default function InterviewDetail() {
   const endDate = new Date(iv.endAt);
   const isActive = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE"].includes(iv.interviewStatus);
   const isCompleted = iv.interviewStatus === "COMPLETED";
+  const canOpenRoomFromDetail = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(iv.interviewStatus);
 
   const handleCancel = async () => {
     try {
@@ -188,7 +189,7 @@ export default function InterviewDetail() {
                 {iv.type === "ONLINE" ? (
                   <>
                     <Monitor className="h-4 w-4" /> Online
-                    {iv.meetingLink && (
+                    {iv.meetingLink && canOpenRoomFromDetail && (
                       <button
                         onClick={() => navigate(`/interview/room/${iv.meetingLink}`)}
                         className="ml-2 inline-flex items-center gap-1 font-mono text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"

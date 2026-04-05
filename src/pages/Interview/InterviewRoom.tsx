@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,9 @@ import {
   DoorClosed,
   Radio,
   ClipboardCheck,
+  SearchX,
+  RotateCcw,
+  ArrowLeft,
 } from "lucide-react";
 import { interviewService } from "@/services/interviewService";
 import { useWebRTC } from "@/hooks/useWebRTC";
@@ -36,6 +39,23 @@ import FeedbackModal from "./FeedbackModal";
 import RecordingAssignModal from "./RecordingAssignModal";
 
 const EARLY_JOIN_MINUTES = 15;
+
+interface RoomParticipantEntry {
+  id: string;
+  applicationId: string;
+  candidateId: string;
+  candidateName?: string;
+  candidateEmail?: string;
+  admitStatus?: string;
+  joinedAt?: string;
+  leftAt?: string;
+}
+
+interface RoomLookupError {
+  type: "not-found" | "unavailable";
+  title: string;
+  description: string;
+}
 
 export default function InterviewRoom() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -52,6 +72,7 @@ export default function InterviewRoom() {
   const [joined, setJoined] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
+  const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
 
   // Recording state
   const [recording, setRecording] = useState(false);
@@ -69,6 +90,7 @@ export default function InterviewRoom() {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [ending, setEnding] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [selectedFeedbackInterviewId, setSelectedFeedbackInterviewId] = useState<string | null>(null);
   const [feedbackIsPostMeeting, setFeedbackIsPostMeeting] = useState(false);
   const [isUploadingRecording, setIsUploadingRecording] = useState(false);
 
@@ -78,7 +100,11 @@ export default function InterviewRoom() {
 
   // Interview info & early join state
   const [interview, setInterview] = useState<Interview | null>(null);
+  const [roomInterviews, setRoomInterviews] = useState<Interview[]>([]);
+  const [roomParticipants, setRoomParticipants] = useState<RoomParticipantEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [roomLookupError, setRoomLookupError] = useState<RoomLookupError | null>(null);
+  const [lookupRetryKey, setLookupRetryKey] = useState(0);
   const [canJoin, setCanJoin] = useState(false);
   const [countdown, setCountdown] = useState("");
 
@@ -130,18 +156,168 @@ export default function InterviewRoom() {
 
   // Fetch interview info by room code
   useEffect(() => {
-    if (!roomCode) return;
+    if (!roomCode) {
+      setRoomLookupError({
+        type: "not-found",
+        title: "Mã phòng không hợp lệ",
+        description: "Liên kết phòng phỏng vấn không đúng hoặc đã bị thay đổi.",
+      });
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    interviewService
-      .fetchByRoomCode(roomCode)
-      .then((resp) => {
-        setInterview(resp?.data ?? null);
+    setRoomLookupError(null);
+
+    Promise.all([
+      interviewService.fetchByRoomCode(roomCode),
+      interviewService.fetchAllByRoomCode(roomCode).catch(() => null),
+      interviewService.fetchRoomParticipants(roomCode).catch(() => null),
+    ])
+      .then(([singleResp, allResp, participantResp]) => {
+        const allItems: Interview[] = Array.isArray(allResp?.data)
+          ? allResp.data
+          : Array.isArray(allResp)
+            ? allResp
+            : [];
+        const primaryInterview: Interview | null = (singleResp?.data ?? allItems[0] ?? null) as Interview | null;
+
+        if (!primaryInterview) {
+          setRoomLookupError({
+            type: "not-found",
+            title: "Không tìm thấy phòng phỏng vấn",
+            description: "Phòng có thể đã bị đóng, hết hạn hoặc mã phòng không còn tồn tại.",
+          });
+          return;
+        }
+
+        setInterview(primaryInterview);
+        setRoomInterviews(allItems);
+
+        const participantItems: RoomParticipantEntry[] = Array.isArray(participantResp?.data)
+          ? participantResp.data
+          : Array.isArray(participantResp)
+            ? participantResp
+            : [];
+        setRoomParticipants(participantItems);
       })
-      .catch(() => {
-        toast.error("Không tìm thấy phòng phỏng vấn");
+      .catch((error: unknown) => {
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status === 404) {
+          setRoomLookupError({
+            type: "not-found",
+            title: "Không tìm thấy phòng phỏng vấn",
+            description: "Phòng có thể đã bị đóng, hết hạn hoặc mã phòng không còn tồn tại.",
+          });
+          return;
+        }
+
+        setRoomLookupError({
+          type: "unavailable",
+          title: "Không thể kết nối tới phòng",
+          description: "Hệ thống đang bận hoặc kết nối mạng không ổn định. Vui lòng thử lại sau vài giây.",
+        });
       })
       .finally(() => setLoading(false));
-  }, [roomCode]);
+  }, [roomCode, lookupRetryKey]);
+
+  const resolveParticipantFromJoinRequest = useCallback(
+    (req: { email?: string; userId?: string }) => {
+      const requestEmail = req.email?.trim().toLowerCase();
+
+      if (requestEmail) {
+        const byEmail = roomParticipants.find(
+          (p) => p.candidateEmail?.trim().toLowerCase() === requestEmail
+        );
+        if (byEmail) return byEmail;
+      }
+
+      if (req.userId) {
+        const byCandidateId = roomParticipants.find((p) => p.candidateId === req.userId);
+        if (byCandidateId) return byCandidateId;
+      }
+
+      return null;
+    },
+    [roomParticipants]
+  );
+
+  const getJoinRequestDisplayName = useCallback(
+    (req: { email?: string; userId?: string; displayName?: string }) => {
+      const matched = resolveParticipantFromJoinRequest(req);
+      if (matched?.candidateName) return matched.candidateName;
+      if (req.displayName) return req.displayName;
+      if (req.email) return req.email;
+      return req.userId || "Ứng viên";
+    },
+    [resolveParticipantFromJoinRequest]
+  );
+
+  const joinedCandidateApplicationIds = useMemo(() => {
+    const ids = new Set<string>();
+    roomParticipants.forEach((p) => {
+      if (p.applicationId && p.joinedAt) {
+        ids.add(p.applicationId);
+      }
+    });
+    return ids;
+  }, [roomParticipants]);
+
+  const feedbackCandidateOptions = roomInterviews
+    .filter((iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW")
+    .filter((iv) => joinedCandidateApplicationIds.has(iv.applicationId))
+    .map((iv) => ({
+      interviewId: iv.id,
+      candidateName: iv.candidateName,
+    }));
+
+  const handleCompleteCandidateInterview = useCallback(
+    async (targetInterview: Interview) => {
+      if (!roomCode) return;
+
+      if (!joinedCandidateApplicationIds.has(targetInterview.applicationId)) {
+        toast.error("Chỉ có thể hoàn thành ứng viên đã vào phòng phỏng vấn");
+        return;
+      }
+
+      if (targetInterview.interviewStatus === "COMPLETED") {
+        toast.info("Ứng viên này đã được hoàn thành phỏng vấn");
+        return;
+      }
+
+      await interviewService.completeInterview(targetInterview.id);
+
+      if (targetInterview.candidateId) {
+        interviewService.completeParticipant(roomCode, targetInterview.candidateId).catch(() => null);
+        setRoomParticipants((prev) =>
+          prev.map((p) =>
+            p.candidateId === targetInterview.candidateId
+              ? { ...p, admitStatus: "COMPLETED", leftAt: new Date().toISOString() }
+              : p
+          )
+        );
+      }
+
+      setRoomInterviews((prev) =>
+        prev.map((iv) =>
+          iv.id === targetInterview.id ? { ...iv, interviewStatus: "COMPLETED" } : iv
+        )
+      );
+
+      if (interview?.id === targetInterview.id) {
+        setInterview((prev) =>
+          prev ? { ...prev, interviewStatus: "COMPLETED" } : prev
+        );
+      }
+
+      toast.success(`Đã hoàn thành phỏng vấn ứng viên ${targetInterview.candidateName}`);
+    },
+    [roomCode, interview?.id, joinedCandidateApplicationIds]
+  );
+
+  const candidateActionItems = roomInterviews
+    .filter((iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW")
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
   // Check if user can join (15 min before scheduled)
   useEffect(() => {
@@ -554,10 +730,20 @@ export default function InterviewRoom() {
   const handleKickConfirm = useCallback(() => {
     if (remotePeerId) {
       kickUser(remotePeerId);
+      if (roomCode && activeCandidateId) {
+        interviewService.removeParticipant(roomCode, activeCandidateId).catch(() => null);
+        setRoomParticipants((prev) =>
+          prev.map((p) =>
+            p.candidateId === activeCandidateId
+              ? { ...p, admitStatus: "REMOVED", leftAt: new Date().toISOString() }
+              : p
+          )
+        );
+      }
       toast.info("Đã mời ứng viên rời phòng");
     }
     setShowKickConfirm(false);
-  }, [kickUser, remotePeerId]);
+  }, [kickUser, remotePeerId, roomCode, activeCandidateId]);
 
   // Stop recording on leave
   const handleLeave = () => {
@@ -574,12 +760,10 @@ export default function InterviewRoom() {
     navigate("/interviews");
   };
 
-  // End meeting — mark interview as COMPLETED + end room
+  // End meeting session — close room/signaling only. Per-candidate completion is handled explicitly.
   const handleEndMeeting = useCallback(async () => {
-    if (!interview?.id) return;
     setEnding(true);
     try {
-      await interviewService.completeInterview(interview.id);
       emitEndRoom();
       if (roomCode) {
         interviewService.closeRoom(roomCode).catch(() => {});
@@ -594,16 +778,15 @@ export default function InterviewRoom() {
       setJoined(false);
       setScreenSharing(false);
       setRecording(false);
-      toast.success("Phỏng vấn đã kết thúc. Vui lòng đánh giá ứng viên");
-      setFeedbackIsPostMeeting(true);
-      setShowFeedbackModal(true);
+      toast.success("Đã kết thúc phiên họp phòng phỏng vấn");
+      navigate("/interviews");
     } catch {
       toast.error("Không thể kết thúc phỏng vấn");
     } finally {
       setEnding(false);
       setShowEndConfirm(false);
     }
-  }, [interview, recording, localStream, roomCode, emitEndRoom, emitRecordingStopped, cleanupRecordingResources]);
+  }, [recording, localStream, roomCode, emitEndRoom, emitRecordingStopped, cleanupRecordingResources, navigate]);
 
   // Close room gracefully (5-min grace period)
   const handleCloseRoom = useCallback(() => {
@@ -697,10 +880,51 @@ export default function InterviewRoom() {
   // Loading state
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950">
-        <div className="text-center space-y-3">
-          <div className="h-8 w-8 mx-auto animate-spin rounded-full border-2 border-gray-600 border-t-white" />
-          <p className="text-gray-400 text-sm">Đang tải thông tin phòng phỏng vấn...</p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(circle_at_top,#0f172a_0%,#111827_45%,#020617_100%)] px-4">
+        <div className="w-full max-w-lg rounded-3xl border border-sky-500/20 bg-slate-900/80 p-8 text-center shadow-2xl shadow-black/50 backdrop-blur-sm">
+          <div className="mx-auto mb-5 h-11 w-11 animate-spin rounded-full border-2 border-sky-300/25 border-t-sky-300" />
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300/80">Room Access Check</p>
+          <h1 className="mt-2 text-xl font-bold text-white">Đang kiểm tra phòng phỏng vấn</h1>
+          <p className="mt-3 text-sm text-slate-300">
+            Hệ thống đang xác minh phòng trước khi mở giao diện phỏng vấn.
+          </p>
+          {roomCode && <p className="mt-4 text-xs font-mono text-sky-200/70">Mã phòng: {roomCode}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  if (roomLookupError) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(circle_at_top,#3f1d2e_0%,#111827_45%,#020617_100%)] px-4">
+        <div className="w-full max-w-xl rounded-3xl border border-rose-300/20 bg-slate-950/90 p-8 shadow-2xl shadow-black/60">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-200">
+            {roomLookupError.type === "not-found" ? <SearchX className="h-7 w-7" /> : <AlertCircle className="h-7 w-7" />}
+          </div>
+          <h1 className="mt-5 text-center text-2xl font-bold text-white">{roomLookupError.title}</h1>
+          <p className="mx-auto mt-3 max-w-md text-center text-sm leading-6 text-rose-100/80">
+            {roomLookupError.description}
+          </p>
+          {roomCode && <p className="mt-4 text-center text-xs font-mono text-rose-200/70">Mã phòng: {roomCode}</p>}
+          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Button
+              type="button"
+              onClick={() => setLookupRetryKey((value) => value + 1)}
+              className="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-500"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Thử lại
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate("/interviews")}
+              className="inline-flex items-center gap-2 border-slate-700 text-slate-200 hover:bg-slate-800"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Quay về lịch phỏng vấn
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -720,26 +944,6 @@ export default function InterviewRoom() {
           </p>
           <Button variant="ghost" className="text-gray-400 hover:text-white" onClick={() => navigate("/interviews")}>
             Quay lại
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Interview already completed — block re-access
-  if (interview?.interviewStatus === "COMPLETED") {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950">
-        <div className="w-full max-w-md space-y-6 px-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
-            <CheckCircle2 className="h-8 w-8 text-green-400" />
-          </div>
-          <h1 className="text-xl font-bold text-white">Phỏng vấn đã kết thúc</h1>
-          <p className="text-sm text-gray-400">
-            Cuộc phỏng vấn này đã hoàn thành và không thể truy cập lại.
-          </p>
-          <Button variant="ghost" className="text-gray-400 hover:text-white" onClick={() => navigate("/interviews")}>
-            Quay lại danh sách
           </Button>
         </div>
       </div>
@@ -1029,7 +1233,7 @@ export default function InterviewRoom() {
               >
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-gray-200">
-                  {interview?.candidateName || req.email || req.userId}
+                  {getJoinRequestDisplayName(req)}
                 </span>
                 {req.email && (
                   <span className="text-xs text-gray-400">{req.email}</span>
@@ -1038,7 +1242,21 @@ export default function InterviewRoom() {
                 <Button
                   size="icon"
                   className="h-7 w-7 rounded-full bg-green-600 hover:bg-green-700"
-                  onClick={() => admitUser(req.socketId)}
+                  onClick={() => {
+                    admitUser(req.socketId);
+                    const matched = resolveParticipantFromJoinRequest(req);
+                    if (roomCode && matched?.candidateId) {
+                      setActiveCandidateId(matched.candidateId);
+                      interviewService.admitParticipant(roomCode, matched.candidateId).catch(() => null);
+                      setRoomParticipants((prev) =>
+                        prev.map((p) =>
+                          p.candidateId === matched.candidateId
+                            ? { ...p, admitStatus: "ADMITTED", joinedAt: new Date().toISOString() }
+                            : p
+                        )
+                      );
+                    }
+                  }}
                 >
                   <Check className="h-3.5 w-3.5" />
                 </Button>
@@ -1057,9 +1275,11 @@ export default function InterviewRoom() {
 
       {/* Video grid */}
       <div className="flex-1 min-h-0 p-3 md:p-4">
-        <div className="grid h-full min-h-0 grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-          {/* Local video */}
-          <div className="relative min-h-[220px] overflow-hidden rounded-2xl bg-gray-800">
+        <div className="flex h-full min-h-0 gap-4">
+          <div className="min-h-0 min-w-0 flex-1">
+            <div className="grid h-full min-h-0 grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+              {/* Local video */}
+              <div className="relative min-h-55 overflow-hidden rounded-2xl bg-gray-800">
             <video
               ref={localVideoRef}
               autoPlay
@@ -1082,10 +1302,10 @@ export default function InterviewRoom() {
                 <MicOff className="h-4 w-4 text-red-400" />
               </div>
             )}
-          </div>
+              </div>
 
-          {/* Remote video */}
-          <div className="relative min-h-[220px] overflow-hidden rounded-2xl bg-gray-800">
+              {/* Remote video */}
+              <div className="relative min-h-55 overflow-hidden rounded-2xl bg-gray-800">
             {remoteStream ? (
               <video
                 ref={remoteVideoRef}
@@ -1152,13 +1372,81 @@ export default function InterviewRoom() {
                 </Button>
               </div>
             )}
+              </div>
+            </div>
           </div>
+
+          {/* Candidate management sidebar */}
+          <aside className="hidden w-80 shrink-0 rounded-2xl border border-gray-800 bg-gray-900/70 p-3 xl:block">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold text-white">Quản lý ứng viên trong phòng</p>
+              <Badge variant="outline" className="border-gray-600 text-gray-300 text-xs">
+                {candidateActionItems.length}
+              </Badge>
+            </div>
+
+            <div className="space-y-2 max-h-[58vh] overflow-auto pr-1">
+              {candidateActionItems.map((iv) => {
+                const hasJoined = joinedCandidateApplicationIds.has(iv.applicationId);
+                const completed = iv.interviewStatus === "COMPLETED";
+                return (
+                  <div key={iv.id} className="rounded-xl border border-gray-800 bg-gray-900/80 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-gray-100">{iv.candidateName}</p>
+                        <p className="mt-1 text-[11px] text-gray-400">
+                          {new Date(iv.scheduledAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                      <Badge className={completed ? "bg-green-600 text-white" : hasJoined ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-200"}>
+                        {completed ? "Đã hoàn thành" : hasJoined ? "Đã vào phòng" : "Chưa vào phòng"}
+                      </Badge>
+                    </div>
+
+                    {!hasJoined && (
+                      <p className="mt-2 text-[11px] text-amber-300">
+                        Chỉ đánh giá/gán bản ghi sau khi ứng viên đã vào phòng.
+                      </p>
+                    )}
+
+                    <div className="mt-3 flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 border-gray-600 text-gray-200 hover:bg-gray-800"
+                        disabled={completed || !hasJoined}
+                        onClick={() => {
+                          handleCompleteCandidateInterview(iv).catch(() => {
+                            toast.error("Không thể hoàn thành phỏng vấn ứng viên này");
+                          });
+                        }}
+                      >
+                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Hoàn thành
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-8 bg-blue-600 hover:bg-blue-700"
+                        disabled={!hasJoined}
+                        onClick={() => {
+                          setSelectedFeedbackInterviewId(iv.id);
+                          setFeedbackIsPostMeeting(false);
+                          setShowFeedbackModal(true);
+                        }}
+                      >
+                        <ClipboardCheck className="mr-1 h-3.5 w-3.5" /> Đánh giá
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
         </div>
       </div>
 
       {/* Kick confirmation dialog */}
       {showKickConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60">
           <div className="w-full max-w-sm rounded-2xl bg-gray-800 p-6 space-y-4">
             <h3 className="text-lg font-semibold text-white">Xác nhận</h3>
             <p className="text-sm text-gray-400">
@@ -1235,7 +1523,7 @@ export default function InterviewRoom() {
 
       {/* End meeting confirmation dialog */}
       {showEndConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60">
           <div className="w-full max-w-sm rounded-2xl bg-gray-800 p-6 space-y-4">
             <h3 className="text-lg font-semibold text-white">Kết thúc phỏng vấn</h3>
             <p className="text-sm text-gray-400">
@@ -1247,7 +1535,7 @@ export default function InterviewRoom() {
                 onClick={handleEndMeeting}
                 disabled={ending || isUploadingRecording}
               >
-                {ending ? "Đang xử lý..." : "Kết thúc phỏng vấn (hoàn thành)"}
+                {ending ? "Đang xử lý..." : "Kết thúc phiên họp"}
               </Button>
               {roomStatus === "ACTIVE" && (
                 <Button
@@ -1285,12 +1573,26 @@ export default function InterviewRoom() {
           open={showFeedbackModal}
           onClose={() => {
             setShowFeedbackModal(false);
+            setSelectedFeedbackInterviewId(null);
             if (feedbackIsPostMeeting) {
               navigate("/interviews");
             }
           }}
           interviewId={interview.id}
+          initialInterviewId={selectedFeedbackInterviewId ?? undefined}
           candidateName={interview.candidateName}
+          candidateOptions={feedbackCandidateOptions}
+          onSubmitted={async (submittedInterviewId) => {
+            const target = roomInterviews.find((iv) => iv.id === submittedInterviewId);
+            if (!target) return;
+            if (target.interviewStatus === "COMPLETED") return;
+
+            try {
+              await handleCompleteCandidateInterview(target);
+            } catch {
+              toast.warning("Đã gửi đánh giá nhưng chưa thể cập nhật trạng thái hoàn thành");
+            }
+          }}
         />
       ) : null}
 
@@ -1304,6 +1606,7 @@ export default function InterviewRoom() {
           roomCode={roomCode}
           recordingUrl={pendingRecordingUrl}
           interviewId={interview.id}
+          roomInterviews={roomInterviews}
         />
       ) : null}
     </div>

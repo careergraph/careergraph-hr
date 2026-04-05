@@ -93,6 +93,11 @@ const fetchByRoomCode = async (roomCode: string) => {
   return response.data;
 };
 
+const fetchAllByRoomCode = async (roomCode: string) => {
+  const response = await api.get(`${BASE}/room/${roomCode}/all`);
+  return response.data;
+};
+
 // ── Room lifecycle API ──────────────────────────────────────
 
 const fetchRoom = async (roomCode: string) => {
@@ -188,6 +193,7 @@ export const interviewService = {
   acceptProposal,
   rejectProposal,
   fetchByRoomCode,
+  fetchAllByRoomCode,
   uploadInterviewRecording,
   fetchRoom,
   openRoom,

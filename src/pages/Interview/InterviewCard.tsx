@@ -1,14 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import type { Interview } from "@/types/interview";
 import { useNavigate } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, Monitor, MoreVertical, ExternalLink } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface InterviewCardProps {
   interview: Interview;
@@ -55,6 +50,34 @@ export default function InterviewCard({
   const isCompleted = interview.interviewStatus === "COMPLETED";
   const canJoinRoom = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(interview.interviewStatus);
   const navigate = useNavigate();
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isActionMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!actionMenuRef.current) return;
+      const target = event.target as Node;
+      if (!actionMenuRef.current.contains(target)) {
+        setIsActionMenuOpen(false);
+      }
+    };
+
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsActionMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEsc);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [isActionMenuOpen]);
 
   return (
     <div
@@ -77,38 +100,71 @@ export default function InterviewCard({
         </div>
 
         {(isActive || isCompleted) && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={(e) => e.stopPropagation()}
+          <div
+            ref={actionMenuRef}
+            className="relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              aria-haspopup="menu"
+              aria-expanded={isActionMenuOpen}
+              aria-label="Mở menu thao tác phỏng vấn"
+              onClick={() => setIsActionMenuOpen((value) => !value)}
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+
+            {isActionMenuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-9 z-30 min-w-[170px] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
               >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {isActive && (
-                <>
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onComplete?.(interview.id); }}>
-                    Hoàn thành
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-red-600"
-                    onClick={(e) => { e.stopPropagation(); onCancel?.(interview.id); }}
+                {isActive && (
+                  <>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="block w-full px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+                      onClick={() => {
+                        setIsActionMenuOpen(false);
+                        onComplete?.(interview.id);
+                      }}
+                    >
+                      Hoàn thành
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="block w-full px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                      onClick={() => {
+                        setIsActionMenuOpen(false);
+                        onCancel?.(interview.id);
+                      }}
+                    >
+                      Hủy phỏng vấn
+                    </button>
+                  </>
+                )}
+
+                {isCompleted && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="block w-full px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                      onFeedback?.(interview);
+                    }}
                   >
-                    Hủy phỏng vấn
-                  </DropdownMenuItem>
-                </>
-              )}
-              {isCompleted && (
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onFeedback?.(interview); }}>
-                  Đánh giá
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    Đánh giá
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

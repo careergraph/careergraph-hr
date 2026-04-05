@@ -54,6 +54,22 @@ export interface InterviewFeedback {
   createdDate: string;
 }
 
+export interface InterviewRecording {
+  id: string;
+  interviewId: string;
+  fileKey?: string;
+  fileSize?: number;
+  durationSeconds?: number;
+  mimeType?: string;
+  recordingStatus?: "PENDING" | "AVAILABLE" | "PROCESSING" | "DELETED";
+  recordedBy?: string;
+  thumbnailKey?: string;
+  transcriptKey?: string;
+  analysisSummary?: string;
+  analyzedAt?: string;
+  createdDate?: string;
+}
+
 export interface Interview {
   id: string;
   applicationId: string;
@@ -76,6 +92,7 @@ export interface Interview {
   cancellationReason?: string;
   interviewers: InterviewParticipant[];
   feedback?: InterviewFeedback[];
+  recordings?: InterviewRecording[];
   timeProposals?: InterviewTimeProposal[];
   createdDate: string;
   lastModifiedDate?: string;

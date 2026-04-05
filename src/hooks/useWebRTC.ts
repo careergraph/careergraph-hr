@@ -21,6 +21,7 @@ export interface JoinRequest {
   socketId: string;
   userId: string;
   email?: string;
+  displayName?: string;
 }
 
 export type RoomStatus = "SCHEDULED" | "WAITING" | "ACTIVE" | "CLOSING" | "ENDED" | "EXPIRED";

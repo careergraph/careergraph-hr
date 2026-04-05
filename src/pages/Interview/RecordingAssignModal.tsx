@@ -5,15 +5,18 @@ import { Label } from "@/components/ui/label";
 import { Video, CheckCircle2, User, Clock } from "lucide-react";
 import { interviewService } from "@/services/interviewService";
 import { toast } from "sonner";
+import type { Interview } from "@/types/interview";
 
 interface Participant {
   id: string;
+  applicationId: string;
   candidateId: string;
   candidateName: string;
   candidateEmail?: string;
   admitStatus: string;
   slotStart?: string;
   slotEnd?: string;
+  joinedAt?: string;
 }
 
 interface RecordingAssignModalProps {
@@ -22,6 +25,7 @@ interface RecordingAssignModalProps {
   roomCode: string;
   recordingUrl: string | null;
   interviewId: string;
+  roomInterviews?: Interview[];
 }
 
 export default function RecordingAssignModal({
@@ -30,6 +34,7 @@ export default function RecordingAssignModal({
   roomCode,
   recordingUrl,
   interviewId,
+  roomInterviews = [],
 }: RecordingAssignModalProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
@@ -47,9 +52,9 @@ export default function RecordingAssignModal({
           : Array.isArray(resp)
             ? resp
             : [];
-        // Show only admitted/completed candidates
+        // Only candidates who actually joined are eligible for recording assignment.
         const eligible = items.filter((p) =>
-          ["ADMITTED", "COMPLETED"].includes(p.admitStatus)
+          ["ADMITTED", "COMPLETED"].includes(p.admitStatus) && !!p.joinedAt
         );
         setParticipants(eligible);
       })
@@ -68,9 +73,15 @@ export default function RecordingAssignModal({
 
     setSaving(true);
     try {
-      await interviewService.saveRecording(interviewId, {
+      const selectedParticipant = participants.find((p) => p.id === selectedParticipantId);
+      const matchedInterviewId = selectedParticipant
+        ? roomInterviews.find((iv) => iv.applicationId === selectedParticipant.applicationId)?.id
+        : null;
+
+      const targetInterviewId = matchedInterviewId || interviewId;
+
+      await interviewService.saveRecording(targetInterviewId, {
         fileKey: recordingUrl,
-        participantId: selectedParticipantId || undefined,
       });
       toast.success(
         selectedParticipantId
@@ -95,7 +106,7 @@ export default function RecordingAssignModal({
   };
 
   return (
-    <Modal isOpen={open} onClose={onClose} className="max-w-[520px] p-0">
+    <Modal isOpen={open} onClose={onClose} className="max-w-130 p-0">
       <div className="flex max-h-[85vh] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-[0_30px_80px_rgba(0,0,0,0.35)]">
         {/* Header */}
         <div className="flex items-center gap-2 border-b border-border/60 px-6 py-5">

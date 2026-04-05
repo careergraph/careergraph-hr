@@ -12,6 +12,46 @@ Hệ thống phỏng vấn trực tuyến CareerGraph cho phép HR (nhà tuyển
 | **Candidate** | Ứng viên tham gia phỏng vấn | careergraph-client (port 5000) |
 | **System** | Backend API + RTC Signaling Server | careergraph-api (8010) + careergraph-rtc (4000) |
 
+### Trải nghiệm trang danh sách phỏng vấn (`/interviews`)
+
+- Hệ thống hiển thị **phỏng vấn ONLINE theo phòng** (`meetingLink`) thay vì tách thành từng thẻ ứng viên.
+- Mỗi thẻ phòng bao gồm:
+   - Vị trí tuyển dụng, mã phòng, khung giờ, số lượng ứng viên.
+   - Danh sách nhanh ứng viên trong phòng (click để vào trang chi tiết từng interview).
+   - Nút **Vào phòng** (đi đến `/interview/room/{roomCode}`) khi trạng thái còn có thể tham gia.
+   - Nút **Đánh giá ứng viên** mở feedback modal với candidate selector cho các ứng viên hợp lệ trong phòng.
+- Ứng viên có trạng thái `CANCELLED` hoặc `NO_SHOW` không hiển thị trong danh sách đánh giá.
+- Các lịch không thuộc phòng ONLINE (ví dụ OFFLINE) vẫn hiển thị dạng thẻ phỏng vấn độc lập.
+- Trạng thái thẻ room được tính theo **interview còn hiệu lực** (không lấy interview đã `CANCELLED`/`NO_SHOW` để đại diện trạng thái chính).
+- Nếu room có cả lịch còn hiệu lực và lịch đã hủy, UI hiển thị số lượng lịch đã hủy như một ghi chú phụ trong room card.
+
+### Quản lý ứng viên trong Interview Room (`/interview/room/{roomCode}`)
+
+- Trong màn hình room của HR có **sidebar quản lý ứng viên** theo từng lịch phỏng vấn.
+- Với mỗi ứng viên trong room, HR có thể:
+  - Nhấn **Hoàn thành** để cập nhật interview status về `COMPLETED`.
+  - Nhấn **Đánh giá** để mở feedback modal đúng ứng viên đã chọn.
+- Sau khi gửi feedback thành công từ room, hệ thống tự động cố gắng cập nhật interview đó về `COMPLETED` (nếu chưa hoàn thành).
+
+### Production rule (siết chặt)
+
+- Chỉ ứng viên đã thực sự vào phòng (`joined_at` có giá trị trong room participant) mới được:
+   - đánh giá,
+   - gán recording,
+   - chuyển hoàn thành.
+- Ở room dùng chung nhiều ứng viên, không được dùng một interview đại diện để khóa toàn bộ room.
+- Nút và danh sách thao tác phải thể hiện rõ ứng viên nào đã vào/chưa vào.
+
+### Chính sách hủy lịch (production)
+
+- HR luôn có quyền hủy lịch phỏng vấn theo từng interview.
+- Nếu HR hủy khi ứng viên **chưa xác nhận lịch** (status trước hủy là `SCHEDULED`):
+   - Interview được giữ dữ liệu để audit nội bộ.
+   - Interview **ẩn khỏi danh sách lịch của ứng viên** (candidate không thấy trong `/my-interviews`).
+- Nếu HR hủy khi ứng viên **đã xác nhận hoặc đang xử lý** (ví dụ `CONFIRMED`, `IN_PROGRESS`...):
+   - Interview vẫn hiển thị cho ứng viên dưới trạng thái `CANCELLED` để đảm bảo lịch sử minh bạch.
+- Trên trang `InterviewDetail`, nút **Vào phòng** chỉ hiển thị khi interview còn trạng thái có thể tham gia (`SCHEDULED`/`CONFIRMED`/`IN_PROGRESS`).
+
 ---
 
 ## 2. Use Case Diagram
@@ -53,6 +93,25 @@ Hệ thống phỏng vấn trực tuyến CareerGraph cho phép HR (nhà tuyển
 ---
 
 ## 3. Chi tiết Use Case
+
+### Điều hướng Interview Detail (HR)
+
+| Mục | Giá trị |
+|---|---|
+| **Route** | `/interviews/:id` |
+| **Page** | `InterviewDetail` |
+| **Ai dùng** | HR đã đăng nhập |
+
+**Cách vào trang chi tiết phỏng vấn:**
+
+1. HR mở danh sách phỏng vấn tại `http://localhost:3000/interviews`.
+2. Từ thẻ hoặc dòng phỏng vấn cần xem, chọn thao tác xem chi tiết (hoặc click trực tiếp vào item nếu UI đang bind sự kiện mở detail).
+3. Hệ thống điều hướng đến `http://localhost:3000/interviews/{interviewId}`.
+4. Trang `InterviewDetail` hiển thị thông tin lịch, trạng thái, ứng viên, feedback và recording liên quan.
+
+**Lưu ý kỹ thuật:**
+- Route đã được khai báo trong router frontend HR: `/interviews/:id`.
+- Nếu `interviewId` không tồn tại hoặc không có quyền, frontend phải hiển thị trạng thái lỗi phù hợp.
 
 ### UC-01: Lên lịch phỏng vấn
 
@@ -274,6 +333,11 @@ Hệ thống phỏng vấn trực tuyến CareerGraph cho phép HR (nhà tuyển
    - Ngắt Socket.io connection
 3. User được chuyển về trang danh sách phỏng vấn (`/interviews`)
 4. Đối phương nhận event `user-left` → Remote video biến mất
+
+**Lưu ý production:**
+
+- "Kết thúc phiên họp" chỉ đóng room/session, không tự động complete một interview đại diện.
+- Hoàn thành interview là hành động theo từng ứng viên trong sidebar, sau khi ứng viên đã vào phòng.
 
 ---
 

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
+import { BrowserRouter as Router, Routes, Route } from "react-router";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import SignIn from "@/pages/AuthPages/SignIn";
 import SignUp from "@/pages/AuthPages/SignUp";
@@ -21,6 +21,7 @@ import RequireAuth from "@/components/auth/RequireAuth";
 import LandingPage from "@/pages/Landing/LandingPage";
 import ForgotPassword from "./pages/AuthPages/ForgotPassword";
 import ResetPassword from "./pages/AuthPages/ResetPassword";
+import NotFound from "@/pages/Common/NotFound";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 const HAS_VALID_GOOGLE_CLIENT_ID =
@@ -56,7 +57,7 @@ const AppRoutes = () => (
         <Route path="/verify-otp" element={<Verify />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   </>

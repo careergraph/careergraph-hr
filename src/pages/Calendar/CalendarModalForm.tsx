@@ -27,6 +27,7 @@ import { CalendarClock, Video, Briefcase, Users } from "lucide-react";
 import { jobService } from "@/services/jobService";
 import { interviewService } from "@/services/interviewService";
 import { useInterviewStore } from "@/stores/interviewStore";
+import { extractApiErrorMessage } from "@/lib/error-utils";
 import { toast } from "sonner";
 
 interface UnscheduledApp {
@@ -200,8 +201,8 @@ export const CalendarModalForm = ({
       toast.success("Đã tạo lịch phỏng vấn thành công");
       onInterviewCreated?.();
       onClose();
-    } catch {
-      toast.error("Không thể tạo lịch phỏng vấn");
+    } catch (error: unknown) {
+      toast.error(extractApiErrorMessage(error, "Không thể tạo lịch phỏng vấn"));
     } finally {
       setIsSubmitting(false);
     }
