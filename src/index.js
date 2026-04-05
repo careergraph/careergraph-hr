@@ -20,7 +20,7 @@ const io = new Server(server, {
 // ── Room state ──────────────────────────────────────────────
 // rooms: Map<roomCode, Set<socketId>>           — admitted peers
 // hosts: Map<roomCode, socketId>                — the HR host socket
-// waitingRoom: Map<roomCode, Map<socketId, { userId, email }>>  — pending candidates
+// waitingRoom: Map<roomCode, Map<socketId, { userId, email, displayName }>>  — pending candidates
 // admittedUsers: Map<roomCode, Set<userId>>     — candidates who were approved at least once
 const rooms = new Map();
 const hosts = new Map();
@@ -71,6 +71,23 @@ function addToRoom(socket, roomCode) {
   console.log(`[join] ${userId} → room ${roomCode} (${rooms.get(roomCode).size} peers)`);
 }
 
+function buildDisplayName(user) {
+  if (!user || typeof user !== "object") return "";
+
+  const firstName = (user.firstName || "").toString().trim();
+  const lastName = (user.lastName || "").toString().trim();
+  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+  if (fullName) return fullName;
+
+  const name = (user.name || "").toString().trim();
+  if (name) return name;
+
+  const email = (user.email || "").toString().trim();
+  if (email.includes("@")) return email.split("@")[0];
+
+  return "";
+}
+
 // ── Connection handler ──────────────────────────────────────
 io.on("connection", (socket) => {
   const { sub: userId } = socket.data.user;
@@ -90,7 +107,12 @@ io.on("connection", (socket) => {
       const waiting = waitingRoom.get(roomCode);
       if (waiting && waiting.size > 0) {
         for (const [wSocketId, info] of waiting) {
-          socket.emit("join-request", { socketId: wSocketId, userId: info.userId, email: info.email || "" });
+          socket.emit("join-request", {
+            socketId: wSocketId,
+            userId: info.userId,
+            email: info.email || "",
+            displayName: info.displayName || "",
+          });
         }
       }
     } else {
@@ -105,12 +127,21 @@ io.on("connection", (socket) => {
       // Candidate: check if host is present. If no host yet, go to waiting room.
       // If host exists, send join request for approval.
       if (!waitingRoom.has(roomCode)) waitingRoom.set(roomCode, new Map());
-      waitingRoom.get(roomCode).set(socket.id, { userId, email: socket.data.user.email || "" });
+      waitingRoom.get(roomCode).set(socket.id, {
+        userId,
+        email: socket.data.user.email || "",
+        displayName: buildDisplayName(socket.data.user),
+      });
       socket.data.roomCode = roomCode;
 
       const hostSocketId = hosts.get(roomCode);
       if (hostSocketId) {
-        io.to(hostSocketId).emit("join-request", { socketId: socket.id, userId, email: socket.data.user.email || "" });
+        io.to(hostSocketId).emit("join-request", {
+          socketId: socket.id,
+          userId,
+          email: socket.data.user.email || "",
+          displayName: buildDisplayName(socket.data.user),
+        });
         socket.emit("waiting-for-host", { status: "pending" });
       } else {
         socket.emit("waiting-for-host", { status: "no-host" });
