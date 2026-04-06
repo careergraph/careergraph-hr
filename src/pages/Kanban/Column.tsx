@@ -3,7 +3,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Briefcase, Users, CheckCircle, Star, UserCheck, FileCheck, Gift, Search } from "lucide-react";
+import { Briefcase, Users, CheckCircle, Star, UserCheck, FileCheck, Gift, Search, Ban } from "lucide-react";
 import { CandidateCard } from "./CandidateCard";
 import { Candidate, Status as CandidateStatus } from "@/types/candidate";
 
@@ -38,6 +38,12 @@ const COLUMN_STYLES: Record<
     badge: "bg-amber-500/10 text-amber-600",
     icon: <Search className="h-5 w-5 text-amber-500" />,
   },
+  contacted: {
+    accent: "from-cyan-500/60 via-cyan-400/20 to-transparent",
+    border: "border-cyan-100/70",
+    badge: "bg-cyan-500/10 text-cyan-600",
+    icon: <Users className="h-5 w-5 text-cyan-500" />,
+  },
   interview: {
     accent: "from-purple-500/60 via-purple-400/20 to-transparent",
     border: "border-purple-100/70",
@@ -67,6 +73,12 @@ const COLUMN_STYLES: Record<
     border: "border-emerald-100/70",
     badge: "bg-emerald-500/10 text-emerald-600",
     icon: <CheckCircle className="h-5 w-5 text-emerald-500" />,
+  },
+  rejected: {
+    accent: "from-rose-500/60 via-rose-400/20 to-transparent",
+    border: "border-rose-100/70",
+    badge: "bg-rose-500/10 text-rose-600",
+    icon: <Ban className="h-5 w-5 text-rose-500" />,
   },
 };
 

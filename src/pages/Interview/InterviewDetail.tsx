@@ -4,7 +4,7 @@ import PageMeta from "@/components/common/PageMeta";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import { useInterviewStore } from "@/stores/interviewStore";
 import { interviewService } from "@/services/interviewService";
-import type { InterviewTimeProposal } from "@/types/interview";
+import type { InterviewRecording, InterviewTimeProposal } from "@/types/interview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,8 @@ import {
   CalendarClock,
   Check,
   X,
+  Link as LinkIcon,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -56,6 +58,7 @@ export default function InterviewDetail() {
 
   const [showFeedback, setShowFeedback] = useState(false);
   const [proposals, setProposals] = useState<InterviewTimeProposal[]>([]);
+  const [recordings, setRecordings] = useState<InterviewRecording[]>([]);
   const [processingProposal, setProcessingProposal] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,6 +77,21 @@ export default function InterviewDetail() {
     }
   }, [selectedInterview?.id, selectedInterview?.interviewStatus]);
 
+  useEffect(() => {
+    if (!selectedInterview?.id) {
+      setRecordings([]);
+      return;
+    }
+
+    interviewService
+      .fetchRecordings(selectedInterview.id)
+      .then((res) => {
+        const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        setRecordings(items);
+      })
+      .catch(() => setRecordings([]));
+  }, [selectedInterview?.id]);
+
   if (isLoading || !selectedInterview) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -86,6 +104,7 @@ export default function InterviewDetail() {
   const scheduledDate = new Date(iv.scheduledAt);
   const endDate = new Date(iv.endAt);
   const isActive = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE"].includes(iv.interviewStatus);
+  const roomLink = iv.meetingLink ? `${window.location.origin}/interview/room/${iv.meetingLink}` : "";
   const isCompleted = iv.interviewStatus === "COMPLETED";
   const canOpenRoomFromDetail = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(iv.interviewStatus);
 
@@ -204,6 +223,21 @@ export default function InterviewDetail() {
                   </>
                 )}
               </div>
+              {roomLink && (
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <LinkIcon className="h-4 w-4" />
+                  <span className="truncate font-mono">{roomLink}</span>
+                  <button
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(roomLink);
+                      toast.success("Đã sao chép link phòng");
+                    }}
+                    className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                  >
+                    <Copy className="h-3 w-3" /> Sao chép
+                  </button>
+                </div>
+              )}
               {iv.notes && (
                 <div className="mt-2 rounded-lg bg-gray-50 dark:bg-gray-900 p-3 text-gray-600 dark:text-gray-300 text-xs">
                   {iv.notes}
@@ -268,6 +302,53 @@ export default function InterviewDetail() {
                     )}
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {recordings.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Bản ghi phòng</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {recordings.map((recording) => {
+                  const recordingUrl = recording.fileKey || "";
+                  const previewable = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(recordingUrl) || recording.mimeType?.startsWith("video/");
+
+                  return (
+                    <div key={recording.id} className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs text-gray-500">
+                          {recording.createdDate ? `Recorded: ${new Date(recording.createdDate).toLocaleString("vi-VN")}` : "Recorded clip"}
+                        </p>
+                        {recording.recordingStatus && (
+                          <Badge variant="outline">{recording.recordingStatus}</Badge>
+                        )}
+                      </div>
+                      {previewable ? (
+                        <video
+                          className="mx-auto mt-3 w-full max-w-2xl aspect-video rounded-lg border border-gray-200 bg-black object-contain"
+                          controls
+                          preload="metadata"
+                          src={recordingUrl}
+                        />
+                      ) : (
+                        <p className="mt-3 text-xs text-gray-500">Không thể preview trực tiếp. Hãy mở link để xem.</p>
+                      )}
+                      <a
+                        href={recordingUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                      >
+                        <LinkIcon className="h-3.5 w-3.5" /> Mở link recording
+                      </a>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

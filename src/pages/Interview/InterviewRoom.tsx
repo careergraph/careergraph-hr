@@ -140,6 +140,12 @@ export default function InterviewRoom() {
     localStream: localStream,
   });
 
+  useEffect(() => {
+    if (!remotePeerId) {
+      setActiveCandidateId(null);
+    }
+  }, [remotePeerId]);
+
   // Attach remote stream to video element
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
@@ -740,6 +746,7 @@ export default function InterviewRoom() {
           )
         );
       }
+          setActiveCandidateId(null);
       toast.info("Đã mời ứng viên rời phòng");
     }
     setShowKickConfirm(false);

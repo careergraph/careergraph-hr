@@ -30,6 +30,7 @@ import type {
 } from "@/types/candidateTab";
 import { formatDate } from "@/lib/candidateDataUtils";
 import type { Interview } from "@/types/interview";
+import { Button } from "@/components/ui/button";
 
 // CandidateDetail hiển thị panel chi tiết của ứng viên trong Kanban.
 
@@ -38,6 +39,7 @@ type CandidateDetailProps = {
   onOpenChange: (open: boolean) => void;
   candidate: Candidate | null;
   setHeaderBlur: (blur: boolean) => void;
+  onRejectCandidate?: (candidate: Candidate) => Promise<void> | void;
 };
 
 export function CandidateDetail({
@@ -45,6 +47,7 @@ export function CandidateDetail({
   onOpenChange,
   candidate,
   setHeaderBlur,
+  onRejectCandidate,
 }: CandidateDetailProps) {
   useEffect(() => {
     // Làm mờ header khi panel mở để tạo trọng tâm.
@@ -105,6 +108,19 @@ export function CandidateDetail({
     null
   );
   const [interviewReviews, setInterviewReviews] = useState<Interview[]>([]);
+  const [rejecting, setRejecting] = useState(false);
+
+  const handleRejectCandidate = useCallback(async () => {
+    if (!candidate || !onRejectCandidate || rejecting) return;
+
+    setRejecting(true);
+    try {
+      await onRejectCandidate(candidate);
+      onOpenChange(false);
+    } finally {
+      setRejecting(false);
+    }
+  }, [candidate, onRejectCandidate, onOpenChange, rejecting]);
 
   const loadTab = useCallback(
     async (tab: string) => {
@@ -227,6 +243,22 @@ export function CandidateDetail({
                       {formatDate(candidate.appliedDate)}
                     </span>
                   </p>
+
+                  {onRejectCandidate ? (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="mt-3 w-full bg-red-600 text-white hover:bg-red-700"
+                      onClick={handleRejectCandidate}
+                      disabled={rejecting || candidate.status === "rejected"}
+                    >
+                      {rejecting
+                        ? "Đang xử lý..."
+                        : candidate.status === "rejected"
+                          ? "Đã từ chối"
+                          : "Từ chối ứng viên"}
+                    </Button>
+                  ) : null}
                 </div>
               </div>
 

@@ -204,7 +204,7 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
 
                         {canPreview ? (
                           <video
-                            className="mt-2 w-full rounded-md border border-slate-200 bg-black"
+                            className="mx-auto mt-2 w-full max-w-2xl aspect-video rounded-md border border-slate-200 bg-black object-contain"
                             controls
                             preload="metadata"
                             src={recordingUrl}

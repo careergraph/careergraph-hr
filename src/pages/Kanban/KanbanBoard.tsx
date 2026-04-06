@@ -106,7 +106,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           APPLIED: "apply",
           SUBMITTED: "apply",
           SCREENING: "screening",
-          HR_CONTACTED: "screening",
+          HR_CONTACTED: "contacted",
           SCHEDULED: "screening",
           INTERVIEW_SCHEDULED: "interview",
           PENDING_RESCHEDULE: "interview",
@@ -117,6 +117,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           OFFER_EXTENDED: "offer",
           OFFER_ACCEPTED: "offer",
           HIRED: "hired",
+          REJECTED: "rejected",
         } as const;
 
         const normalizeString = (v: unknown, fallback = "") =>
@@ -599,11 +600,13 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     const statusToStage: Record<CandidateStatus, string> = {
       apply: "APPLIED",
       screening: "SCREENING",
+      contacted: "HR_CONTACTED",
       interview: "INTERVIEW",
       interviewed: "INTERVIEW_COMPLETED",
       trial: "TRIAL",
       offer: "OFFER_EXTENDED",
       hired: "HIRED",
+      rejected: "REJECTED",
     };
 
     const stage = statusToStage[moveRequest.targetStatus] || "APPLIED";
@@ -727,13 +730,6 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
             ) : null}
           </DragOverlay>
         </DndContext>
-        {/* Dialog chi tiết ứng viên */}
-        <CandidateDetail
-          open={detailOpen}
-          onOpenChange={setDetailOpen}
-          candidate={activeCandidate}
-          setHeaderBlur={() => {}}
-        />
       </div>
 
       {/*
@@ -778,7 +774,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
                 const resp =
                   await applicationService.updateApplicationStage(
                     current.id,
-                    { stage: "INTERVIEW", note: current.description ?? "" }
+                    { stage: "INTERVIEW_SCHEDULED", note: current.description ?? "" }
                   );
                 if (resp && resp.status >= 200 && resp.status < 300) {
                   setCandidates((prev) => {
@@ -849,6 +845,40 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
         </div>
         )
       ) : null}
+
+      <CandidateDetail
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        candidate={activeCandidate}
+        setHeaderBlur={() => {}}
+        onRejectCandidate={async (candidate) => {
+          const current = candidates.find((item) => item.id === candidate.id);
+          if (!current) return;
+
+          try {
+            const resp = await applicationService.updateApplicationStage(current.id, {
+              stage: "REJECTED",
+              note: current.description ?? "Rejected from Kanban",
+            });
+
+            if (resp && resp.status >= 200 && resp.status < 300) {
+              setCandidates((prev) =>
+                prev.map((item) =>
+                  item.id === candidate.id ? { ...item, status: "rejected" } : item
+                )
+              );
+              setActiveCandidate((prev) =>
+                prev && prev.id === candidate.id ? { ...prev, status: "rejected" } : prev
+              );
+              toast.success("Đã từ chối ứng viên");
+            }
+          } catch (err: unknown) {
+            console.error("Failed to reject application:", err);
+            toast.error("Không thể từ chối ứng viên");
+            throw err;
+          }
+        }}
+      />
     </div>
   );
 };
