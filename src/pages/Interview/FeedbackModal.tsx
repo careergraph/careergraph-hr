@@ -99,8 +99,8 @@ export default function FeedbackModal({
 
       toast.success("Đã gửi đánh giá thành công");
       onClose();
-    } catch {
-      toast.error("Không thể gửi đánh giá");
+    } catch(error: any) {
+      toast.error(error?.response?.data?.message || "Không thể gửi đánh giá");
     }
   };
 
