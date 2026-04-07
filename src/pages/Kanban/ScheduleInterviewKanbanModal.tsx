@@ -57,7 +57,14 @@ export default function ScheduleInterviewKanbanModal({
   const [type, setType] = useState<InterviewType>("ONLINE");
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState("");
+  const formErrorRef = useRef<HTMLDivElement>(null);
+  const candidateFieldRef = useRef<HTMLDivElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
+  const timeInputRef = useRef<HTMLInputElement>(null);
+  const locationInputRef = useRef<HTMLInputElement>(null);
+  const todayStr = new Date().toISOString().split("T")[0];
 
   // Result state after scheduling
   const [scheduledResult, setScheduledResult] = useState<Interview | null>(null);
@@ -110,6 +117,8 @@ export default function ScheduleInterviewKanbanModal({
     setType("ONLINE");
     setLocation("");
     setNotes("");
+    setFieldErrors({});
+    setFormError("");
     setScheduledResult(null);
     setCopied(false);
   };
@@ -123,38 +132,96 @@ export default function ScheduleInterviewKanbanModal({
   const displayName =
     selectedApp?.candidateName || preselectedCandidateName || "Ứng viên";
 
-  const handleSubmit = async () => {
-    if (!selectedAppId) {
-      toast.error("Vui lòng chọn ứng viên");
+  const scrollToFirstError = (errors: Record<string, string>) => {
+    if (errors.selectedAppId) {
+      candidateFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
+    }
+    if (errors.date) {
+      dateInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (errors.startTime) {
+      timeInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (errors.location) {
+      locationInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const handleSubmit = async () => {
+    const nextErrors: Record<string, string> = {};
+    if (!selectedAppId) {
+      nextErrors.selectedAppId = "Vui lòng chọn ứng viên.";
     }
     if (!date || !startTime) {
-      toast.error("Vui lòng nhập ngày và giờ bắt đầu");
-      return;
+      if (!date) nextErrors.date = "Vui lòng nhập ngày phỏng vấn.";
+      if (!startTime) nextErrors.startTime = "Vui lòng nhập giờ bắt đầu.";
     }
     if (type === "OFFLINE" && !location) {
-      toast.error("Vui lòng nhập địa điểm cho phỏng vấn offline");
+      nextErrors.location = "Vui lòng nhập địa điểm cho phỏng vấn offline.";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      setFormError("Vui lòng kiểm tra lại các trường bắt buộc.");
+      setTimeout(() => scrollToFirstError(nextErrors), 0);
       return;
     }
 
-    const request: CreateInterviewRequest = {
-      applicationId: selectedAppId,
-      date,
-      startTime,
-      durationMinutes: duration,
-      type,
-      location: type === "OFFLINE" ? location : undefined,
-      notes: notes || undefined,
-      notifyCandidate: true,
+    setFieldErrors({});
+    setFormError("");
+
+    const submitRequest = async (confirmOverwrite: boolean) => {
+      const request: CreateInterviewRequest = {
+        applicationId: selectedAppId,
+        date,
+        startTime,
+        durationMinutes: duration,
+        type,
+        location: type === "OFFLINE" ? location : undefined,
+        notes: notes || undefined,
+        confirmOverwrite,
+        notifyCandidate: true,
+      };
+
+      return createInterview(request);
     };
 
     try {
-      const interview = await createInterview(request);
+      const interview = await submitRequest(false);
       toast.success("Đã lên lịch phỏng vấn thành công");
       setScheduledResult(interview);
       onScheduled(selectedAppId, interview);
     } catch (error: unknown) {
-      toast.error(extractApiErrorMessage(error, "Không thể lên lịch phỏng vấn"));
+      const rawMessage = extractApiErrorMessage(error, "Không thể lên lịch phỏng vấn");
+      if (rawMessage.includes("ACTIVE_INTERVIEW")) {
+        const confirm = window.confirm(
+          "Ứng viên đã có một lịch phỏng vấn đang hoạt động cho vị trí này. Bạn có muốn ghi đè lịch cũ bằng lịch mới không?"
+        );
+        if (confirm) {
+          try {
+            const interview = await submitRequest(true);
+            toast.success("Đã cập nhật lịch phỏng vấn thành công");
+            setScheduledResult(interview);
+            onScheduled(selectedAppId, interview);
+            return;
+          } catch (confirmError: unknown) {
+            setFormError(extractApiErrorMessage(confirmError, "Không thể cập nhật lịch phỏng vấn"));
+            setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+            return;
+          }
+        }
+        setFormError("Bạn đã hủy thao tác ghi đè lịch hiện tại.");
+        setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+        return;
+      }
+
+      setFormError(rawMessage);
+      setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
     }
   };
 
@@ -253,8 +320,13 @@ export default function ScheduleInterviewKanbanModal({
             </div>
           ) : (
             <div className="space-y-4">
+              {formError ? (
+                <div ref={formErrorRef} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                  {formError.replace(/^ACTIVE_INTERVIEW_[A-Z_]+\|/, "")}
+                </div>
+              ) : null}
               {/* Candidate selector */}
-              <div className="space-y-2">
+              <div ref={candidateFieldRef} className="space-y-2">
                 <Label className="flex items-center gap-1.5">
                   <Users className="h-4 w-4" />
                   Chọn ứng viên
@@ -270,7 +342,10 @@ export default function ScheduleInterviewKanbanModal({
                 ) : (
                   <Select
                     value={selectedAppId}
-                    onValueChange={setSelectedAppId}
+                    onValueChange={(value) => {
+                      setSelectedAppId(value);
+                      setFieldErrors((prev) => ({ ...prev, selectedAppId: "" }));
+                    }}
                     disabled={!!preselectedApplicationId}
                   >
                     <SelectTrigger>
@@ -293,6 +368,9 @@ export default function ScheduleInterviewKanbanModal({
                     </SelectContent>
                   </Select>
                 )}
+                {fieldErrors.selectedAppId ? (
+                  <p className="text-xs text-rose-600">{fieldErrors.selectedAppId}</p>
+                ) : null}
               </div>
 
               {selectedApp && (
@@ -326,18 +404,31 @@ export default function ScheduleInterviewKanbanModal({
                       value={date}
                       onClick={openDatePicker}
                       onFocus={openDatePicker}
-                      onChange={(e) => setDate(e.target.value)}
-                      min={new Date().toISOString().split("T")[0]}
+                      onChange={(e) => {
+                        setDate(e.target.value);
+                        setFieldErrors((prev) => ({ ...prev, date: "" }));
+                      }}
+                      min={todayStr}
                     />
+                    {fieldErrors.date ? (
+                      <p className="text-xs text-rose-600">{fieldErrors.date}</p>
+                    ) : null}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="kanban-interview-time">Giờ bắt đầu</Label>
                     <Input
+                      ref={timeInputRef}
                       id="kanban-interview-time"
                       type="time"
                       value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
+                      onChange={(e) => {
+                        setStartTime(e.target.value);
+                        setFieldErrors((prev) => ({ ...prev, startTime: "" }));
+                      }}
                     />
+                    {fieldErrors.startTime ? (
+                      <p className="text-xs text-rose-600">{fieldErrors.startTime}</p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -385,11 +476,18 @@ export default function ScheduleInterviewKanbanModal({
                   <div className="space-y-2">
                     <Label htmlFor="kanban-interview-location">Địa điểm</Label>
                     <Input
+                      ref={locationInputRef}
                       id="kanban-interview-location"
                       placeholder="Ví dụ: Phòng họp tầng 5"
                       value={location}
-                      onChange={(e) => setLocation(e.target.value)}
+                      onChange={(e) => {
+                        setLocation(e.target.value);
+                        setFieldErrors((prev) => ({ ...prev, location: "" }));
+                      }}
                     />
+                    {fieldErrors.location ? (
+                      <p className="text-xs text-rose-600">{fieldErrors.location}</p>
+                    ) : null}
                   </div>
                 )}
 

@@ -332,7 +332,14 @@ export default function InterviewRoom() {
     const checkAccess = () => {
       const scheduled = new Date(interview.scheduledAt).getTime();
       const earlyJoinTime = scheduled - EARLY_JOIN_MINUTES * 60 * 1000;
+      const endAt = interview.endAt ? new Date(interview.endAt).getTime() : null;
       const now = Date.now();
+
+      if (endAt && now > endAt) {
+        setCanJoin(false);
+        setCountdown("Buổi phỏng vấn đã kết thúc");
+        return;
+      }
 
       if (now >= earlyJoinTime) {
         setCanJoin(true);

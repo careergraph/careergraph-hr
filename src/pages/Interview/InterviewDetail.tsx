@@ -45,6 +45,20 @@ const STATUS_LABELS: Record<string, string> = {
   NO_SHOW: "Vắng mặt",
 };
 
+const FEEDBACK_RECOMMENDATION_LABELS: Record<string, string> = {
+  NEXT_ROUND: "Mời phỏng vấn giai đoạn tiếp theo",
+  EXTEND_OFFER: "Gửi offer",
+  REJECT: "Từ chối",
+  HOLD: "Giữ nguyên giai đoạn hiện tại",
+};
+
+const RECORDING_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Đang chờ",
+  AVAILABLE: "Sẵn sàng",
+  PROCESSING: "Đang xử lý",
+  DELETED: "Đã xóa",
+};
+
 export default function InterviewDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -106,6 +120,7 @@ export default function InterviewDetail() {
   const isActive = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE"].includes(iv.interviewStatus);
   const roomLink = iv.meetingLink ? `${window.location.origin}/interview/room/${iv.meetingLink}` : "";
   const isCompleted = iv.interviewStatus === "COMPLETED";
+  const hasFeedback = Array.isArray(iv.feedback) && iv.feedback.length > 0;
   const canOpenRoomFromDetail = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(iv.interviewStatus);
 
   const handleCancel = async () => {
@@ -283,7 +298,7 @@ export default function InterviewDetail() {
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                         {fb.reviewerName}
                       </span>
-                      <Badge variant="outline">{fb.recommendation.replace("_", " ")}</Badge>
+                      <Badge variant="outline">{FEEDBACK_RECOMMENDATION_LABELS[fb.recommendation] ?? fb.recommendation}</Badge>
                     </div>
                     <div className="flex gap-4 text-xs text-gray-500 mb-2">
                       <span>Tổng: {fb.overallRating}/5</span>
@@ -325,7 +340,9 @@ export default function InterviewDetail() {
                           {recording.createdDate ? `Recorded: ${new Date(recording.createdDate).toLocaleString("vi-VN")}` : "Recorded clip"}
                         </p>
                         {recording.recordingStatus && (
-                          <Badge variant="outline">{recording.recordingStatus}</Badge>
+                          <Badge variant="outline">
+                            {RECORDING_STATUS_LABELS[recording.recordingStatus] ?? recording.recordingStatus}
+                          </Badge>
                         )}
                       </div>
                       {previewable ? (
@@ -459,7 +476,7 @@ export default function InterviewDetail() {
               </Button>
             </>
           )}
-          {isCompleted && (
+          {isCompleted && !hasFeedback && (
             <Button onClick={() => setShowFeedback(true)}>
               <MessageSquare className="h-4 w-4 mr-1" /> Thêm đánh giá
             </Button>

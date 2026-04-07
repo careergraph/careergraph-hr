@@ -184,11 +184,13 @@ export default function InterviewList() {
         );
         const cancelledCount = sorted.length - roomActiveInterviews.length;
 
-        const feedbackEligible = sorted.filter(
-          (iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW"
-        );
-        const completedCandidates = feedbackEligible.filter((iv) => iv.interviewStatus === "COMPLETED");
-        const feedbackCandidates = (completedCandidates.length > 0 ? completedCandidates : feedbackEligible).map((iv) => ({
+        const feedbackCandidates = sorted
+          .filter(
+            (iv) =>
+              iv.interviewStatus === "COMPLETED" &&
+              (!Array.isArray(iv.feedback) || iv.feedback.length === 0)
+          )
+          .map((iv) => ({
           interviewId: iv.id,
           candidateName: iv.candidateName,
         }));

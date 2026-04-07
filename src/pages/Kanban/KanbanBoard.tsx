@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { Status as CandidateStatusType } from "@/types/candidate";
 import ScheduleInterviewKanbanModal from "./ScheduleInterviewKanbanModal";
 import type { Interview } from "@/types/interview";
+import { useAuthStore } from "@/stores/authStore";
 
 // KanbanBoard tổ chức danh sách ứng viên theo trạng thái và hỗ trợ kéo thả.
 
@@ -33,6 +34,9 @@ interface KanbanBoardProps {
 
 // Component quản lý toàn bộ Kanban board tuyển dụng
 export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
+  const company = useAuthStore((state) => state.company);
+  const showOffboardedColumn = Boolean(company?.enableOffboardedStage);
+
   const filterByJob = useCallback(
     (items: Candidate[]) =>
       items.filter((candidate) => (jobId ? candidate.jobId === jobId : true)),
@@ -117,6 +121,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           OFFER_EXTENDED: "offer",
           OFFER_ACCEPTED: "offer",
           HIRED: "hired",
+          OFFBOARDED: "offboarded",
           REJECTED: "rejected",
         } as const;
 
@@ -574,6 +579,13 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     );
   }, [moveRequest]);
 
+  const visibleColumns = useMemo(() => {
+    if (showOffboardedColumn) {
+      return columns;
+    }
+    return columns.filter((column) => column.id !== "offboarded");
+  }, [showOffboardedColumn]);
+
   // Confirm move: call backend first and only move the candidate in UI when
   // the API responds with a successful HTTP status (2xx). If the API fails
   // we show a toast.error and keep the UI unchanged (revert to snapshot).
@@ -606,6 +618,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
       trial: "TRIAL",
       offer: "OFFER_EXTENDED",
       hired: "HIRED",
+      offboarded: "OFFBOARDED",
       rejected: "REJECTED",
     };
 
@@ -712,7 +725,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           onDragEnd={handleDragEnd}
         >
           <div className="flex min-h-[calc(100vh-260px)] items-start gap-5 overflow-x-auto pb-4">
-            {columns.map((column) => (
+            {visibleColumns.map((column) => (
               <Column
                 key={column.id}
                 id={column.id}

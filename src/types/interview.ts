@@ -107,6 +107,7 @@ export interface CreateInterviewRequest {
   location?: string;
   interviewerIds?: string[];
   notes?: string;
+  confirmOverwrite?: boolean;
   notifyCandidate?: boolean;
 }
 

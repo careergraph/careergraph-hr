@@ -9,23 +9,23 @@ export const CALENDAR_LEVEL_META: Record<
   { label: string; description: string; variant: CalendarVariant }
 > = {
   Danger: {
-    label: "Ưu tiên cao",
-    description: "Ứng viên cần ưu tiên phản hồi hoặc phỏng vấn gấp",
+    label: "Cần xử lý",
+    description: "Lịch bị hủy, vắng mặt hoặc cần phản hồi gấp",
     variant: "danger",
   },
   Success: {
     label: "Đã xác nhận",
-    description: "Lịch hẹn đã được xác nhận với ứng viên",
+    description: "Hai bên đã xác nhận lịch phỏng vấn",
     variant: "success",
   },
   Primary: {
-    label: "Đang xử lý",
-    description: "Lịch phỏng vấn đang chờ xác nhận",
+    label: "Chờ xác nhận",
+    description: "Lịch mới tạo, đang chờ ứng viên phản hồi",
     variant: "primary",
   },
   Warning: {
-    label: "Chờ phản hồi",
-    description: "Đang đợi phản hồi hoặc bổ sung thông tin",
+    label: "Cần theo dõi",
+    description: "Phỏng vấn đang diễn ra hoặc đang chờ xử lý",
     variant: "warning",
   },
 };

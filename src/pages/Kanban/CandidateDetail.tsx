@@ -299,7 +299,7 @@ export function CandidateDetail({
                   <TabsTrigger value="overview">Thông tin chi tiết</TabsTrigger>
                   <TabsTrigger value="experience">Kinh nghiệm</TabsTrigger>
                   <TabsTrigger value="cv">CV</TabsTrigger>
-                  <TabsTrigger value="interview-review">Danh gia phong van</TabsTrigger>
+                  <TabsTrigger value="interview-review">Đánh giá phỏng vấn</TabsTrigger>
                   <TabsTrigger value="messages">Tin nhắn</TabsTrigger>
                   <TabsTrigger value="email">Email</TabsTrigger>
                 </TabsList>

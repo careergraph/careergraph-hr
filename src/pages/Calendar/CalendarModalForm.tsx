@@ -58,7 +58,6 @@ interface CalendarModalFormProps {
   eventLocation: string;
   eventNotes: string;
   onClose: () => void;
-  onSubmit: () => void;
   onTitleChange: (value: string) => void;
   onCandidateChange: (value: string) => void;
   onLevelChange: (level: CalendarLevel) => void;
@@ -80,7 +79,6 @@ export const CalendarModalForm = ({
   eventLocation,
   eventNotes,
   onClose,
-  onSubmit,
   onTitleChange,
   onCandidateChange,
   onLevelChange,
@@ -92,6 +90,7 @@ export const CalendarModalForm = ({
 }: CalendarModalFormProps) => {
   const isCreateMode = !editingEvent;
   const { createInterview } = useInterviewStore();
+  const todayStr = new Date().toISOString().split("T")[0];
 
   // Internal state for create mode
   const [jobs, setJobs] = useState<JobOption[]>([]);
@@ -104,12 +103,21 @@ export const CalendarModalForm = ({
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [loadingApps, setLoadingApps] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState("");
+  const formErrorRef = useRef<HTMLDivElement>(null);
+  const jobFieldRef = useRef<HTMLDivElement>(null);
+  const appFieldRef = useRef<HTMLDivElement>(null);
+  const timeFieldRef = useRef<HTMLDivElement>(null);
+  const locationFieldRef = useRef<HTMLDivElement>(null);
   const startDateInputRef = useRef<HTMLInputElement>(null);
   const endDateInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch jobs when modal opens in create mode
   useEffect(() => {
     if (!isOpen || !isCreateMode) return;
+    setFieldErrors({});
+    setFormError("");
     setLoadingJobs(true);
     jobService
       .getAllJobs()
@@ -133,6 +141,7 @@ export const CalendarModalForm = ({
     if (!selectedJobId) {
       setUnscheduledApps([]);
       setSelectedAppId("");
+      setFieldErrors((prev) => ({ ...prev, selectedJobId: "" }));
       return;
     }
     setLoadingApps(true);
@@ -154,6 +163,8 @@ export const CalendarModalForm = ({
       setStartTime("09:00");
       setDuration(60);
       setUnscheduledApps([]);
+      setFieldErrors({});
+      setFormError("");
     }
   }, [isOpen]);
 
@@ -170,39 +181,173 @@ export const CalendarModalForm = ({
     (a) => a.applicationId === selectedAppId
   );
 
-  const handleCreateSubmit = async () => {
-    if (!selectedAppId) {
-      toast.error("Vui lòng chọn ứng viên");
+  const scrollToFirstError = (errors: Record<string, string>) => {
+    if (errors.selectedJobId) {
+      jobFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
+    }
+    if (errors.selectedAppId) {
+      appFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (errors.eventStartDate) {
+      startDateInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (errors.startTime) {
+      timeFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (errors.eventLocation) {
+      locationFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const handleCreateSubmit = async () => {
+    const nextErrors: Record<string, string> = {};
+
+    if (!selectedJobId) {
+      nextErrors.selectedJobId = "Vui lòng chọn công việc.";
+    }
+    if (!selectedAppId) {
+      nextErrors.selectedAppId = "Vui lòng chọn ứng viên.";
     }
     if (!eventStartDate) {
-      toast.error("Vui lòng chọn ngày phỏng vấn");
-      return;
+      nextErrors.eventStartDate = "Vui lòng chọn ngày phỏng vấn.";
     }
-    if (interviewType === "OFFLINE" && !eventLocation) {
-      toast.error("Vui lòng nhập địa điểm cho phỏng vấn offline");
+    if (!startTime) {
+      nextErrors.startTime = "Vui lòng chọn giờ bắt đầu.";
+    }
+    if (interviewType === "OFFLINE" && !eventLocation.trim()) {
+      nextErrors.eventLocation = "Vui lòng nhập địa điểm cho phỏng vấn offline.";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      setFormError("Vui lòng kiểm tra lại các trường bắt buộc.");
+      setTimeout(() => scrollToFirstError(nextErrors), 0);
       return;
     }
 
-    const request: CreateInterviewRequest = {
-      applicationId: selectedAppId,
-      date: eventStartDate,
-      startTime,
-      durationMinutes: duration,
-      type: interviewType,
-      location: interviewType === "OFFLINE" ? eventLocation : undefined,
-      notes: eventNotes || undefined,
-      notifyCandidate: true,
+    setFieldErrors({});
+    setFormError("");
+
+    const submitRequest = async (confirmOverwrite: boolean) => {
+      const request: CreateInterviewRequest = {
+        applicationId: selectedAppId,
+        date: eventStartDate,
+        startTime,
+        durationMinutes: duration,
+        type: interviewType,
+        location: interviewType === "OFFLINE" ? eventLocation : undefined,
+        notes: eventNotes || undefined,
+        confirmOverwrite,
+        notifyCandidate: true,
+      };
+
+      await createInterview(request);
     };
 
     setIsSubmitting(true);
     try {
-      await createInterview(request);
+      await submitRequest(false);
       toast.success("Đã tạo lịch phỏng vấn thành công");
       onInterviewCreated?.();
       onClose();
     } catch (error: unknown) {
-      toast.error(extractApiErrorMessage(error, "Không thể tạo lịch phỏng vấn"));
+      const rawMessage = extractApiErrorMessage(error, "Không thể tạo lịch phỏng vấn");
+      if (rawMessage.includes("ACTIVE_INTERVIEW")) {
+        const confirm = window.confirm(
+          "Ứng viên đã có một lịch phỏng vấn đang hoạt động cho vị trí này. Bạn có muốn ghi đè lịch cũ bằng lịch mới không?"
+        );
+        if (confirm) {
+          try {
+            await submitRequest(true);
+            toast.success("Đã cập nhật lịch phỏng vấn thành công");
+            onInterviewCreated?.();
+            onClose();
+            return;
+          } catch (confirmError: unknown) {
+            setFormError(extractApiErrorMessage(confirmError, "Không thể cập nhật lịch phỏng vấn"));
+            setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+            return;
+          }
+        }
+        setFormError("Bạn đã hủy thao tác ghi đè lịch hiện tại.");
+        setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+        return;
+      }
+
+      setFormError(rawMessage);
+      setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resolveEditingDuration = () => {
+    if (!editingEvent?.start || !editingEvent?.end) {
+      return 60;
+    }
+
+    const startMs = new Date(String(editingEvent.start)).getTime();
+    const endMs = new Date(String(editingEvent.end)).getTime();
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+      return 60;
+    }
+
+    const minutes = Math.round((endMs - startMs) / 60000);
+    return minutes >= 15 ? minutes : 60;
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editingEvent?.id) {
+      setFormError("Không xác định được lịch phỏng vấn cần chỉnh sửa.");
+      return;
+    }
+
+    const nextErrors: Record<string, string> = {};
+
+    if (!eventStartDate) {
+      nextErrors.eventStartDate = "Vui lòng chọn ngày phỏng vấn.";
+    }
+    if (!startTime) {
+      nextErrors.startTime = "Vui lòng chọn giờ bắt đầu.";
+    }
+
+    if (eventStartDate && startTime) {
+      const nextStart = new Date(`${eventStartDate}T${startTime}:00`);
+      if (Number.isFinite(nextStart.getTime()) && nextStart.getTime() < Date.now()) {
+        nextErrors.eventStartDate = "Không thể chỉnh lịch phỏng vấn vào thời điểm trong quá khứ.";
+      }
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      setFormError("Vui lòng kiểm tra lại thông tin lịch hẹn.");
+      setTimeout(() => scrollToFirstError(nextErrors), 0);
+      return;
+    }
+
+    setFieldErrors({});
+    setFormError("");
+    setIsSubmitting(true);
+
+    try {
+      await interviewService.rescheduleInterview(editingEvent.id, {
+        newDate: eventStartDate,
+        newStartTime: startTime,
+        durationMinutes: resolveEditingDuration(),
+        notes: eventNotes || undefined,
+      });
+      toast.success("Đã cập nhật lịch phỏng vấn thành công");
+      onInterviewCreated?.();
+      onClose();
+    } catch (error: unknown) {
+      setFormError(extractApiErrorMessage(error, "Không thể chỉnh sửa lịch phỏng vấn"));
+      setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
     } finally {
       setIsSubmitting(false);
     }
@@ -227,16 +372,21 @@ export const CalendarModalForm = ({
           </div>
           <Badge className="bg-brand-500/15 text-brand-700 pr-15">
             <CalendarClock className="mr-1 size-3.5" />
-            Lịch tuyển dụng
+            Lịch phỏng vấn
           </Badge>
         </div>
         <ScrollArea className="flex-1 h-full px-6 py-6 overflow-y-auto">
           <div className="grid gap-5 p-4">
+            {formError ? (
+              <div ref={formErrorRef} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
+                {formError.replace(/^ACTIVE_INTERVIEW_[A-Z_]+\|/, "")}
+              </div>
+            ) : null}
             {/* ========== CREATE MODE: Job → Candidate → Type ========== */}
             {isCreateMode && (
               <>
                 {/* Job selector */}
-                <div className="space-y-2">
+                <div ref={jobFieldRef} className="space-y-2">
                   <Label className="flex items-center gap-1.5">
                     <Briefcase className="h-4 w-4" />
                     Chọn công việc
@@ -250,7 +400,13 @@ export const CalendarModalForm = ({
                       Chưa có công việc nào
                     </div>
                   ) : (
-                    <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                    <Select
+                      value={selectedJobId}
+                      onValueChange={(value) => {
+                        setSelectedJobId(value);
+                        setFieldErrors((prev) => ({ ...prev, selectedJobId: "", selectedAppId: "" }));
+                      }}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn công việc..." />
                       </SelectTrigger>
@@ -263,11 +419,14 @@ export const CalendarModalForm = ({
                       </SelectContent>
                     </Select>
                   )}
+                  {fieldErrors.selectedJobId ? (
+                    <p className="text-xs text-rose-600">{fieldErrors.selectedJobId}</p>
+                  ) : null}
                 </div>
 
                 {/* Candidate selector (appears after job is selected) */}
                 {selectedJobId && (
-                  <div className="space-y-2">
+                  <div ref={appFieldRef} className="space-y-2">
                     <Label className="flex items-center gap-1.5">
                       <Users className="h-4 w-4" />
                       Chọn ứng viên
@@ -281,7 +440,13 @@ export const CalendarModalForm = ({
                         Tất cả ứng viên của job này đã được lên lịch phỏng vấn
                       </div>
                     ) : (
-                      <Select value={selectedAppId} onValueChange={setSelectedAppId}>
+                      <Select
+                        value={selectedAppId}
+                        onValueChange={(value) => {
+                          setSelectedAppId(value);
+                          setFieldErrors((prev) => ({ ...prev, selectedAppId: "" }));
+                        }}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Chọn ứng viên chưa lên lịch..." />
                         </SelectTrigger>
@@ -299,6 +464,9 @@ export const CalendarModalForm = ({
                         </SelectContent>
                       </Select>
                     )}
+                    {fieldErrors.selectedAppId ? (
+                      <p className="text-xs text-rose-600">{fieldErrors.selectedAppId}</p>
+                    ) : null}
                   </div>
                 )}
 
@@ -402,6 +570,12 @@ export const CalendarModalForm = ({
               </div>
             )}
 
+            {!isCreateMode && editingEvent?.extendedProps?.jobTitle ? (
+              <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                <span className="font-medium">Vị trí phỏng vấn:</span> {editingEvent.extendedProps.jobTitle}
+              </div>
+            ) : null}
+
             {/* ========== Title (create mode) ========== */}
             {isCreateMode && (
               <div className="space-y-2">
@@ -463,11 +637,22 @@ export const CalendarModalForm = ({
                   value={eventStartDate}
                   onClick={() => openDatePicker(startDateInputRef.current)}
                   onFocus={() => openDatePicker(startDateInputRef.current)}
-                  onChange={(e) => onStartDateChange(e.target.value)}
-                  min={isCreateMode ? new Date().toISOString().split("T")[0] : undefined}
+                    onChange={(e) => {
+                      onStartDateChange(e.target.value);
+                      setFieldErrors((prev) => ({ ...prev, eventStartDate: "" }));
+                    }}
+                  min={todayStr}
                 />
+                {fieldErrors.eventStartDate ? (
+                  <p className="text-xs text-rose-600">{fieldErrors.eventStartDate}</p>
+                ) : null}
+                {isCreateMode ? (
+                  <p className="text-xs text-muted-foreground">
+                    Hệ thống sẽ tự tính giờ kết thúc dựa trên thời lượng bạn chọn.
+                  </p>
+                ) : null}
               </div>
-              <div className="space-y-2">
+              <div ref={timeFieldRef} className="space-y-2">
                 <label className="text-sm font-medium text-foreground" htmlFor="event-start-time">
                   Giờ bắt đầu
                 </label>
@@ -475,8 +660,14 @@ export const CalendarModalForm = ({
                   id="event-start-time"
                   type="time"
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  onChange={(e) => {
+                    setStartTime(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, startTime: "" }));
+                  }}
                 />
+                {fieldErrors.startTime ? (
+                  <p className="text-xs text-rose-600">{fieldErrors.startTime}</p>
+                ) : null}
               </div>
             </div>
 
@@ -494,7 +685,11 @@ export const CalendarModalForm = ({
                     onClick={() => openDatePicker(endDateInputRef.current)}
                     onFocus={() => openDatePicker(endDateInputRef.current)}
                     onChange={(e) => onEndDateChange(e.target.value)}
+                    min={eventStartDate || todayStr}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Ngày kết thúc dùng cho trường hợp lịch kéo dài qua nhiều ngày.
+                  </p>
                 </div>
                 {editingEvent?.extendedProps?.location && (
                   <div className="space-y-2">
@@ -527,16 +722,22 @@ export const CalendarModalForm = ({
 
             <div className="grid gap-4 md:grid-cols-2">
               {isCreateMode && interviewType === "OFFLINE" && (
-                <div className="space-y-2">
+                <div ref={locationFieldRef} className="space-y-2">
                   <label className="text-sm font-medium text-foreground" htmlFor="event-location">
                     Địa điểm
                   </label>
                   <Input
                     id="event-location"
                     value={eventLocation}
-                    onChange={(e) => onLocationChange(e.target.value)}
+                    onChange={(e) => {
+                      onLocationChange(e.target.value);
+                      setFieldErrors((prev) => ({ ...prev, eventLocation: "" }));
+                    }}
                     placeholder="Ví dụ: Phòng họp tầng 5"
                   />
+                  {fieldErrors.eventLocation ? (
+                    <p className="text-xs text-rose-600">{fieldErrors.eventLocation}</p>
+                  ) : null}
                 </div>
               )}
               <div className={`space-y-2 ${isCreateMode && interviewType === "ONLINE" ? "md:col-span-2" : "md:col-span-2"}`}>
@@ -556,7 +757,7 @@ export const CalendarModalForm = ({
         </ScrollArea>
         <div className="flex flex-wrap justify-end gap-3 border-t border-border/60 px-6 py-5">
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-            Huỷ
+            Hủy
           </Button>
           {isCreateMode ? (
             <Button
@@ -566,8 +767,8 @@ export const CalendarModalForm = ({
               {isSubmitting ? "Đang xử lý..." : "Lên lịch phỏng vấn"}
             </Button>
           ) : (
-            <Button onClick={onSubmit}>
-              Lưu thay đổi
+            <Button onClick={handleEditSubmit} disabled={isSubmitting}>
+              {isSubmitting ? "Đang xử lý..." : "Lưu thay đổi"}
             </Button>
           )}
         </div>

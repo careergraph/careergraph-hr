@@ -25,6 +25,7 @@ import {
 import { CalendarEvent } from "@/types/calendar";
 import { useInterviewStore } from "@/stores/interviewStore";
 import type { Interview, InterviewStatus } from "@/types/interview";
+import { toast } from "sonner";
 
 const STATUS_TO_CALENDAR_LEVEL: Record<InterviewStatus, CalendarLevel> = {
   SCHEDULED: "Primary",
@@ -36,15 +37,22 @@ const STATUS_TO_CALENDAR_LEVEL: Record<InterviewStatus, CalendarLevel> = {
   NO_SHOW: "Danger",
 };
 
-const mapInterviewToCalendarEvent = (interview: Interview): CalendarEvent => ({
+const buildInterviewTitle = (round: number) => {
+  if (round <= 1) return "Phỏng vấn";
+  return `Phỏng vấn vòng ${round}`;
+};
+
+const mapInterviewToCalendarEvent = (interview: Interview, round: number): CalendarEvent => ({
   id: interview.id,
-  title: `${interview.type === "ONLINE" ? "Online" : "Offline"} - ${interview.candidateName}`,
+  title: `${buildInterviewTitle(round)} - ${interview.candidateName}`,
   start: interview.scheduledAt,
   end: interview.endAt,
   allDay: false,
   extendedProps: {
     calendar: STATUS_TO_CALENDAR_LEVEL[interview.interviewStatus] ?? DEFAULT_EVENT_LEVEL,
     candidate: interview.candidateName,
+    jobTitle: interview.jobTitle,
+    interviewStatus: interview.interviewStatus,
     location: interview.location ?? interview.meetingLink,
     notes: interview.notes,
   },
@@ -95,7 +103,18 @@ const Calendar = () => {
   }, [loadCalendarData]);
 
   useEffect(() => {
-    const mapped = interviewEvents.map(mapInterviewToCalendarEvent);
+    const completedRoundsByApplication = new Map<string, number>();
+    const mapped = [...interviewEvents]
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+      .map((interview) => {
+        const completedRounds = completedRoundsByApplication.get(interview.applicationId) ?? 0;
+        const currentRound = completedRounds + 1;
+        if (interview.interviewStatus === "COMPLETED") {
+          completedRoundsByApplication.set(interview.applicationId, completedRounds + 1);
+        }
+        return mapInterviewToCalendarEvent(interview, currentRound);
+      });
+
     setEvents(mapped);
     if (mapped.length > 0 && !activeEvent) {
       setActiveEvent(mapped[0]);
@@ -216,6 +235,14 @@ const Calendar = () => {
   };
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
+    const selectedDate = normalizeDate(selectInfo.start);
+    const today = normalizeDate(new Date());
+    if (selectedDate && today && selectedDate < today) {
+      toast.error("Không thể tạo lịch phỏng vấn ở ngày quá khứ.");
+      selectInfo.view.calendar.unselect();
+      return;
+    }
+
     resetModalFields();
     const startInput = formatDateForInput(selectInfo.start);
 
@@ -254,35 +281,6 @@ const Calendar = () => {
     populateModalFields(eventData);
     setActiveEvent(matched ?? eventData);
     openModal();
-  };
-
-  const handleAddOrUpdateEvent = () => {
-    const payload: CalendarEvent = {
-      id: editingEvent?.id ?? Date.now().toString(),
-      title: eventTitle,
-      start: eventStartDate,
-      end: eventEndDate || undefined,
-      allDay: true,
-      extendedProps: {
-        calendar: eventLevel,
-        candidate: eventCandidate || undefined,
-        location: eventLocation || undefined,
-        notes: eventNotes || undefined,
-      },
-    };
-
-    if (editingEvent) {
-      setEvents((prev) =>
-        prev.map((event) => (event.id === editingEvent.id ? payload : event))
-      );
-
-      setActiveEvent((prev: CalendarEvent | null) => (prev && prev.id === editingEvent.id ? payload : prev));
-    } else {
-      setEvents((prev) => [...prev, payload]);
-      setActiveEvent(payload);
-    }
-
-    handleCloseModal();
   };
 
   const handleViewChange = (view: string) => {
@@ -403,7 +401,6 @@ const Calendar = () => {
         eventLocation={eventLocation}
         eventNotes={eventNotes}
         onClose={handleCloseModal}
-        onSubmit={handleAddOrUpdateEvent}
         onTitleChange={setEventTitle}
         onCandidateChange={setEventCandidate}
         onLevelChange={setEventLevel}

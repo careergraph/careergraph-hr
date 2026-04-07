@@ -29,6 +29,8 @@ export interface CompanyProfile {
   connections?: number;
   role?: string;
   email?: string;
+  offerBeforeTrial?: boolean;
+  enableOffboardedStage?: boolean;
   addresses?: CompanyAddress[];
   contacts?: CompanyContact[];
 }

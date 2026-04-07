@@ -48,6 +48,7 @@ export default function InterviewCard({
   const endDate = new Date(interview.endAt);
   const isActive = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"].includes(interview.interviewStatus);
   const isCompleted = interview.interviewStatus === "COMPLETED";
+  const canAddFeedback = isCompleted && (!Array.isArray(interview.feedback) || interview.feedback.length === 0);
   const canJoinRoom = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(interview.interviewStatus);
   const navigate = useNavigate();
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
@@ -149,7 +150,7 @@ export default function InterviewCard({
                   </>
                 )}
 
-                {isCompleted && (
+                {canAddFeedback && (
                   <button
                     type="button"
                     role="menuitem"

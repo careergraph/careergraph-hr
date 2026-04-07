@@ -1,7 +1,7 @@
 // Type definitions for HR Recruitment Kanban board
 
 export type Priority = "low" | "medium" | "high";
-export type Status = "apply" | "screening" | "contacted" | "interview" | "interviewed" | "trial" | "offer" | "hired" | "rejected";
+export type Status = "apply" | "screening" | "contacted" | "interview" | "interviewed" | "trial" | "offer" | "hired" | "offboarded" | "rejected";
 export type ExperienceLevel = "intern" | "junior" | "mid" | "senior" | "lead";
 
 export interface Assignee {

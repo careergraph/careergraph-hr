@@ -1,5 +1,6 @@
 import type { Interview, InterviewFeedback, InterviewRecording } from "@/types/interview";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CalendarDays, Star, Video, MapPin, UserCheck, CircleAlert, Link as LinkIcon, PlayCircle } from "lucide-react";
 
 interface InterviewReviewTabProps {
@@ -16,13 +17,27 @@ const getLatestFeedback = (feedback: InterviewFeedback[] | undefined) => {
 };
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  SCHEDULED: { label: "Da len lich", cls: "bg-blue-50 text-blue-700 border-blue-200" },
-  CONFIRMED: { label: "Da xac nhan", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  IN_PROGRESS: { label: "Dang dien ra", cls: "bg-amber-50 text-amber-700 border-amber-200" },
-  COMPLETED: { label: "Hoan thanh", cls: "bg-slate-100 text-slate-700 border-slate-300" },
-  CANCELLED: { label: "Da huy", cls: "bg-rose-50 text-rose-700 border-rose-200" },
-  NO_SHOW: { label: "Vang mat", cls: "bg-orange-50 text-orange-700 border-orange-200" },
-  PENDING_RESCHEDULE: { label: "Cho doi lich", cls: "bg-purple-50 text-purple-700 border-purple-200" },
+  SCHEDULED: { label: "Đã lên lịch", cls: "bg-blue-50 text-blue-700 border-blue-200" },
+  CONFIRMED: { label: "Đã xác nhận", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  IN_PROGRESS: { label: "Đang diễn ra", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  COMPLETED: { label: "Hoàn thành", cls: "bg-slate-100 text-slate-700 border-slate-300" },
+  CANCELLED: { label: "Đã hủy", cls: "bg-rose-50 text-rose-700 border-rose-200" },
+  NO_SHOW: { label: "Vắng mặt", cls: "bg-orange-50 text-orange-700 border-orange-200" },
+  PENDING_RESCHEDULE: { label: "Chờ đổi lịch", cls: "bg-purple-50 text-purple-700 border-purple-200" },
+};
+
+const RECOMMENDATION_LABELS: Record<string, string> = {
+  NEXT_ROUND: "Mời phỏng vấn giai đoạn tiếp theo",
+  EXTEND_OFFER: "Gửi offer",
+  REJECT: "Từ chối",
+  HOLD: "Giữ nguyên giai đoạn hiện tại",
+};
+
+const RECORDING_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Đang chờ",
+  AVAILABLE: "Sẵn sàng",
+  PROCESSING: "Đang xử lý",
+  DELETED: "Đã xóa",
 };
 
 const getRecordingUrl = (value?: string) => {
@@ -66,7 +81,7 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
 
   if (!interviews.length) {
     return (
-      <div className="p-6 text-sm text-slate-500">Chua co du lieu phong van.</div>
+      <div className="p-6 text-sm text-slate-500">Chưa có dữ liệu phỏng vấn.</div>
     );
   }
 
@@ -88,11 +103,15 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
           label: interview.interviewStatus,
           cls: "bg-slate-100 text-slate-700 border-slate-300",
         };
+        const canOpenRoom =
+          interview.type === "ONLINE" &&
+          !!interview.meetingLink &&
+          !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(interview.interviewStatus);
         const scoreItems = [
-          { label: "Ky thuat", value: latestFeedback?.technicalScore },
-          { label: "Giao tiep", value: latestFeedback?.communicationScore },
-          { label: "Van hoa", value: latestFeedback?.cultureFitScore },
-          { label: "Giai quyet van de", value: latestFeedback?.problemSolvingScore },
+          { label: "Kỹ thuật", value: latestFeedback?.technicalScore },
+          { label: "Giao tiếp", value: latestFeedback?.communicationScore },
+          { label: "Văn hóa", value: latestFeedback?.cultureFitScore },
+          { label: "Giải quyết vấn đề", value: latestFeedback?.problemSolvingScore },
         ].filter((item) => typeof item.value === "number");
 
         return (
@@ -128,11 +147,21 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
               </p>
             </div>
 
+            {canOpenRoom ? (
+              <div className="mt-3">
+                <Button asChild size="sm" className="h-8 bg-blue-600 hover:bg-blue-700">
+                  <a href={`/interview/room/${interview.meetingLink}`}>
+                    Vào phòng phỏng vấn
+                  </a>
+                </Button>
+              </div>
+            ) : null}
+
             {latestFeedback ? (
               <div className="mt-4 space-y-3 rounded-xl border border-amber-100 bg-amber-50/40 p-4">
                 <p className="inline-flex items-center gap-1 text-sm font-semibold text-amber-700">
                   <Star className="h-4 w-4" />
-                  Diem tong quan: {latestFeedback.overallRating}/5
+                  Điểm tổng quan: {latestFeedback.overallRating}/5
                 </p>
 
                 {scoreItems.length > 0 && (
@@ -148,30 +177,30 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
 
                 {latestFeedback.strengths ? (
                   <p className="text-xs text-slate-700">
-                    <span className="font-semibold text-emerald-700">Diem manh:</span> {latestFeedback.strengths}
+                    <span className="font-semibold text-emerald-700">Điểm mạnh:</span> {latestFeedback.strengths}
                   </p>
                 ) : null}
                 {latestFeedback.weaknesses ? (
                   <p className="text-xs text-slate-700">
-                    <span className="font-semibold text-rose-700">Can cai thien:</span> {latestFeedback.weaknesses}
+                    <span className="font-semibold text-rose-700">Cần cải thiện:</span> {latestFeedback.weaknesses}
                   </p>
                 ) : null}
                 {latestFeedback.notes ? (
                   <p className="text-xs text-slate-700">
-                    <span className="font-semibold">Ghi chu:</span> {latestFeedback.notes}
+                    <span className="font-semibold">Ghi chú:</span> {latestFeedback.notes}
                   </p>
                 ) : null}
 
                 {latestFeedback.recommendation && (
                   <p className="inline-flex items-center gap-1 text-xs font-medium text-slate-600">
                     <UserCheck className="h-3.5 w-3.5" />
-                    Khuyen nghi: {latestFeedback.recommendation}
+                    Khuyến nghị: {RECOMMENDATION_LABELS[latestFeedback.recommendation] ?? latestFeedback.recommendation}
                   </p>
                 )}
               </div>
             ) : (
               <p className="mt-4 inline-flex items-center gap-1 text-xs text-amber-700">
-                <CircleAlert className="h-3.5 w-3.5" /> Chua co danh gia.
+                <CircleAlert className="h-3.5 w-3.5" /> Chưa có đánh giá.
               </p>
             )}
 
@@ -179,7 +208,7 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
               <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
                 <p className="inline-flex items-center gap-1 text-sm font-semibold text-blue-700">
                   <PlayCircle className="h-4 w-4" />
-                  Ban ghi phong van ({recordings.length})
+                  Bản ghi phỏng vấn ({recordings.length})
                 </p>
 
                 <div className="mt-3 space-y-3">
@@ -192,12 +221,12 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="text-xs font-medium text-slate-700">
                             {recording.createdDate
-                              ? `Recorded: ${new Date(recording.createdDate).toLocaleString("vi-VN")}`
-                              : "Recorded clip"}
+                              ? `Ghi lúc: ${new Date(recording.createdDate).toLocaleString("vi-VN")}`
+                              : "Đoạn ghi"}
                           </p>
                           {recording.recordingStatus ? (
                             <Badge className="border border-slate-200 bg-slate-100 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                              {recording.recordingStatus}
+                              {RECORDING_STATUS_LABELS[recording.recordingStatus] ?? recording.recordingStatus}
                             </Badge>
                           ) : null}
                         </div>
@@ -213,7 +242,7 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
                           </video>
                         ) : (
                           <p className="mt-2 text-xs text-slate-500">
-                            Khong the preview truc tiep. Hay mo link de xem.
+                            Không thể xem trực tiếp. Hãy mở liên kết để xem.
                           </p>
                         )}
 
@@ -224,7 +253,7 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
                           className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
                         >
                           <LinkIcon className="h-3.5 w-3.5" />
-                          Mo link recording
+                          Mở liên kết bản ghi
                         </a>
                       </div>
                     );

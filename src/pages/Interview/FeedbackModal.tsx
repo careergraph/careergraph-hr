@@ -52,9 +52,12 @@ export default function FeedbackModal({
   const [weaknesses, setWeaknesses] = useState("");
   const [recommendation, setRecommendation] = useState("NEXT_ROUND");
   const [notes, setNotes] = useState("");
+  const [formError, setFormError] = useState("");
+  const errorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    setFormError("");
     if (initialInterviewId && candidateOptions?.some((opt) => opt.interviewId === initialInterviewId)) {
       setSelectedInterviewId(initialInterviewId);
       return;
@@ -76,9 +79,12 @@ export default function FeedbackModal({
 
   const handleSubmit = async () => {
     if (!canSubmit) {
-      toast.error("Vui lòng chọn ứng viên cần đánh giá");
+      setFormError("Vui lòng chọn ứng viên cần đánh giá.");
+      setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
       return;
     }
+
+    setFormError("");
 
     try {
       await addFeedback(targetInterviewId, {
@@ -100,7 +106,8 @@ export default function FeedbackModal({
       toast.success("Đã gửi đánh giá thành công");
       onClose();
     } catch(error: any) {
-      toast.error(error?.response?.data?.message || "Không thể gửi đánh giá");
+      setFormError(error?.response?.data?.message || "Không thể gửi đánh giá");
+      setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
     }
   };
 
@@ -117,6 +124,12 @@ export default function FeedbackModal({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
+          {formError ? (
+            <div ref={errorRef} className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {formError}
+            </div>
+          ) : null}
+
           {hasCandidateSelector ? (
             <div className="space-y-2 mb-4">
               <Label>Chọn ứng viên</Label>
@@ -202,12 +215,15 @@ export default function FeedbackModal({
                 searchable
                 searchPlaceholder="Tìm đề xuất..."
                 options={[
-                  { value: "NEXT_ROUND", label: "Vòng tiếp theo" },
+                  { value: "NEXT_ROUND", label: "Mời phỏng vấn giai đoạn tiếp theo" },
                   { value: "EXTEND_OFFER", label: "Gửi offer" },
                   { value: "REJECT", label: "Từ chối" },
-                  { value: "HOLD", label: "Chờ xem xét" },
+                  { value: "HOLD", label: "Giữ nguyên giai đoạn hiện tại" },
                 ]}
               />
+              <p className="text-xs text-muted-foreground">
+                "Mời phỏng vấn giai đoạn tiếp theo" dùng khi đã quyết định đi tiếp ngay; "Giữ nguyên giai đoạn hiện tại" dùng khi cần chờ thêm thông tin hoặc ý kiến phê duyệt.
+              </p>
             </div>
 
             <div className="space-y-2">

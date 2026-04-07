@@ -40,7 +40,25 @@ Hệ thống phỏng vấn trực tuyến CareerGraph cho phép HR (nhà tuyển
    - gán recording,
    - chuyển hoàn thành.
 - Ở room dùng chung nhiều ứng viên, không được dùng một interview đại diện để khóa toàn bộ room.
+- Nếu HR hẹn lại cùng `room_code + application_id` trong cùng ngày, backend phải cập nhật slot hiện có thay vì tạo slot mới.
+- Một candidate có thể xuất hiện ở nhiều interview khác ngày trong cùng một job, miễn là không trùng slot hoạt động.
+- Trong cùng job, mỗi application chỉ được có 1 interview active tại một thời điểm. Khi tạo lịch mới nếu đã có lịch active, UI phải hiện popup xác nhận ghi đè.
+- Sau feedback, lựa chọn "Mời phỏng vấn vòng tiếp theo" giữ application ở stage `INTERVIEW` để tiếp tục lên vòng mới.
 - Nút và danh sách thao tác phải thể hiện rõ ứng viên nào đã vào/chưa vào.
+
+### Quy tắc BA bổ sung (Production)
+
+- Modal đánh giá chỉ hiển thị ứng viên/chuỗi interview chưa có feedback để tránh submit trùng.
+- Với lịch đã có feedback, UI ẩn thao tác "Thêm đánh giá" để tránh lỗi nghiệp vụ.
+- Tất cả lỗi validate trong modal phải hiển thị inline trong modal và tự cuộn tới vị trí lỗi.
+- Lên lịch từ Kanban/Calendar không cho chọn ngày quá khứ; Calendar chỉ cho xem lịch quá khứ và chỉnh lại sang ngày hợp lệ.
+- Ngữ nghĩa đề xuất feedback:
+   - `NEXT_ROUND`: Mời sang giai đoạn phỏng vấn tiếp theo (ra quyết định đi tiếp ngay).
+   - `HOLD`: Giữ nguyên giai đoạn hiện tại để chờ thêm dữ liệu/phê duyệt.
+- Pipeline offer/trial nên cấu hình linh hoạt theo doanh nghiệp:
+   - Mặc định phổ biến: `OFFER_EXTENDED -> TRIAL -> HIRED`.
+   - Cho phép biến thể không thử việc: `OFFER_EXTENDED -> HIRED`.
+- Nên bổ sung trạng thái tùy chọn `OFFBOARDED/RESIGNED` (bật/tắt hiển thị cột) để theo dõi ứng viên nghỉ việc sau thử việc hoặc nghỉ sau khi đã chính thức.
 
 ### Chính sách hủy lịch (production)
 

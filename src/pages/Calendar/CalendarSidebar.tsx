@@ -41,7 +41,7 @@ export const CalendarSidebar = ({
       {/* Các panel trong sidebar hiển thị thống kê và danh sách lịch hẹn sắp đến. */}
       <div className="rounded-3xl border border-border/60 bg-card/80 p-5 shadow-sm shadow-brand-950/5 dark:bg-slate-950/40">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Phân loại lịch
+          Phân loại trạng thái
         </h3>
         <div className="mt-4 space-y-3">
           {CALENDAR_LEVELS.map((level) => {
@@ -79,7 +79,7 @@ export const CalendarSidebar = ({
           </h3>
           {activeEvent ? (
             <Badge className={`${badgeClassName} text-[11px] font-semibold uppercase tracking-wide`}>
-              {activeEvent.extendedProps?.calendar}
+              {CALENDAR_LEVEL_META[activeEvent.extendedProps?.calendar ?? "Primary"].label}
             </Badge>
           ) : null}
         </div>
@@ -98,6 +98,11 @@ export const CalendarSidebar = ({
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <UserRound className="size-4" />
                 {activeEvent.extendedProps.candidate}
+              </p>
+            ) : null}
+            {activeEvent.extendedProps?.jobTitle ? (
+              <p className="text-sm text-muted-foreground">
+                Vị trí: {activeEvent.extendedProps.jobTitle}
               </p>
             ) : null}
             {activeEvent.extendedProps?.location ? (
@@ -161,7 +166,7 @@ export const CalendarSidebar = ({
                         {event.title || "Chưa có tiêu đề"}
                       </p>
                       <Badge className={`${styles.badge} text-[11px] font-semibold`}>
-                        {event.extendedProps?.calendar}
+                        {CALENDAR_LEVEL_META[event.extendedProps?.calendar ?? "Primary"].label}
                       </Badge>
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">
@@ -172,6 +177,11 @@ export const CalendarSidebar = ({
                     {event.extendedProps?.candidate ? (
                       <p className="mt-2 text-xs text-muted-foreground">
                         Ứng viên: {event.extendedProps.candidate}
+                      </p>
+                    ) : null}
+                    {event.extendedProps?.jobTitle ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Vị trí: {event.extendedProps.jobTitle}
                       </p>
                     ) : null}
                   </button>

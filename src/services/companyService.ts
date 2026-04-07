@@ -65,6 +65,14 @@ const mapCompany = (raw: Record<string, unknown>): CompanyProfile => {
     connections: typeof raw.noOfConnections === "number" ? raw.noOfConnections : undefined,
     role: typeof raw.role === "string" ? raw.role : undefined,
     email: typeof raw.email === "string" ? raw.email : undefined,
+    offerBeforeTrial:
+      typeof raw.offerBeforeTrial === "boolean"
+        ? raw.offerBeforeTrial
+        : undefined,
+    enableOffboardedStage:
+      typeof raw.enableOffboardedStage === "boolean"
+        ? raw.enableOffboardedStage
+        : undefined,
     addresses,
     contacts,
   };

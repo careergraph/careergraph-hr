@@ -8,5 +8,6 @@ export interface CalendarEvent extends EventInput {
     candidate?: string;
     location?: string;
     notes?: string;
-  };
+    jobTitle?: string;
+    interviewStatus?: string;
 }
