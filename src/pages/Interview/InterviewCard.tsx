@@ -46,10 +46,12 @@ export default function InterviewCard({
 }: InterviewCardProps) {
   const scheduledDate = new Date(interview.scheduledAt);
   const endDate = new Date(interview.endAt);
+  const hasTimeExpired = Number.isFinite(endDate.getTime()) && Date.now() > endDate.getTime();
   const isActive = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"].includes(interview.interviewStatus);
   const isCompleted = interview.interviewStatus === "COMPLETED";
   const canAddFeedback = isCompleted && (!Array.isArray(interview.feedback) || interview.feedback.length === 0);
-  const canJoinRoom = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(interview.interviewStatus);
+  const canJoinRoom = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(interview.interviewStatus) && !hasTimeExpired;
+  const showJoinRoomButton = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(interview.interviewStatus);
   const navigate = useNavigate();
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const actionMenuRef = useRef<HTMLDivElement | null>(null);
@@ -201,17 +203,23 @@ export default function InterviewCard({
         </div>
       )}
 
-      {interview.type === "ONLINE" && interview.meetingLink && canJoinRoom && (
+      {interview.type === "ONLINE" && interview.meetingLink && showJoinRoomButton && (
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
+            if (!canJoinRoom) return;
             navigate(`/interview/room/${interview.meetingLink}`);
           }}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+          disabled={!canJoinRoom}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ExternalLink className="h-3.5 w-3.5" />
-          {interview.interviewStatus === "IN_PROGRESS" ? "Tham gia lại" : "Tham gia phỏng vấn"}
+          {!canJoinRoom
+            ? "Đã quá giờ phỏng vấn"
+            : interview.interviewStatus === "IN_PROGRESS"
+            ? "Tham gia lại"
+            : "Tham gia phỏng vấn"}
         </button>
       )}
 

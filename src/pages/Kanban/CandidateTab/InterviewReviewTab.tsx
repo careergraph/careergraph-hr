@@ -103,7 +103,14 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
           label: interview.interviewStatus,
           cls: "bg-slate-100 text-slate-700 border-slate-300",
         };
+        const endTimeMs = interview.endAt ? new Date(interview.endAt).getTime() : new Date(interview.scheduledAt).getTime();
+        const isPastByTime = Number.isFinite(endTimeMs) && Date.now() > endTimeMs;
         const canOpenRoom =
+          interview.type === "ONLINE" &&
+          !!interview.meetingLink &&
+          !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(interview.interviewStatus) &&
+          !isPastByTime;
+        const showRoomButton =
           interview.type === "ONLINE" &&
           !!interview.meetingLink &&
           !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(interview.interviewStatus);
@@ -147,12 +154,18 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
               </p>
             </div>
 
-            {canOpenRoom ? (
+            {showRoomButton ? (
               <div className="mt-3">
-                <Button asChild size="sm" className="h-8 bg-blue-600 hover:bg-blue-700">
-                  <a href={`/interview/room/${interview.meetingLink}`}>
-                    Vào phòng phỏng vấn
-                  </a>
+                <Button
+                  size="sm"
+                  className="h-8 bg-blue-600 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!canOpenRoom}
+                  onClick={() => {
+                    if (!canOpenRoom) return;
+                    window.location.href = `/interview/room/${interview.meetingLink}`;
+                  }}
+                >
+                  {canOpenRoom ? "Vào phòng phỏng vấn" : "Đã quá giờ phỏng vấn"}
                 </Button>
               </div>
             ) : null}

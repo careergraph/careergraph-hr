@@ -121,7 +121,10 @@ export default function InterviewDetail() {
   const roomLink = iv.meetingLink ? `${window.location.origin}/interview/room/${iv.meetingLink}` : "";
   const isCompleted = iv.interviewStatus === "COMPLETED";
   const hasFeedback = Array.isArray(iv.feedback) && iv.feedback.length > 0;
-  const canOpenRoomFromDetail = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(iv.interviewStatus);
+  const isPastEndTime = Number.isFinite(endDate.getTime()) && Date.now() > endDate.getTime();
+  const canOpenRoomFromDetail =
+    ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(iv.interviewStatus) && !isPastEndTime;
+  const showRoomActionFromDetail = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(iv.interviewStatus);
 
   const handleCancel = async () => {
     try {
@@ -223,10 +226,14 @@ export default function InterviewDetail() {
                 {iv.type === "ONLINE" ? (
                   <>
                     <Monitor className="h-4 w-4" /> Online
-                    {iv.meetingLink && canOpenRoomFromDetail && (
+                    {iv.meetingLink && showRoomActionFromDetail && (
                       <button
-                        onClick={() => navigate(`/interview/room/${iv.meetingLink}`)}
-                        className="ml-2 inline-flex items-center gap-1 font-mono text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                        onClick={() => {
+                          if (!canOpenRoomFromDetail) return;
+                          navigate(`/interview/room/${iv.meetingLink}`);
+                        }}
+                        disabled={!canOpenRoomFromDetail}
+                        className="ml-2 inline-flex items-center gap-1 font-mono text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Monitor className="h-3 w-3" /> Vào phòng
                       </button>
@@ -463,9 +470,14 @@ export default function InterviewDetail() {
           {iv.type === "ONLINE" && iv.meetingLink && isActive && (
             <Button
               className="bg-blue-600 hover:bg-blue-700"
-              onClick={() => navigate(`/interview/room/${iv.meetingLink}`)}
+              onClick={() => {
+                if (!canOpenRoomFromDetail) return;
+                navigate(`/interview/room/${iv.meetingLink}`);
+              }}
+              disabled={!canOpenRoomFromDetail}
             >
-              <Monitor className="h-4 w-4 mr-1" /> Tham gia phỏng vấn
+              <Monitor className="h-4 w-4 mr-1" />
+              {canOpenRoomFromDetail ? "Tham gia phỏng vấn" : "Đã quá giờ phỏng vấn"}
             </Button>
           )}
           {isActive && (
