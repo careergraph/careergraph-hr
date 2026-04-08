@@ -38,7 +38,8 @@ import type { Interview } from "@/types/interview";
 import FeedbackModal from "./FeedbackModal";
 import RecordingAssignModal from "./RecordingAssignModal";
 
-const EARLY_JOIN_MINUTES = 15;
+const FINAL_INTERVIEW_STATUSES = new Set(["COMPLETED", "CANCELLED", "NO_SHOW"]);
+const ROOM_OPEN_STATUSES = new Set(["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"]);
 
 interface RoomParticipantEntry {
   id: string;
@@ -56,6 +57,34 @@ interface RoomLookupError {
   title: string;
   description: string;
 }
+
+const toTimeMs = (value?: string) => {
+  const parsed = value ? new Date(value).getTime() : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+};
+
+const pickRepresentativeInterview = (items: Interview[], fallback?: Interview | null) => {
+  if (!Array.isArray(items) || items.length === 0) return fallback ?? null;
+
+  const now = Date.now();
+  const nonFinal = items.filter((iv) => !FINAL_INTERVIEW_STATUSES.has(iv.interviewStatus));
+
+  const inProgress = nonFinal.find((iv) => iv.interviewStatus === "IN_PROGRESS");
+  if (inProgress) return inProgress;
+
+  const upcomingOrActive = nonFinal
+    .filter((iv) => {
+      const endMs = toTimeMs(iv.endAt);
+      return Number.isFinite(endMs) && endMs >= now;
+    })
+    .sort((a, b) => toTimeMs(a.scheduledAt) - toTimeMs(b.scheduledAt));
+
+  if (upcomingOrActive.length > 0) {
+    return upcomingOrActive[0];
+  }
+
+  return [...items].sort((a, b) => toTimeMs(b.scheduledAt) - toTimeMs(a.scheduledAt))[0] ?? fallback ?? null;
+};
 
 export default function InterviewRoom() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -105,8 +134,6 @@ export default function InterviewRoom() {
   const [loading, setLoading] = useState(true);
   const [roomLookupError, setRoomLookupError] = useState<RoomLookupError | null>(null);
   const [lookupRetryKey, setLookupRetryKey] = useState(0);
-  const [canJoin, setCanJoin] = useState(false);
-  const [countdown, setCountdown] = useState("");
 
   const getCompanyOwnerId = () => {
     const userObj = (user ?? null) as Record<string, unknown> | null;
@@ -187,8 +214,12 @@ export default function InterviewRoom() {
             ? allResp
             : [];
         const primaryInterview: Interview | null = (singleResp?.data ?? allItems[0] ?? null) as Interview | null;
+        const normalizedItems: Interview[] = allItems.length > 0
+          ? allItems
+          : (primaryInterview ? [primaryInterview] : []);
+        const representativeInterview = pickRepresentativeInterview(normalizedItems, primaryInterview);
 
-        if (!primaryInterview) {
+        if (!representativeInterview) {
           setRoomLookupError({
             type: "not-found",
             title: "Không tìm thấy phòng phỏng vấn",
@@ -197,8 +228,8 @@ export default function InterviewRoom() {
           return;
         }
 
-        setInterview(primaryInterview);
-        setRoomInterviews(allItems);
+        setInterview(representativeInterview);
+        setRoomInterviews(normalizedItems);
 
         const participantItems: RoomParticipantEntry[] = Array.isArray(participantResp?.data)
           ? participantResp.data
@@ -270,7 +301,8 @@ export default function InterviewRoom() {
   }, [roomParticipants]);
 
   const feedbackCandidateOptions = roomInterviews
-    .filter((iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW")
+    .filter((iv) => iv.interviewStatus === "COMPLETED")
+    .filter((iv) => !Array.isArray(iv.feedback) || iv.feedback.length === 0)
     .filter((iv) => joinedCandidateApplicationIds.has(iv.applicationId))
     .map((iv) => ({
       interviewId: iv.id,
@@ -325,40 +357,22 @@ export default function InterviewRoom() {
     .filter((iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW")
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
-  // Check if user can join (15 min before scheduled)
-  useEffect(() => {
-    if (!interview?.scheduledAt) return;
+  const isRoomEnded = useMemo(() => {
+    const now = Date.now();
+    const source = roomInterviews.length > 0
+      ? roomInterviews
+      : interview
+        ? [interview]
+        : [];
 
-    const checkAccess = () => {
-      const scheduled = new Date(interview.scheduledAt).getTime();
-      const earlyJoinTime = scheduled - EARLY_JOIN_MINUTES * 60 * 1000;
-      const endAt = interview.endAt ? new Date(interview.endAt).getTime() : null;
-      const now = Date.now();
+    const hasOpenWindow = source.some((iv) => {
+      if (!ROOM_OPEN_STATUSES.has(iv.interviewStatus)) return false;
+      const endMs = toTimeMs(iv.endAt);
+      return Number.isFinite(endMs) && endMs >= now;
+    });
 
-      if (endAt && now > endAt) {
-        setCanJoin(false);
-        setCountdown("Buổi phỏng vấn đã kết thúc");
-        return;
-      }
-
-      if (now >= earlyJoinTime) {
-        setCanJoin(true);
-        setCountdown("");
-      } else {
-        setCanJoin(false);
-        const diff = earlyJoinTime - now;
-        const mins = Math.floor(diff / 60000);
-        const secs = Math.floor((diff % 60000) / 1000);
-        setCountdown(
-          `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
-        );
-      }
-    };
-
-    checkAccess();
-    const interval = setInterval(checkAccess, 1000);
-    return () => clearInterval(interval);
-  }, [interview]);
+    return !hasOpenWindow;
+  }, [roomInterviews, interview]);
 
   // Timer
   useEffect(() => {
@@ -964,34 +978,28 @@ export default function InterviewRoom() {
     );
   }
 
-  // Too early to join
-  if (!canJoin && interview) {
+  if (isRoomEnded && interview) {
+    const interviewDate = new Date(interview.scheduledAt).toLocaleDateString("vi-VN");
+
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950">
         <div className="w-full max-w-md space-y-6 px-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/20">
-            <AlertCircle className="h-8 w-8 text-amber-400" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-700/40">
+            <AlertCircle className="h-8 w-8 text-gray-300" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">Chưa đến giờ phỏng vấn</h1>
+            <h1 className="text-xl font-bold text-white">Phòng phỏng vấn đã kết thúc</h1>
             <p className="mt-2 text-sm text-gray-400">
-              Bạn có thể vào phòng trước {EARLY_JOIN_MINUTES} phút so với giờ hẹn
+              Tất cả lịch phỏng vấn hợp lệ trong phòng này đã hết thời gian hoặc đã hoàn tất.
             </p>
           </div>
           <div className="rounded-2xl bg-gray-800/80 p-4 space-y-2">
-            <p className="text-sm text-gray-400">Lịch phỏng vấn</p>
-            <p className="text-lg font-semibold text-white">
-              {new Date(interview.scheduledAt).toLocaleString("vi-VN")}
+            <p className="text-sm text-gray-400">Tóm tắt phòng</p>
+            <p className="text-lg font-semibold text-white">{interview.jobTitle}</p>
+            <p className="text-sm text-gray-400">Ngày phỏng vấn: {interviewDate}</p>
+            <p className="text-sm text-gray-400">
+              Tổng ứng viên trong phòng: <span className="text-gray-300">{candidateActionItems.length}</span>
             </p>
-            {interview.candidateName && (
-              <p className="text-sm text-gray-400">
-                Ứng viên: <span className="text-gray-300">{interview.candidateName}</span>
-              </p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm text-gray-500">Có thể vào sau</p>
-            <p className="text-3xl font-mono font-bold text-white">{countdown}</p>
           </div>
           <Button variant="ghost" className="text-gray-400 hover:text-white" onClick={() => navigate(-1)}>
             Quay lại
@@ -1016,7 +1024,12 @@ export default function InterviewRoom() {
             <p className="mt-1 text-xs text-gray-500 font-mono">{roomCode}</p>
             {interview && (
               <p className="mt-2 text-sm text-gray-400">
-                {interview.candidateName} — {new Date(interview.scheduledAt).toLocaleString("vi-VN")}
+                {interview.jobTitle} — {new Date(interview.scheduledAt).toLocaleString("vi-VN")}
+              </p>
+            )}
+            {candidateActionItems.length > 0 && (
+              <p className="mt-1 text-xs text-gray-500">
+                {candidateActionItems.length} ứng viên đã được lên lịch trong phòng hôm nay
               </p>
             )}
           </div>
@@ -1213,7 +1226,7 @@ export default function InterviewRoom() {
               </Button>
             )}
             {/* In-room evaluate button */}
-            {interview?.id && (
+            {feedbackCandidateOptions.length > 0 && (
               <Button
                 size="sm"
                 variant="ghost"
@@ -1403,6 +1416,8 @@ export default function InterviewRoom() {
               {candidateActionItems.map((iv) => {
                 const hasJoined = joinedCandidateApplicationIds.has(iv.applicationId);
                 const completed = iv.interviewStatus === "COMPLETED";
+                const alreadyReviewed = Array.isArray(iv.feedback) && iv.feedback.length > 0;
+                const canReview = hasJoined && completed && !alreadyReviewed;
                 return (
                   <div key={iv.id} className="rounded-xl border border-gray-800 bg-gray-900/80 p-3">
                     <div className="flex items-start justify-between gap-2">
@@ -1440,14 +1455,15 @@ export default function InterviewRoom() {
                       <Button
                         size="sm"
                         className="h-8 bg-blue-600 hover:bg-blue-700"
-                        disabled={!hasJoined}
+                        disabled={!canReview}
                         onClick={() => {
+                          if (!canReview) return;
                           setSelectedFeedbackInterviewId(iv.id);
                           setFeedbackIsPostMeeting(false);
                           setShowFeedbackModal(true);
                         }}
                       >
-                        <ClipboardCheck className="mr-1 h-3.5 w-3.5" /> Đánh giá
+                        <ClipboardCheck className="mr-1 h-3.5 w-3.5" /> {alreadyReviewed ? "Đã đánh giá" : "Đánh giá"}
                       </Button>
                     </div>
                   </div>

@@ -37,26 +37,38 @@ const STATUS_TO_CALENDAR_LEVEL: Record<InterviewStatus, CalendarLevel> = {
   NO_SHOW: "Danger",
 };
 
+const CALENDAR_LEVEL_PRIORITY: Record<CalendarLevel, number> = {
+  Warning: 1,
+  Success: 2,
+  Primary: 3,
+  Danger: 4,
+};
+
 const buildInterviewTitle = (round: number) => {
   if (round <= 1) return "Phỏng vấn";
   return `Phỏng vấn vòng ${round}`;
 };
 
-const mapInterviewToCalendarEvent = (interview: Interview, round: number): CalendarEvent => ({
-  id: interview.id,
-  title: `${buildInterviewTitle(round)} - ${interview.candidateName}`,
-  start: interview.scheduledAt,
-  end: interview.endAt,
-  allDay: false,
-  extendedProps: {
-    calendar: STATUS_TO_CALENDAR_LEVEL[interview.interviewStatus] ?? DEFAULT_EVENT_LEVEL,
-    candidate: interview.candidateName,
-    jobTitle: interview.jobTitle,
-    interviewStatus: interview.interviewStatus,
-    location: interview.location ?? interview.meetingLink,
-    notes: interview.notes,
-  },
-});
+const mapInterviewToCalendarEvent = (interview: Interview, round: number): CalendarEvent => {
+  const level = STATUS_TO_CALENDAR_LEVEL[interview.interviewStatus] ?? DEFAULT_EVENT_LEVEL;
+
+  return {
+    id: interview.id,
+    title: `${buildInterviewTitle(round)} - ${interview.candidateName}`,
+    start: interview.scheduledAt,
+    end: interview.endAt,
+    allDay: false,
+    extendedProps: {
+      calendar: level,
+      priority: CALENDAR_LEVEL_PRIORITY[level],
+      candidate: interview.candidateName,
+      jobTitle: interview.jobTitle,
+      interviewStatus: interview.interviewStatus,
+      location: interview.location ?? interview.meetingLink,
+      notes: interview.notes,
+    },
+  };
+};
 
 // Calendar điều phối bảng lịch, sidebar thống kê và modal chỉnh sửa lịch hẹn.
 
@@ -123,6 +135,14 @@ const Calendar = () => {
 
   const sortedEvents = useMemo(() => {
     return [...events].sort((a, b) => {
+      const dayA = normalizeDate(a.start)?.getTime() ?? 0;
+      const dayB = normalizeDate(b.start)?.getTime() ?? 0;
+      if (dayA !== dayB) return dayA - dayB;
+
+      const priorityA = Number(a.extendedProps?.priority ?? 999);
+      const priorityB = Number(b.extendedProps?.priority ?? 999);
+      if (priorityA !== priorityB) return priorityA - priorityB;
+
       const first = toDate(a.start)?.getTime() ?? 0;
       const second = toDate(b.start)?.getTime() ?? 0;
       return first - second;
@@ -374,7 +394,7 @@ const Calendar = () => {
                 onSelectDate={handleDateSelect}
                 onEventClick={handleEventClick}
                 onDatesSet={handleDatesSet}
-                events={events}
+                events={sortedEvents}
                 renderEventContent={renderEventContent}
               />
 

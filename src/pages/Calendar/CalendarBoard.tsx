@@ -50,6 +50,15 @@ export const CalendarBoard = ({
 }: CalendarBoardProps) => {
   const activeViewLabel = VIEW_LABELS[activeView] ?? "Lịch phỏng vấn";
 
+  const toTime = (value: unknown) => {
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === "string" || typeof value === "number") {
+      const parsed = new Date(value).getTime();
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    return 0;
+  };
+
   return (
     <section className="overflow-hidden overflow-y-auto max-h-3/4 rounded-3xl border border-border/60 bg-card/80 p-4 shadow-md shadow-brand-950/5 backdrop-blur-sm dark:bg-slate-950/40 sm:p-6">
       {/* Lưới lịch kèm thanh điều hướng, chuyển chế độ xem và thao tác sự kiện. */}
@@ -129,6 +138,16 @@ export const CalendarBoard = ({
           headerToolbar={false}
           height="auto"
           events={events}
+          eventOrder={(a, b) => {
+            const priorityA = Number(a.extendedProps?.priority ?? 999);
+            const priorityB = Number(b.extendedProps?.priority ?? 999);
+            if (priorityA !== priorityB) return priorityA - priorityB;
+
+            const timeA = toTime(a.start ?? a.startStr);
+            const timeB = toTime(b.start ?? b.startStr);
+            return timeA - timeB;
+          }}
+          eventOrderStrict
           selectable
           select={onSelectDate}
           eventClick={onEventClick}

@@ -48,6 +48,9 @@ export default function InterviewList() {
     candidateName?: string;
     candidateOptions?: Array<{ interviewId: string; candidateName: string }>;
   } | null>(null);
+  const [roomParticipantsByCode, setRoomParticipantsByCode] = useState<Record<string, Array<{ applicationId?: string; joinedAt?: string }>>>({});
+  const [roomInterviewsByCode, setRoomInterviewsByCode] = useState<Record<string, Interview[]>>({});
+  const [expandedCancelledByRoom, setExpandedCancelledByRoom] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchInterviews({ status: statusFilter || undefined });
@@ -150,6 +153,12 @@ export default function InterviewList() {
   };
 
   const groupedOnlineRooms = useMemo(() => {
+    const toMs = (value?: string) => {
+      if (!value) return 0;
+      const ms = new Date(value).getTime();
+      return Number.isFinite(ms) ? ms : 0;
+    };
+
     const groups = new Map<string, Interview[]>();
 
     interviews
@@ -163,39 +172,74 @@ export default function InterviewList() {
 
     return Array.from(groups.entries())
       .map(([roomCode, list]) => {
-        const sorted = [...list].sort(
+        const sortedFromStore = [...list].sort(
           (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
         );
-        const first = sorted[0];
-        const latestEnd = [...sorted].sort(
-          (a, b) => new Date(b.endAt).getTime() - new Date(a.endAt).getTime()
-        )[0];
+        const backendRoomInterviews = roomInterviewsByCode[roomCode] ?? sortedFromStore;
+        const sorted = [...backendRoomInterviews].sort(
+          (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
+        );
 
-        const resolvedStatus = [...sorted]
+        const latestByApplicationMap = new Map<string, Interview>();
+        [...sorted]
+          .sort((a, b) => {
+            const slotDiff = toMs(b.scheduledAt) - toMs(a.scheduledAt);
+            if (slotDiff !== 0) return slotDiff;
+            return toMs(b.lastModifiedDate || b.createdDate) - toMs(a.lastModifiedDate || a.createdDate);
+          })
+          .forEach((iv) => {
+            if (!iv.applicationId || latestByApplicationMap.has(iv.applicationId)) return;
+            latestByApplicationMap.set(iv.applicationId, iv);
+          });
+
+        const latestByApplication = Array.from(latestByApplicationMap.values());
+        const roomParticipants = roomParticipantsByCode[roomCode] ?? [];
+        const joinedApplicationIds = new Set(
+          roomParticipants.filter((participant) => participant.joinedAt && participant.applicationId).map((participant) => participant.applicationId as string)
+        );
+        const first = sorted[0];
+        const latestEnd = [...sorted].sort((a, b) => new Date(b.endAt).getTime() - new Date(a.endAt).getTime())[0];
+
+        const resolvedStatus = [...latestByApplication]
           .filter((iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW")
           .sort((a, b) => STATUS_PRIORITY[a.interviewStatus] - STATUS_PRIORITY[b.interviewStatus])[0]
           ?.interviewStatus
-          ?? [...sorted]
+          ?? [...latestByApplication]
           .sort((a, b) => STATUS_PRIORITY[a.interviewStatus] - STATUS_PRIORITY[b.interviewStatus])[0]
           ?.interviewStatus;
 
-        const roomActiveInterviews = sorted.filter(
-          (iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW"
-        );
-        const cancelledCount = sorted.length - roomActiveInterviews.length;
+        const activeCandidateInterviews = latestByApplication
+          .filter((iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW")
+          .sort((a, b) => toMs(a.scheduledAt) - toMs(b.scheduledAt));
 
-        const feedbackCandidates = sorted
+        const cancelledCandidateInterviews = latestByApplication
+          .filter((iv) => iv.interviewStatus === "CANCELLED" || iv.interviewStatus === "NO_SHOW")
+          .sort((a, b) => toMs(b.scheduledAt) - toMs(a.scheduledAt));
+
+        const cancelledCount = cancelledCandidateInterviews.length;
+        const totalCandidates = latestByApplication.length;
+
+        const feedbackCandidates = latestByApplication
           .filter(
             (iv) =>
               iv.interviewStatus === "COMPLETED" &&
+              joinedApplicationIds.has(iv.applicationId) &&
               (!Array.isArray(iv.feedback) || iv.feedback.length === 0)
           )
           .map((iv) => ({
-          interviewId: iv.id,
-          candidateName: iv.candidateName,
-        }));
+            interviewId: iv.id,
+            candidateName: iv.candidateName,
+          }));
 
-        const canJoinRoom = roomActiveInterviews.length > 0 && ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(resolvedStatus);
+        const canJoinRoom = activeCandidateInterviews.length > 0 && ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(resolvedStatus);
+        const now = Date.now();
+        const canJoinRoomByTime = activeCandidateInterviews.some((iv) => {
+          if (!["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"].includes(iv.interviewStatus)) {
+            return false;
+          }
+          const endTime = new Date(iv.endAt).getTime();
+          return Number.isFinite(endTime) && endTime >= now;
+        });
 
         return {
           roomCode,
@@ -203,15 +247,62 @@ export default function InterviewList() {
           status: resolvedStatus,
           scheduledAt: first.scheduledAt,
           endAt: latestEnd.endAt,
-          interviews: roomActiveInterviews,
-          totalInterviews: sorted.length,
+          interviews: activeCandidateInterviews,
+          cancelledInterviews: cancelledCandidateInterviews,
+          totalCandidates,
           cancelledCount,
-          canJoinRoom,
+          canJoinRoom: canJoinRoom && canJoinRoomByTime,
           feedbackCandidates,
         };
       })
       .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
-  }, [interviews]);
+  }, [interviews, roomParticipantsByCode, roomInterviewsByCode]);
+
+  useEffect(() => {
+    const roomCodes = groupedOnlineRooms.map((room) => room.roomCode);
+    if (roomCodes.length === 0) {
+      setRoomParticipantsByCode({});
+      setRoomInterviewsByCode({});
+      return;
+    }
+
+    let cancelled = false;
+
+    Promise.all(
+      roomCodes.map(async (roomCode) => {
+        try {
+          const [roomInterviewsResp, roomParticipantsResp] = await Promise.all([
+            interviewService.fetchAllByRoomCode(roomCode).catch(() => null),
+            interviewService.fetchRoomParticipants(roomCode).catch(() => null),
+          ]);
+
+          const interviewsData = Array.isArray(roomInterviewsResp?.data)
+            ? roomInterviewsResp.data
+            : Array.isArray(roomInterviewsResp)
+              ? roomInterviewsResp
+              : [];
+
+          const participantsData = Array.isArray(roomParticipantsResp?.data)
+            ? roomParticipantsResp.data
+            : Array.isArray(roomParticipantsResp)
+              ? roomParticipantsResp
+              : [];
+
+          return [roomCode, interviewsData, participantsData] as const;
+        } catch {
+          return [roomCode, [], []] as const;
+        }
+      })
+    ).then((entries) => {
+      if (cancelled) return;
+      setRoomInterviewsByCode(Object.fromEntries(entries.map(([roomCode, interviewsData]) => [roomCode, interviewsData])));
+      setRoomParticipantsByCode(Object.fromEntries(entries.map(([roomCode, , participantsData]) => [roomCode, participantsData])));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [groupedOnlineRooms.map((room) => room.roomCode).join("|")]);
 
   const standaloneInterviews = useMemo(
     () => interviews.filter((iv) => !(iv.type === "ONLINE" && !!iv.meetingLink)),
@@ -290,7 +381,7 @@ export default function InterviewList() {
                           </span>
                           <span className="flex items-center gap-1">
                             <Users className="h-3.5 w-3.5" />
-                            {room.totalInterviews} ứng viên
+                            {room.totalCandidates} ứng viên
                           </span>
                         </div>
 
@@ -311,9 +402,35 @@ export default function InterviewList() {
                             </p>
                           )}
                           {room.cancelledCount > 0 && (
-                            <p className="px-2 pt-1 text-[11px] text-red-500 dark:text-red-400">
-                              {room.cancelledCount} lịch đã hủy/không tham gia
-                            </p>
+                            <div className="px-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedCancelledByRoom((prev) => ({
+                                    ...prev,
+                                    [room.roomCode]: !prev[room.roomCode],
+                                  }))
+                                }
+                                className="text-[11px] font-medium text-red-500 hover:underline dark:text-red-400"
+                              >
+                                {room.cancelledCount} ứng viên đã hủy/không tham gia - {expandedCancelledByRoom[room.roomCode] ? "Ẩn" : "Xem chi tiết"}
+                              </button>
+
+                              {expandedCancelledByRoom[room.roomCode] && (
+                                <div className="mt-2 space-y-1 rounded-md border border-red-200/70 bg-red-50/60 p-2 dark:border-red-900/40 dark:bg-red-950/20">
+                                  {room.cancelledInterviews.map((iv) => (
+                                    <button
+                                      key={iv.id}
+                                      type="button"
+                                      onClick={() => navigate(`/interviews/${iv.id}`)}
+                                      className="block w-full truncate rounded px-2 py-1 text-left text-[11px] text-red-700 hover:bg-white dark:text-red-300 dark:hover:bg-gray-800"
+                                    >
+                                      {iv.candidateName} - {STATUS_LABELS[iv.interviewStatus] ?? iv.interviewStatus}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
 
@@ -336,10 +453,13 @@ export default function InterviewList() {
                               size="sm"
                               variant="outline"
                               className="h-8"
-                              onClick={() => {
+                              onClick={async () => {
+                                const firstCandidate = room.feedbackCandidates[0];
+                                if (!firstCandidate) return;
+
                                 setFeedbackInterview({
-                                  interviewId: room.feedbackCandidates[0].interviewId,
-                                  candidateName: room.feedbackCandidates[0].candidateName,
+                                  interviewId: firstCandidate.interviewId,
+                                  candidateName: firstCandidate.candidateName,
                                   candidateOptions: room.feedbackCandidates,
                                 });
                               }}
@@ -395,6 +515,9 @@ export default function InterviewList() {
           interviewId={feedbackInterview.interviewId}
           candidateName={feedbackInterview.candidateName}
           candidateOptions={feedbackInterview.candidateOptions}
+          onSubmitted={async () => {
+            await fetchInterviews({ status: statusFilter || undefined });
+          }}
         />
       )}
     </>

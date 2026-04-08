@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CALENDAR_LEVELS,
   CALENDAR_LEVEL_META,
@@ -7,7 +7,7 @@ import {
   formatTimeForInput,
 } from "../../lib/calendar-utils";
 import { CalendarEvent } from "@/types/calendar";
-import type { InterviewType, CreateInterviewRequest } from "@/types/interview";
+import type { InterviewType, CreateInterviewRequest, InterviewStatus } from "@/types/interview";
 
 import { Modal } from "@/components/custom/modal";
 import { Badge } from "@/components/ui/badge";
@@ -302,22 +302,85 @@ export const CalendarModalForm = ({
     return minutes >= 15 ? minutes : 60;
   };
 
+  const mapLevelToInterviewStatus = (level: CalendarLevel): InterviewStatus => {
+    switch (level) {
+      case "Warning":
+        return "PENDING_RESCHEDULE";
+      case "Success":
+        return "CONFIRMED";
+      case "Danger":
+        return "CANCELLED";
+      case "Primary":
+      default:
+        return "SCHEDULED";
+    }
+  };
+
+  const getEditingStartFromEvent = () => {
+    if (!editingEvent?.start) return "";
+    const dateObj = new Date(String(editingEvent.start));
+    if (!Number.isFinite(dateObj.getTime())) return "";
+    const yyyy = dateObj.getFullYear();
+    const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const dd = String(dateObj.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const isEditFormChanged = useMemo(() => {
+    if (!editingEvent) return false;
+
+    const currentStatus = editingEvent.extendedProps?.interviewStatus as InterviewStatus | undefined;
+    const nextStatus = mapLevelToInterviewStatus(eventLevel);
+    const oldDate = getEditingStartFromEvent();
+    const oldTime = formatTimeForInput(editingEvent.start);
+    const oldNotes = String(editingEvent.extendedProps?.notes ?? "").trim();
+    const nextNotes = String(eventNotes ?? "").trim();
+
+    const timeChanged = oldDate !== eventStartDate || oldTime !== startTime;
+    const notesChanged = oldNotes !== nextNotes;
+    const statusChanged = !!currentStatus && currentStatus !== nextStatus;
+
+    return timeChanged || notesChanged || statusChanged;
+  }, [editingEvent, eventLevel, eventNotes, eventStartDate, startTime]);
+
   const handleEditSubmit = async () => {
     if (!editingEvent?.id) {
       setFormError("Không xác định được lịch phỏng vấn cần chỉnh sửa.");
       return;
     }
 
+    const nextStatus = mapLevelToInterviewStatus(eventLevel);
+    const currentStatus = editingEvent.extendedProps?.interviewStatus as InterviewStatus | undefined;
+    const isCancelAction = nextStatus === "CANCELLED";
+    const oldDate = getEditingStartFromEvent();
+    const oldTime = formatTimeForInput(editingEvent.start);
+    const oldDuration = resolveEditingDuration();
+    const oldNotes = String(editingEvent.extendedProps?.notes ?? "").trim();
+    const nextNotes = String(eventNotes ?? "").trim();
+    const timeChanged = oldDate !== eventStartDate || oldTime !== startTime;
+    const notesChanged = oldNotes !== nextNotes;
+    const statusChanged = !!currentStatus && currentStatus !== nextStatus;
+
+    if (isCancelAction && currentStatus === "CANCELLED") {
+      toast.info("Lịch phỏng vấn này đã ở trạng thái hủy.");
+      return;
+    }
+
+    if (!isCancelAction && !timeChanged && !notesChanged && !statusChanged) {
+      toast.info("Không có thay đổi nào để cập nhật.");
+      return;
+    }
+
     const nextErrors: Record<string, string> = {};
 
-    if (!eventStartDate) {
+    if (!isCancelAction && !eventStartDate) {
       nextErrors.eventStartDate = "Vui lòng chọn ngày phỏng vấn.";
     }
-    if (!startTime) {
+    if (!isCancelAction && !startTime) {
       nextErrors.startTime = "Vui lòng chọn giờ bắt đầu.";
     }
 
-    if (eventStartDate && startTime) {
+    if (!isCancelAction && eventStartDate && startTime) {
       const nextStart = new Date(`${eventStartDate}T${startTime}:00`);
       if (Number.isFinite(nextStart.getTime()) && nextStart.getTime() < Date.now()) {
         nextErrors.eventStartDate = "Không thể chỉnh lịch phỏng vấn vào thời điểm trong quá khứ.";
@@ -336,17 +399,65 @@ export const CalendarModalForm = ({
     setIsSubmitting(true);
 
     try {
-      await interviewService.rescheduleInterview(editingEvent.id, {
-        newDate: eventStartDate,
-        newStartTime: startTime,
-        durationMinutes: resolveEditingDuration(),
-        notes: eventNotes || undefined,
-      });
+      if (isCancelAction) {
+        await interviewService.cancelInterview(editingEvent.id, "Hủy từ lịch phỏng vấn");
+        toast.success("Đã hủy lịch phỏng vấn");
+        onInterviewCreated?.();
+        onClose();
+        return;
+      }
+
+      if (timeChanged) {
+        await interviewService.rescheduleInterview(editingEvent.id, {
+          newDate: eventStartDate,
+          newStartTime: startTime,
+          durationMinutes: oldDuration,
+          notes: nextNotes || undefined,
+        });
+      } else {
+        await interviewService.updateInterview(editingEvent.id, {
+          notes: nextNotes || undefined,
+          durationMinutes: oldDuration,
+        });
+
+        if (currentStatus && currentStatus !== nextStatus) {
+          await interviewService.updateInterviewStatus(editingEvent.id, {
+            status: nextStatus,
+          });
+        }
+      }
+
       toast.success("Đã cập nhật lịch phỏng vấn thành công");
       onInterviewCreated?.();
       onClose();
     } catch (error: unknown) {
       setFormError(extractApiErrorMessage(error, "Không thể chỉnh sửa lịch phỏng vấn"));
+      setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleQuickCancel = async () => {
+    if (!editingEvent?.id) return;
+
+    const currentStatus = editingEvent.extendedProps?.interviewStatus as InterviewStatus | undefined;
+    if (currentStatus && ["CANCELLED", "COMPLETED", "NO_SHOW"].includes(currentStatus)) {
+      toast.warning("Lịch phỏng vấn này không thể hủy thêm.");
+      return;
+    }
+
+    const confirmed = window.confirm("Bạn có chắc muốn hủy lịch phỏng vấn này?");
+    if (!confirmed) return;
+
+    setIsSubmitting(true);
+    try {
+      await interviewService.cancelInterview(editingEvent.id, "Hủy từ lịch phỏng vấn");
+      toast.success("Đã hủy lịch phỏng vấn");
+      onInterviewCreated?.();
+      onClose();
+    } catch (error: unknown) {
+      setFormError(extractApiErrorMessage(error, "Không thể hủy lịch phỏng vấn"));
       setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
     } finally {
       setIsSubmitting(false);
@@ -755,21 +866,34 @@ export const CalendarModalForm = ({
             </div>
           </div>
         </ScrollArea>
-        <div className="flex flex-wrap justify-end gap-3 border-t border-border/60 px-6 py-5">
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-            Hủy
-          </Button>
+        <div className="sticky bottom-0 z-10 border-t border-border/60 bg-white px-6 py-5 dark:bg-slate-900">
           {isCreateMode ? (
-            <Button
-              onClick={handleCreateSubmit}
-              disabled={isSubmitting || !selectedAppId}
-            >
-              {isSubmitting ? "Đang xử lý..." : "Lên lịch phỏng vấn"}
-            </Button>
+            <div className="flex flex-wrap justify-end gap-3">
+              <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+                Đóng
+              </Button>
+              <Button
+                onClick={handleCreateSubmit}
+                disabled={isSubmitting || !selectedAppId}
+              >
+                {isSubmitting ? "Đang xử lý..." : "Lên lịch phỏng vấn"}
+              </Button>
+            </div>
           ) : (
-            <Button onClick={handleEditSubmit} disabled={isSubmitting}>
-              {isSubmitting ? "Đang xử lý..." : "Lưu thay đổi"}
-            </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="destructive" onClick={handleQuickCancel} disabled={isSubmitting}>
+                {isSubmitting ? "Đang xử lý..." : "Hủy lịch phỏng vấn"}
+              </Button>
+
+              <div className="ml-auto flex flex-wrap gap-3">
+                <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+                  Đóng
+                </Button>
+                <Button onClick={handleEditSubmit} disabled={isSubmitting || !isEditFormChanged}>
+                  {isSubmitting ? "Đang xử lý..." : "Lưu thay đổi"}
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       </div>

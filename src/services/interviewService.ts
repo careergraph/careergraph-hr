@@ -2,6 +2,7 @@ import api from "@/config/axiosConfig";
 import type {
   CreateInterviewRequest,
   RescheduleInterviewRequest,
+  InterviewStatus,
   InterviewFeedbackRequest,
 } from "@/types/interview";
 
@@ -45,6 +46,23 @@ const cancelInterview = async (id: string, reason?: string) => {
 
 const rescheduleInterview = async (id: string, data: RescheduleInterviewRequest) => {
   const response = await api.post(`${BASE}/${id}/reschedule`, data);
+  return response.data;
+};
+
+const updateInterview = async (id: string, data: {
+  location?: string;
+  notes?: string;
+  durationMinutes?: number;
+}) => {
+  const response = await api.patch(`${BASE}/${id}`, data);
+  return response.data;
+};
+
+const updateInterviewStatus = async (id: string, data: {
+  status: InterviewStatus;
+  reason?: string;
+}) => {
+  const response = await api.post(`${BASE}/${id}/status`, data);
   return response.data;
 };
 
@@ -184,6 +202,8 @@ export const interviewService = {
   createInterview,
   cancelInterview,
   rescheduleInterview,
+  updateInterview,
+  updateInterviewStatus,
   completeInterview,
   addFeedback,
   getFeedback,
