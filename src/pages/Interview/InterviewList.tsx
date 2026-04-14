@@ -49,7 +49,6 @@ export default function InterviewList() {
     candidateOptions?: Array<{ interviewId: string; candidateName: string }>;
   } | null>(null);
   const [roomParticipantsByCode, setRoomParticipantsByCode] = useState<Record<string, Array<{ applicationId?: string; joinedAt?: string }>>>({});
-  const [roomInterviewsByCode, setRoomInterviewsByCode] = useState<Record<string, Interview[]>>({});
   const [expandedCancelledByRoom, setExpandedCancelledByRoom] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -175,8 +174,7 @@ export default function InterviewList() {
         const sortedFromStore = [...list].sort(
           (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
         );
-        const backendRoomInterviews = roomInterviewsByCode[roomCode] ?? sortedFromStore;
-        const sorted = [...backendRoomInterviews].sort(
+        const sorted = [...sortedFromStore].sort(
           (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
         );
 
@@ -256,13 +254,12 @@ export default function InterviewList() {
         };
       })
       .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
-  }, [interviews, roomParticipantsByCode, roomInterviewsByCode]);
+  }, [interviews, roomParticipantsByCode]);
 
   useEffect(() => {
     const roomCodes = groupedOnlineRooms.map((room) => room.roomCode);
     if (roomCodes.length === 0) {
       setRoomParticipantsByCode({});
-      setRoomInterviewsByCode({});
       return;
     }
 
@@ -271,16 +268,7 @@ export default function InterviewList() {
     Promise.all(
       roomCodes.map(async (roomCode) => {
         try {
-          const [roomInterviewsResp, roomParticipantsResp] = await Promise.all([
-            interviewService.fetchAllByRoomCode(roomCode).catch(() => null),
-            interviewService.fetchRoomParticipants(roomCode).catch(() => null),
-          ]);
-
-          const interviewsData = Array.isArray(roomInterviewsResp?.data)
-            ? roomInterviewsResp.data
-            : Array.isArray(roomInterviewsResp)
-              ? roomInterviewsResp
-              : [];
+          const roomParticipantsResp = await interviewService.fetchRoomParticipants(roomCode).catch(() => null);
 
           const participantsData = Array.isArray(roomParticipantsResp?.data)
             ? roomParticipantsResp.data
@@ -288,15 +276,14 @@ export default function InterviewList() {
               ? roomParticipantsResp
               : [];
 
-          return [roomCode, interviewsData, participantsData] as const;
+          return [roomCode, participantsData] as const;
         } catch {
-          return [roomCode, [], []] as const;
+          return [roomCode, []] as const;
         }
       })
     ).then((entries) => {
       if (cancelled) return;
-      setRoomInterviewsByCode(Object.fromEntries(entries.map(([roomCode, interviewsData]) => [roomCode, interviewsData])));
-      setRoomParticipantsByCode(Object.fromEntries(entries.map(([roomCode, , participantsData]) => [roomCode, participantsData])));
+      setRoomParticipantsByCode(Object.fromEntries(entries.map(([roomCode, participantsData]) => [roomCode, participantsData])));
     });
 
     return () => {
