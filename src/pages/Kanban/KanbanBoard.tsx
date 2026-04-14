@@ -23,7 +23,6 @@ import { interviewService } from "@/services/interviewService";
 import { toast } from "sonner";
 import { Status as CandidateStatusType } from "@/types/candidate";
 import ScheduleInterviewKanbanModal from "./ScheduleInterviewKanbanModal";
-import type { Interview } from "@/types/interview";
 import { useAuthStore } from "@/stores/authStore";
 
 // KanbanBoard tổ chức danh sách ứng viên theo trạng thái và hỗ trợ kéo thả.
@@ -770,7 +769,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
               handleCancelMove();
               setShowInterviewModal(false);
             }}
-            onScheduled={async (_applicationId: string, _interview: Interview) => {
+            onScheduled={async () => {
               // After interview is scheduled, also update the application stage
               if (!moveRequest) return;
               setIsProcessing(true);

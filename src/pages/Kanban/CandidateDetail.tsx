@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +23,6 @@ import type {
   CandidateOverviewResponse,
   CandidateExperienceResponse,
   CandidateResumeResponse,
-  CandidateMessagesResponse,
   CandidateEmailsResponse,
   OverviewExperience,
 } from "@/types/candidateTab";
@@ -102,8 +100,6 @@ export function CandidateDetail({
   const [resumeData, setResumeData] = useState<CandidateResumeResponse | null>(
     null
   );
-  const [messagesData, setMessagesData] =
-    useState<CandidateMessagesResponse | null>(null);
   const [emailsData, setEmailsData] = useState<CandidateEmailsResponse | null>(
     null
   );
@@ -143,9 +139,6 @@ export function CandidateDetail({
         } else if (tab === "cv") {
           const data = await candidateService.fetchResume(candidate.candidateId, id, signal);
           setResumeData(data);
-        } else if (tab === "messages") {
-          const data = await candidateService.fetchMessages(id, signal);
-          setMessagesData(data);
         } else if (tab === "email") {
           const data = await candidateService.fetchEmails(id, signal);
           setEmailsData(data);
@@ -351,11 +344,7 @@ export function CandidateDetail({
                   value="messages"
                   className="flex-1 overflow-hidden"
                 >
-                  <MessagesTab
-                    messagesData={messagesData}
-                    loading={loading?.messages}
-                    error={errors?.messages}
-                  />
+                  <MessagesTab candidate={candidate} />
                 </TabsContent>
 
                 <TabsContent value="email" className="flex-1 overflow-hidden">

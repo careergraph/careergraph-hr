@@ -135,10 +135,10 @@ export default function InterviewRoom() {
   const [roomLookupError, setRoomLookupError] = useState<RoomLookupError | null>(null);
   const [lookupRetryKey, setLookupRetryKey] = useState(0);
 
-  const getCompanyOwnerId = () => {
+  const getCompanyOwnerId = useCallback(() => {
     const userObj = (user ?? null) as Record<string, unknown> | null;
     return typeof userObj?.companyId === "string" ? userObj.companyId : "";
-  };
+  }, [user]);
 
   // WebRTC peer connection
   const {
@@ -449,16 +449,16 @@ export default function InterviewRoom() {
       if (wantVideo) {
         try {
           videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        } catch (e: any) {
-          videoError = e;
+        } catch (e: unknown) {
+          videoError = e instanceof DOMException ? e : null;
         }
       }
 
       if (wantAudio) {
         try {
           audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-        } catch (e: any) {
-          audioError = e;
+        } catch (e: unknown) {
+          audioError = e instanceof DOMException ? e : null;
         }
       }
 
@@ -694,7 +694,7 @@ export default function InterviewRoom() {
         setIsUploadingRecording(false);
       }
     },
-    [roomCode, user]
+    [getCompanyOwnerId, roomCode]
   );
 
   // ── Manual recording ────────────────────────────────

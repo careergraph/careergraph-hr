@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CALENDAR_LEVELS,
   CALENDAR_LEVEL_META,
@@ -316,7 +316,7 @@ export const CalendarModalForm = ({
     }
   };
 
-  const getEditingStartFromEvent = () => {
+  const getEditingStartFromEvent = useCallback(() => {
     if (!editingEvent?.start) return "";
     const dateObj = new Date(String(editingEvent.start));
     if (!Number.isFinite(dateObj.getTime())) return "";
@@ -324,7 +324,7 @@ export const CalendarModalForm = ({
     const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
     const dd = String(dateObj.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
-  };
+  }, [editingEvent]);
 
   const isEditFormChanged = useMemo(() => {
     if (!editingEvent) return false;
@@ -341,7 +341,7 @@ export const CalendarModalForm = ({
     const statusChanged = !!currentStatus && currentStatus !== nextStatus;
 
     return timeChanged || notesChanged || statusChanged;
-  }, [editingEvent, eventLevel, eventNotes, eventStartDate, startTime]);
+  }, [editingEvent, eventLevel, eventNotes, eventStartDate, getEditingStartFromEvent, startTime]);
 
   const handleEditSubmit = async () => {
     if (!editingEvent?.id) {

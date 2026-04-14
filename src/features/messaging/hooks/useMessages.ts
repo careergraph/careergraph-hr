@@ -1,0 +1,368 @@
+import { useCallback, useMemo, useState } from "react";
+import { jwtDecode } from "jwt-decode";
+import messagingApi from "@/features/messaging/api/messagingApi";
+import { useMessagingStore } from "@/features/messaging/store/messagingStore";
+import type {
+  Message,
+  MessageContentType,
+  UserSummary,
+} from "@/features/messaging/types/messaging.types";
+import { useAuthStore } from "@/stores/authStore";
+
+const MESSAGE_PAGE_SIZE = 30;
+
+interface JwtClaims {
+  sub?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  avatarUrl?: string;
+}
+
+interface SendMessageResult {
+  ok: boolean;
+  message?: Message;
+  tempMessageId?: string;
+}
+
+const resolveErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return "Không thể xử lý tin nhắn.";
+};
+
+const buildUserSummaryFromAuthState = (): UserSummary => {
+  const authState = useAuthStore.getState();
+  const user = authState.user;
+
+  let fallbackClaims: JwtClaims = {};
+
+  if (authState.accessToken) {
+    try {
+      fallbackClaims = jwtDecode<JwtClaims>(authState.accessToken);
+    } catch {
+      fallbackClaims = {};
+    }
+  }
+
+  const firstName = user?.firstName ?? fallbackClaims.firstName ?? "";
+  const lastName = user?.lastName ?? fallbackClaims.lastName ?? "";
+  const email = user?.email ?? fallbackClaims.email ?? "";
+
+  return {
+    id: user?.id ?? fallbackClaims.sub ?? email,
+    firstName,
+    lastName,
+    email,
+    avatarUrl: user?.avatarUrl ?? fallbackClaims.avatarUrl,
+  };
+};
+
+export const useMessages = (threadId: string | null) => {
+  const [messagesError, setMessagesError] = useState<string | null>(null);
+
+  const messages = useMessagingStore(
+    useCallback(
+      (state) => (threadId ? state.messages[threadId] ?? [] : []),
+      [threadId]
+    )
+  );
+
+  const messageMeta = useMessagingStore(
+    useCallback(
+      (state) =>
+        threadId
+          ? state.messageMeta[threadId] ?? {
+              nextOlderPage: null,
+              hasMore: false,
+              loading: false,
+              loadingOlder: false,
+            }
+          : {
+              nextOlderPage: null,
+              hasMore: false,
+              loading: false,
+              loadingOlder: false,
+            },
+      [threadId]
+    )
+  );
+
+  const setMessageMeta = useMessagingStore((state) => state.setMessageMeta);
+  const setMessagesForThread = useMessagingStore(
+    (state) => state.setMessagesForThread
+  );
+  const prependMessagesForThread = useMessagingStore(
+    (state) => state.prependMessagesForThread
+  );
+  const addMessageToThread = useMessagingStore(
+    (state) => state.addMessageToThread
+  );
+  const replaceMessageInThread = useMessagingStore(
+    (state) => state.replaceMessageInThread
+  );
+  const markMessageFailed = useMessagingStore((state) => state.markMessageFailed);
+  const markMessageSending = useMessagingStore(
+    (state) => state.markMessageSending
+  );
+  const markThreadOpenedAsRead = useMessagingStore(
+    (state) => state.markThreadOpenedAsRead
+  );
+  const applyMessageDeletedEvent = useMessagingStore(
+    (state) => state.applyMessageDeletedEvent
+  );
+
+  const currentUser = useMemo(() => buildUserSummaryFromAuthState(), []);
+
+  const loadLatestMessages = useCallback(async () => {
+    if (!threadId) {
+      return;
+    }
+
+    setMessageMeta(threadId, { loading: true, loadingOlder: false });
+    setMessagesError(null);
+
+    try {
+      const firstPage = await messagingApi.getMessages(
+        threadId,
+        0,
+        MESSAGE_PAGE_SIZE
+      );
+
+      if (firstPage.totalElements === 0) {
+        setMessagesForThread(threadId, []);
+        setMessageMeta(threadId, {
+          loading: false,
+          hasMore: false,
+          nextOlderPage: null,
+          loadingOlder: false,
+        });
+        return;
+      }
+
+      const latestPageIndex = Math.max(0, firstPage.totalPages - 1);
+      const latestPage =
+        latestPageIndex === 0
+          ? firstPage
+          : await messagingApi.getMessages(
+              threadId,
+              latestPageIndex,
+              MESSAGE_PAGE_SIZE
+            );
+
+      setMessagesForThread(threadId, latestPage.content);
+      setMessageMeta(threadId, {
+        loading: false,
+        loadingOlder: false,
+        hasMore: latestPageIndex > 0,
+        nextOlderPage: latestPageIndex > 0 ? latestPageIndex - 1 : null,
+      });
+    } catch (error: unknown) {
+      setMessagesError(resolveErrorMessage(error));
+      setMessageMeta(threadId, { loading: false, loadingOlder: false });
+    }
+  }, [setMessageMeta, setMessagesForThread, threadId]);
+
+  const loadOlderMessages = useCallback(async (): Promise<boolean> => {
+    if (!threadId) {
+      return false;
+    }
+
+    const currentMeta = useMessagingStore.getState().messageMeta[threadId];
+    const nextOlderPage = currentMeta?.nextOlderPage;
+
+    if (typeof nextOlderPage !== "number") {
+      return false;
+    }
+
+    setMessageMeta(threadId, { loadingOlder: true });
+
+    try {
+      const page = await messagingApi.getMessages(
+        threadId,
+        nextOlderPage,
+        MESSAGE_PAGE_SIZE
+      );
+
+      prependMessagesForThread(threadId, page.content);
+
+      const updatedNextOlderPage = nextOlderPage > 0 ? nextOlderPage - 1 : null;
+
+      setMessageMeta(threadId, {
+        loadingOlder: false,
+        hasMore: updatedNextOlderPage !== null,
+        nextOlderPage: updatedNextOlderPage,
+      });
+
+      return true;
+    } catch (error: unknown) {
+      setMessagesError(resolveErrorMessage(error));
+      setMessageMeta(threadId, { loadingOlder: false });
+      return false;
+    }
+  }, [prependMessagesForThread, setMessageMeta, threadId]);
+
+  const sendMessage = useCallback(
+    async (
+      content: string,
+      contentType: MessageContentType = "TEXT"
+    ): Promise<SendMessageResult> => {
+      if (!threadId) {
+        return { ok: false };
+      }
+
+      const normalizedContent = content.trim();
+      if (!normalizedContent) {
+        return { ok: false };
+      }
+
+      const tempMessageId = `temp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const tempMessage: Message = {
+        id: tempMessageId,
+        threadId,
+        sender: currentUser,
+        content: normalizedContent,
+        contentType,
+        deleted: false,
+        createdAt: new Date().toISOString(),
+        isRead: false,
+        localStatus: "sending",
+      };
+
+      addMessageToThread(threadId, tempMessage, { incoming: false });
+      setMessagesError(null);
+
+      try {
+        const createdMessage = await messagingApi.sendMessage(
+          threadId,
+          normalizedContent,
+          contentType
+        );
+
+        replaceMessageInThread(threadId, tempMessageId, {
+          ...createdMessage,
+          localStatus: "sent",
+        });
+
+        return {
+          ok: true,
+          message: createdMessage,
+        };
+      } catch (error: unknown) {
+        markMessageFailed(threadId, tempMessageId);
+        setMessagesError(resolveErrorMessage(error));
+        return {
+          ok: false,
+          tempMessageId,
+        };
+      }
+    },
+    [
+      addMessageToThread,
+      currentUser,
+      markMessageFailed,
+      replaceMessageInThread,
+      threadId,
+    ]
+  );
+
+  const retryMessage = useCallback(
+    async (messageId: string): Promise<SendMessageResult> => {
+      if (!threadId) {
+        return { ok: false };
+      }
+
+      const targetMessage = (useMessagingStore.getState().messages[threadId] ?? []).find(
+        (message) => message.id === messageId
+      );
+
+      if (!targetMessage || targetMessage.localStatus !== "failed") {
+        return { ok: false };
+      }
+
+      markMessageSending(threadId, messageId);
+      setMessagesError(null);
+
+      try {
+        const createdMessage = await messagingApi.sendMessage(
+          threadId,
+          targetMessage.content,
+          targetMessage.contentType
+        );
+
+        replaceMessageInThread(threadId, messageId, {
+          ...createdMessage,
+          localStatus: "sent",
+        });
+
+        return {
+          ok: true,
+          message: createdMessage,
+        };
+      } catch (error: unknown) {
+        markMessageFailed(threadId, messageId);
+        setMessagesError(resolveErrorMessage(error));
+        return {
+          ok: false,
+          tempMessageId: messageId,
+        };
+      }
+    },
+    [markMessageFailed, markMessageSending, replaceMessageInThread, threadId]
+  );
+
+  const deleteSentMessage = useCallback(
+    async (messageId: string): Promise<boolean> => {
+      if (!threadId) {
+        return false;
+      }
+
+      try {
+        await messagingApi.deleteMessage(messageId);
+        applyMessageDeletedEvent({
+          threadId,
+          messageId,
+          deletedAt: new Date().toISOString(),
+        });
+        return true;
+      } catch (error: unknown) {
+        setMessagesError(resolveErrorMessage(error));
+        return false;
+      }
+    },
+    [applyMessageDeletedEvent, threadId]
+  );
+
+  const markThreadAsRead = useCallback(async () => {
+    if (!threadId) {
+      return;
+    }
+
+    markThreadOpenedAsRead(threadId);
+
+    try {
+      await messagingApi.markThreadAsRead(threadId);
+    } catch {
+      // Keep local unread state optimistic.
+    }
+  }, [markThreadOpenedAsRead, threadId]);
+
+  return {
+    currentUser,
+    messages,
+    messagesError,
+    isMessagesLoading: messageMeta.loading,
+    isLoadingOlderMessages: messageMeta.loadingOlder,
+    hasMoreMessages: messageMeta.hasMore,
+    loadLatestMessages,
+    loadOlderMessages,
+    sendMessage,
+    retryMessage,
+    deleteSentMessage,
+    markThreadAsRead,
+  };
+};
+
+export default useMessages;

@@ -85,10 +85,11 @@ export default function Otp6Input({
 
   useEffect(() => {
     // auto focus vào ô đầu tiên khi chưa đủ 6 số
-    if (!safe(value).length && inputsRef.current[0]) {
+    const normalized = (value || "").replace(/\D/g, "").slice(0, 6);
+    if (!normalized.length && inputsRef.current[0]) {
       inputsRef.current[0]?.focus();
     }
-  }, []);
+  }, [value]);
 
   return (
     <div className="flex items-center justify-between gap-2">

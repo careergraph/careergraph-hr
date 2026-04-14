@@ -131,7 +131,7 @@ const Calendar = () => {
     if (mapped.length > 0 && !activeEvent) {
       setActiveEvent(mapped[0]);
     }
-  }, [interviewEvents]);
+  }, [activeEvent, interviewEvents]);
 
   const sortedEvents = useMemo(() => {
     return [...events].sort((a, b) => {

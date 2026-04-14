@@ -21,34 +21,6 @@ type OverviewTabProps = {
 
 
 export function OverviewTab({ candidate, error }: OverviewTabProps) {
-  // If parent provided server-side overview data, show a small preview block.
-  // This is intentionally minimal: main rendering still uses the `candidate` shape.
-  // Provide a complete mock object so the UI remains populated when backend
-  // hasn't returned data yet. Backend can implement the same shape.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // @ts-expect-error: Keeping mock for future use
-  const mockOverview: CandidateOverviewResponse = {
-    id: candidate.id,
-    profileSummary:
-      "Kỹ sư phần mềm có 5+ năm kinh nghiệm xây dựng ứng dụng web, chuyên về TypeScript và React. Tự giác, có kinh nghiệm lead small teams.",
-    skills: ["TypeScript", "React", "Node.js", "GraphQL", "Testing"],
-    certifications: ["AWS Certified Developer", "ISTQB Foundation"],
-    education: {
-      school: "Đại học Bách Khoa Hà Nội",
-      degree: "Cử nhân",
-      major: "Khoa học Máy tính",
-      year: "2018",
-    },
-    links: [
-      { label: "LinkedIn", url: "https://linkedin.com/in/example" },
-      { label: "Github", url: "https://github.com/example" },
-    ],
-    social: { linkedin: "https://linkedin.com/in/example", github: "https://github.com/example" },
-    preferredLocations: ["Hà Nội", "Đà Nẵng"],
-    expectedSalary: "₫30,000,000 - ₫40,000,000",
-    noticePeriod: "2 tuần",
-  };
-
   const [infoCandidateOverview, setInfoCandidateOverview] =
   useState<CandidateOverview | null>(null);
   const [isLoading, setIsLoading] = useState(false)

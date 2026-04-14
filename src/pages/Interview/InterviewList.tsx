@@ -256,8 +256,18 @@ export default function InterviewList() {
       .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
   }, [interviews, roomParticipantsByCode]);
 
+  const groupedOnlineRoomCodes = useMemo(() => {
+    return Array.from(
+      new Set(
+        interviews
+          .filter((interview) => interview.type === "ONLINE" && Boolean(interview.meetingLink))
+          .map((interview) => interview.meetingLink as string)
+      )
+    );
+  }, [interviews]);
+
   useEffect(() => {
-    const roomCodes = groupedOnlineRooms.map((room) => room.roomCode);
+    const roomCodes = groupedOnlineRoomCodes;
     if (roomCodes.length === 0) {
       setRoomParticipantsByCode({});
       return;
@@ -289,7 +299,7 @@ export default function InterviewList() {
     return () => {
       cancelled = true;
     };
-  }, [groupedOnlineRooms.map((room) => room.roomCode).join("|")]);
+  }, [groupedOnlineRoomCodes]);
 
   const standaloneInterviews = useMemo(
     () => interviews.filter((iv) => !(iv.type === "ONLINE" && !!iv.meetingLink)),
