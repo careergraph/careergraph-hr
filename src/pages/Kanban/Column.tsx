@@ -74,6 +74,12 @@ const COLUMN_STYLES: Record<
     badge: "bg-emerald-500/10 text-emerald-600",
     icon: <CheckCircle className="h-5 w-5 text-emerald-500" />,
   },
+  offboarded: {
+    accent: "from-slate-500/60 via-slate-400/20 to-transparent",
+    border: "border-slate-100/70",
+    badge: "bg-slate-500/10 text-slate-600",
+    icon: <Ban className="h-5 w-5 text-slate-500" />,
+  },
   rejected: {
     accent: "from-rose-500/60 via-rose-400/20 to-transparent",
     border: "border-rose-100/70",

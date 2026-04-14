@@ -138,7 +138,7 @@ export const CalendarBoard = ({
           headerToolbar={false}
           height="auto"
           events={events}
-          eventOrder={(a, b) => {
+          eventOrder={((a: any, b: any) => {
             const priorityA = Number(a.extendedProps?.priority ?? 999);
             const priorityB = Number(b.extendedProps?.priority ?? 999);
             if (priorityA !== priorityB) return priorityA - priorityB;
@@ -146,7 +146,7 @@ export const CalendarBoard = ({
             const timeA = toTime(a.start ?? a.startStr);
             const timeB = toTime(b.start ?? b.startStr);
             return timeA - timeB;
-          }}
+          }) as never}
           eventOrderStrict
           selectable
           select={onSelectDate}
