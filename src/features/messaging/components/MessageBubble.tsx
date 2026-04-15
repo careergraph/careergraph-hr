@@ -16,20 +16,18 @@ interface MessageBubbleProps {
   onRetry?: (messageId: string) => void;
 }
 
-const getInitials = (firstName: string, lastName: string, email: string): string => {
-  const rawName = `${firstName} ${lastName}`.trim();
+const getAvatarFallback = (sender: UserSummary): string => {
+  const rawName = `${sender.firstName} ${sender.lastName}`.trim();
 
-  if (!rawName) {
-    return email.slice(0, 2).toUpperCase();
+  if (rawName) {
+    return rawName.charAt(0).toUpperCase();
   }
 
-  return rawName
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  if (sender.email) {
+    return sender.email.charAt(0).toUpperCase();
+  }
+
+  return "HR";
 };
 
 const toDisplayTime = (value: string): string => {
@@ -67,7 +65,7 @@ export function MessageBubble({
         <Avatar className="h-8 w-8 border border-gray-200 dark:border-gray-700">
           {sender.avatarUrl ? <AvatarImage src={sender.avatarUrl} alt={sender.email} /> : null}
           <AvatarFallback className="text-[11px] font-semibold uppercase">
-            {getInitials(sender.firstName, sender.lastName, sender.email)}
+            {getAvatarFallback(sender)}
           </AvatarFallback>
         </Avatar>
       ) : !isOwn ? (

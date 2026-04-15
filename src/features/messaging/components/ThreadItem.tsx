@@ -27,24 +27,43 @@ const toRelativeTime = (dateString: string | null): string => {
   });
 };
 
-const getInitials = (firstName: string, lastName: string, email: string): string => {
-  const displayName = `${firstName} ${lastName}`.trim();
-  if (!displayName) {
-    return email.slice(0, 2).toUpperCase();
+const toDisplayName = (firstName: string, lastName: string, email: string, userId: string): string => {
+  const fullName = `${firstName} ${lastName}`.trim();
+  if (fullName) {
+    return fullName;
   }
 
-  return displayName
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  if (email) {
+    const localPart = email.split("@")[0]?.replace(/[._-]+/g, " ").trim();
+    if (localPart) {
+      return localPart
+        .split(" ")
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+    }
+  }
+
+  const normalizedId = userId.trim();
+  if (normalizedId) {
+    return `Ứng viên ${normalizedId.slice(0, 8)}`;
+  }
+
+  return "Ứng viên mới";
+};
+
+const avatarFallback = (displayName: string): string => {
+  const letter = displayName.trim().charAt(0);
+  return letter ? letter.toUpperCase() : "U";
 };
 
 export function ThreadItem({ thread, isSelected, onClick }: ThreadItemProps) {
-  const fullName = `${thread.otherUser.firstName} ${thread.otherUser.lastName}`.trim();
-  const displayName = fullName || thread.otherUser.email || "Ứng viên";
+  const displayName = toDisplayName(
+    thread.otherUser.firstName,
+    thread.otherUser.lastName,
+    thread.otherUser.email,
+    thread.otherUser.id
+  );
 
   return (
     <button
@@ -63,11 +82,7 @@ export function ThreadItem({ thread, isSelected, onClick }: ThreadItemProps) {
             <AvatarImage src={thread.otherUser.avatarUrl} alt={displayName} />
           ) : null}
           <AvatarFallback className="text-xs font-semibold uppercase">
-            {getInitials(
-              thread.otherUser.firstName,
-              thread.otherUser.lastName,
-              thread.otherUser.email
-            )}
+            {avatarFallback(displayName)}
           </AvatarFallback>
         </Avatar>
 

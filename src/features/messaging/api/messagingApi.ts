@@ -34,24 +34,42 @@ const unwrapEnvelope = <T>(payload: unknown): T => {
 const normalizeUserSummary = (payload: unknown): UserSummary => {
   const source = isRecord(payload) ? payload : {};
 
+  const displayName = toStringSafe(source.displayName);
+  const normalizedDisplayName = displayName.trim();
+  const nameParts = normalizedDisplayName ? normalizedDisplayName.split(/\s+/) : [];
+  const fallbackFirstName = nameParts[0] ?? "";
+  const fallbackLastName = nameParts.slice(1).join(" ");
+
   return {
     id: toStringSafe(source.id, toStringSafe(source.userId)),
-    firstName: toStringSafe(source.firstName),
-    lastName: toStringSafe(source.lastName),
+    firstName: toStringSafe(source.firstName, fallbackFirstName),
+    lastName: toStringSafe(source.lastName, fallbackLastName),
     email: toStringSafe(source.email),
-    avatarUrl: toStringSafe(source.avatarUrl) || undefined,
+    avatarUrl:
+      toStringSafe(source.avatarUrl, toStringSafe(source.avatar)) || undefined,
   };
 };
 
 const normalizeThreadSummary = (payload: unknown): ThreadSummary => {
   const source = isRecord(payload) ? payload : {};
-  const otherUser = normalizeUserSummary(source.otherUser);
+
+  const partyPayload =
+    isRecord(source.otherUser)
+      ? source.otherUser
+      : isRecord(source.otherParty)
+        ? source.otherParty
+        : {};
+
+  const otherUser = normalizeUserSummary(partyPayload);
 
   const application = isRecord(source.application)
     ? {
         id: toStringSafe(source.application.id),
         jobTitle: toStringSafe(source.application.jobTitle),
-        status: toStringSafe(source.application.status),
+        status: toStringSafe(
+          source.application.status,
+          toStringSafe(source.application.currentStage)
+        ),
       }
     : undefined;
 
@@ -62,17 +80,25 @@ const normalizeThreadSummary = (payload: unknown): ThreadSummary => {
     lastMessagePreview: toStringSafe(source.lastMessagePreview),
     lastMessageAt: toStringSafe(source.lastMessageAt) || null,
     unreadCount: toNumberSafe(source.unreadCount),
-    isOnline: toBooleanSafe(source.isOnline),
+    isOnline: toBooleanSafe(source.isOnline, toBooleanSafe(source.online)),
   };
 };
 
 const normalizeMessage = (payload: unknown): Message => {
   const source = isRecord(payload) ? payload : {};
 
+  const senderPayload = isRecord(source.sender)
+    ? source.sender
+    : {
+        id: toStringSafe(source.senderId),
+        displayName: toStringSafe(source.senderName),
+        avatar: toStringSafe(source.senderAvatar),
+      };
+
   return {
     id: toStringSafe(source.id),
     threadId: toStringSafe(source.threadId),
-    sender: normalizeUserSummary(source.sender),
+    sender: normalizeUserSummary(senderPayload),
     content: toStringSafe(source.content),
     contentType:
       toStringSafe(source.contentType, "TEXT") as MessageContentType,

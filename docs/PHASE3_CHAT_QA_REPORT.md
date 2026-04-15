@@ -72,3 +72,15 @@ Scope: FE HR chat inbox, kanban message tab integration, realtime hooks, notific
 - Compile status: PASS
 - Checklist status: PASS on all checklist items
 - Known non-blocking repo issue: global lint baseline still fails due unrelated pre-existing files outside this scope
+
+## Addendum - 2026-04-15 (UI consistency hotfix)
+
+- Fixed own-message alignment robustness in chat view:
+  - Outgoing message detection now supports senderId + senderEmail fallback.
+- Updated fallback display behavior:
+  - Inbox thread item avoids generic repeated "Ứng viên" labels.
+  - Avatar fallback uses leading character of displayName.
+  - HR fallback label supported as "HR" when sender profile fields are missing.
+- Documentation synchronized for HR/Candidate layout parity:
+  - `careergraph-api/docs/chat_notify/03_PHASE3_HR_FE_CHAT.md`
+  - `careergraph-api/docs/chat_notify/04_PHASE4_CANDIDATE_FE_CHAT.md`

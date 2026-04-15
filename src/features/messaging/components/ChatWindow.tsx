@@ -20,21 +20,28 @@ interface ChatWindowProps {
 }
 
 const FIVE_MINUTES = 5 * 60 * 1000;
+const EMPTY_TYPING_USERS: { userId: string; threadId: string; displayName: string }[] = [];
 
-const getInitials = (firstName: string, lastName: string, email: string): string => {
-  const fullName = `${firstName} ${lastName}`.trim();
+const normalize = (value: string | null | undefined): string =>
+  (value ?? "").trim().toLowerCase();
 
-  if (!fullName) {
-    return email.slice(0, 2).toUpperCase();
+const isOwnMessage = (message: Message, currentUser: { id: string; email: string }): boolean => {
+  const senderId = normalize(message.sender.id);
+  const currentUserId = normalize(currentUser.id);
+
+  if (senderId && currentUserId && senderId === currentUserId) {
+    return true;
   }
 
-  return fullName
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const senderEmail = normalize(message.sender.email);
+  const currentUserEmail = normalize(currentUser.email);
+
+  return Boolean(senderEmail && currentUserEmail && senderEmail === currentUserEmail);
+};
+
+const firstLetter = (value: string): string => {
+  const char = value.trim().charAt(0);
+  return char ? char.toUpperCase() : "U";
 };
 
 const isNearBottom = (element: HTMLDivElement): boolean => {
@@ -84,7 +91,10 @@ export function ChatWindow({
   );
 
   const typingUsers = useMessagingStore(
-    useCallback((state) => state.typingUsers[threadId] ?? [], [threadId])
+    useCallback(
+      (state) => state.typingUsers[threadId] ?? EMPTY_TYPING_USERS,
+      [threadId]
+    )
   );
 
   const clearThreadTyping = useMessagingStore((state) => state.clearThreadTyping);
@@ -122,7 +132,7 @@ export function ChatWindow({
 
   const lastOwnMessageId = useMemo(() => {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
-      if (messages[index].sender.id === currentUser.id) {
+      if (isOwnMessage(messages[index], currentUser)) {
         return messages[index].id;
       }
     }
@@ -147,7 +157,7 @@ export function ChatWindow({
     }
 
     const lastMessage = messages[messages.length - 1];
-    const isIncoming = lastMessage.sender.id !== currentUser.id;
+    const isIncoming = !isOwnMessage(lastMessage, currentUser);
 
     if (!isIncoming) {
       return;
@@ -192,28 +202,23 @@ export function ChatWindow({
     joinThread(threadId);
     clearThreadTyping(threadId);
 
-    void loadLatestMessages().then(() => {
-      requestAnimationFrame(() => {
-        scrollToBottom();
-      });
-      void markAsReadIfNeeded();
-    });
-
     return () => {
       leaveThread(threadId);
       sendTypingStop(threadId);
       clearThreadTyping(threadId);
     };
-  }, [
-    clearThreadTyping,
-    joinThread,
-    leaveThread,
-    loadLatestMessages,
-    markAsReadIfNeeded,
-    scrollToBottom,
-    sendTypingStop,
-    threadId,
-  ]);
+  }, [clearThreadTyping, joinThread, leaveThread, sendTypingStop, threadId]);
+
+  useEffect(() => {
+    previousMessageCountRef.current = 0;
+    lastReadBroadcastRef.current = null;
+
+    void loadLatestMessages().then(() => {
+      requestAnimationFrame(() => {
+        scrollToBottom();
+      });
+    });
+  }, [loadLatestMessages, scrollToBottom, threadId]);
 
   useEffect(() => {
     if (isMessagesLoading) {
@@ -298,6 +303,8 @@ export function ChatWindow({
     thread?.otherUser.email ||
     "Ứng viên";
 
+  const avatarFallback = firstLetter(displayName);
+
   return (
     <section className="flex h-full min-h-0 flex-1 flex-col bg-white dark:bg-gray-900">
       {!compact ? (
@@ -321,12 +328,8 @@ export function ChatWindow({
               ) : null}
               <AvatarFallback className="text-xs font-semibold uppercase">
                 {thread
-                  ? getInitials(
-                      thread.otherUser.firstName,
-                      thread.otherUser.lastName,
-                      thread.otherUser.email
-                    )
-                  : "NA"}
+                  ? avatarFallback
+                  : "U"}
               </AvatarFallback>
             </Avatar>
 
@@ -393,7 +396,7 @@ export function ChatWindow({
 
           {messages.map((message, index) => {
             const grouped = isGroupedWithPrevious(messages, index);
-            const isOwn = message.sender.id === currentUser.id;
+            const isOwn = isOwnMessage(message, currentUser);
 
             return (
               <div

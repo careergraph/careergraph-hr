@@ -10,9 +10,17 @@ import type {
 import { useAuthStore } from "@/stores/authStore";
 
 const MESSAGE_PAGE_SIZE = 30;
+const EMPTY_MESSAGES: Message[] = [];
+const DEFAULT_MESSAGE_META = {
+  nextOlderPage: null,
+  hasMore: false,
+  loading: false,
+  loadingOlder: false,
+};
 
 interface JwtClaims {
   sub?: string;
+  userId?: string;
   firstName?: string;
   lastName?: string;
   email?: string;
@@ -33,15 +41,17 @@ const resolveErrorMessage = (error: unknown): string => {
   return "Không thể xử lý tin nhắn.";
 };
 
-const buildUserSummaryFromAuthState = (): UserSummary => {
-  const authState = useAuthStore.getState();
-  const user = authState.user;
+const buildUserSummaryFromAuthState = (params: {
+  user: ReturnType<typeof useAuthStore.getState>["user"];
+  accessToken: string | null;
+}): UserSummary => {
+  const user = params.user;
 
   let fallbackClaims: JwtClaims = {};
 
-  if (authState.accessToken) {
+  if (params.accessToken) {
     try {
-      fallbackClaims = jwtDecode<JwtClaims>(authState.accessToken);
+      fallbackClaims = jwtDecode<JwtClaims>(params.accessToken);
     } catch {
       fallbackClaims = {};
     }
@@ -52,7 +62,7 @@ const buildUserSummaryFromAuthState = (): UserSummary => {
   const email = user?.email ?? fallbackClaims.email ?? "";
 
   return {
-    id: user?.id ?? fallbackClaims.sub ?? email,
+    id: user?.id ?? fallbackClaims.userId ?? fallbackClaims.sub ?? email,
     firstName,
     lastName,
     email,
@@ -62,10 +72,12 @@ const buildUserSummaryFromAuthState = (): UserSummary => {
 
 export const useMessages = (threadId: string | null) => {
   const [messagesError, setMessagesError] = useState<string | null>(null);
+  const authUser = useAuthStore((state) => state.user);
+  const accessToken = useAuthStore((state) => state.accessToken);
 
   const messages = useMessagingStore(
     useCallback(
-      (state) => (threadId ? state.messages[threadId] ?? [] : []),
+      (state) => (threadId ? state.messages[threadId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES),
       [threadId]
     )
   );
@@ -74,18 +86,8 @@ export const useMessages = (threadId: string | null) => {
     useCallback(
       (state) =>
         threadId
-          ? state.messageMeta[threadId] ?? {
-              nextOlderPage: null,
-              hasMore: false,
-              loading: false,
-              loadingOlder: false,
-            }
-          : {
-              nextOlderPage: null,
-              hasMore: false,
-              loading: false,
-              loadingOlder: false,
-            },
+          ? state.messageMeta[threadId] ?? DEFAULT_MESSAGE_META
+          : DEFAULT_MESSAGE_META,
       [threadId]
     )
   );
@@ -114,7 +116,14 @@ export const useMessages = (threadId: string | null) => {
     (state) => state.applyMessageDeletedEvent
   );
 
-  const currentUser = useMemo(() => buildUserSummaryFromAuthState(), []);
+  const currentUser = useMemo(
+    () =>
+      buildUserSummaryFromAuthState({
+        user: authUser,
+        accessToken,
+      }),
+    [accessToken, authUser]
+  );
 
   const loadLatestMessages = useCallback(async () => {
     if (!threadId) {

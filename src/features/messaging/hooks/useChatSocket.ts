@@ -1,4 +1,4 @@
-import { useEffect, useRef, type MutableRefObject } from "react";
+import { useCallback, useEffect, useRef, type MutableRefObject } from "react";
 import { jwtDecode } from "jwt-decode";
 import { io, type Socket } from "socket.io-client";
 import { useAuthStore } from "@/stores/authStore";
@@ -302,33 +302,33 @@ export const useChatSocket = (token: string | null): UseChatSocketResult => {
     };
   }, [token]);
 
-  const joinThread = (threadId: string) => {
+  const joinThread = useCallback((threadId: string) => {
     sharedSocket?.emit("join-thread", threadId);
-  };
+  }, []);
 
-  const leaveThread = (threadId: string) => {
+  const leaveThread = useCallback((threadId: string) => {
     sharedSocket?.emit("leave-thread", threadId);
-  };
+  }, []);
 
-  const sendTypingStart = (threadId: string) => {
+  const sendTypingStart = useCallback((threadId: string) => {
     sharedSocket?.emit("typing-start", { threadId });
-  };
+  }, []);
 
-  const sendTypingStop = (threadId: string) => {
+  const sendTypingStop = useCallback((threadId: string) => {
     sharedSocket?.emit("typing-stop", { threadId });
-  };
+  }, []);
 
-  const broadcastNewMessage = (threadId: string, message: Message) => {
+  const broadcastNewMessage = useCallback((threadId: string, message: Message) => {
     sharedSocket?.emit("new-message", { threadId, message });
-  };
+  }, []);
 
-  const broadcastRead = (threadId: string, lastReadMessageId?: string) => {
+  const broadcastRead = useCallback((threadId: string, lastReadMessageId?: string) => {
     sharedSocket?.emit("messages-read", { threadId, lastReadMessageId });
-  };
+  }, []);
 
-  const broadcastDeleted = (threadId: string, messageId: string) => {
+  const broadcastDeleted = useCallback((threadId: string, messageId: string) => {
     sharedSocket?.emit("message-deleted", { threadId, messageId });
-  };
+  }, []);
 
   return {
     isConnected: Boolean(sharedSocket?.connected),

@@ -499,11 +499,18 @@ export const useMessagingStore = create<MessagingStore>()((set, get) => ({
   },
 
   clearThreadTyping: (threadId) => {
-    set({
-      typingUsers: {
-        ...get().typingUsers,
-        [threadId]: [],
-      },
+    set((state) => {
+      const current = state.typingUsers[threadId];
+      if (!current || current.length === 0) {
+        return state;
+      }
+
+      return {
+        typingUsers: {
+          ...state.typingUsers,
+          [threadId]: [],
+        },
+      };
     });
   },
 }));
