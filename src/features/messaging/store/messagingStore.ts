@@ -96,6 +96,7 @@ interface MessagingStore extends MessagingState {
   replaceThreads: (threads: ThreadSummary[]) => void;
   appendThreads: (threads: ThreadSummary[]) => void;
   upsertThreadSummary: (thread: ThreadSummary) => void;
+  patchThreadSummary: (threadId: string, patch: Partial<ThreadSummary>) => void;
 
   setTotalUnread: (count: number) => void;
   recalculateTotalUnread: () => void;
@@ -187,6 +188,29 @@ export const useMessagingStore = create<MessagingStore>()((set, get) => ({
     set({
       threads: merged,
       totalUnread: computeTotalUnread(merged),
+    });
+  },
+
+  patchThreadSummary: (threadId, patch) => {
+    const updated = get().threads.map((thread) =>
+      thread.threadId === threadId
+        ? {
+            ...thread,
+            ...patch,
+            otherUser: {
+              ...thread.otherUser,
+              ...(patch.otherUser ?? {}),
+            },
+            application: patch.application ?? thread.application,
+          }
+        : thread
+    );
+
+    const sorted = sortThreadsByRecent(updated);
+
+    set({
+      threads: sorted,
+      totalUnread: computeTotalUnread(sorted),
     });
   },
 

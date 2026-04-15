@@ -14,9 +14,10 @@ const resolveErrorMessage = (error: unknown): string => {
 
 interface UseThreadsOptions {
   autoLoad?: boolean;
+  archived?: boolean;
 }
 
-export const useThreads = ({ autoLoad = true }: UseThreadsOptions = {}) => {
+export const useThreads = ({ autoLoad = true, archived = false }: UseThreadsOptions = {}) => {
   const hasInitializedRef = useRef(false);
 
   const threads = useMessagingStore((state) => state.threads);
@@ -54,7 +55,7 @@ export const useThreads = ({ autoLoad = true }: UseThreadsOptions = {}) => {
       setThreadsError(null);
 
       try {
-        const response = await messagingApi.getThreads(page, THREAD_PAGE_SIZE);
+        const response = await messagingApi.getThreads(page, THREAD_PAGE_SIZE, archived);
 
         if (reset) {
           replaceThreads(response.content);
@@ -80,6 +81,7 @@ export const useThreads = ({ autoLoad = true }: UseThreadsOptions = {}) => {
       threadsHasMore,
       threadsLoading,
       threadsPage,
+      archived,
     ]
   );
 
@@ -121,6 +123,10 @@ export const useThreads = ({ autoLoad = true }: UseThreadsOptions = {}) => {
   );
 
   useEffect(() => {
+    hasInitializedRef.current = false;
+  }, [archived]);
+
+  useEffect(() => {
     if (!autoLoad || hasInitializedRef.current) {
       return;
     }
@@ -143,6 +149,7 @@ export const useThreads = ({ autoLoad = true }: UseThreadsOptions = {}) => {
     refreshUnreadCount,
     openThread,
     ensureThread,
+    archived,
   };
 };
 

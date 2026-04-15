@@ -1,5 +1,7 @@
 import api from "@/config/axiosConfig";
 import type {
+  BlockedUserDto,
+  BlockStatusDto,
   Message,
   MessageContentType,
   PageResponse,
@@ -81,6 +83,31 @@ const normalizeThreadSummary = (payload: unknown): ThreadSummary => {
     lastMessageAt: toStringSafe(source.lastMessageAt) || null,
     unreadCount: toNumberSafe(source.unreadCount),
     isOnline: toBooleanSafe(source.isOnline, toBooleanSafe(source.online)),
+    isArchived: toBooleanSafe(source.isArchived, toBooleanSafe(source.archived)),
+    isBlocked: toBooleanSafe(source.isBlocked, toBooleanSafe(source.blocked)),
+  };
+};
+
+const normalizeBlockedUser = (payload: unknown): BlockedUserDto => {
+  const source = isRecord(payload) ? payload : {};
+
+  return {
+    userId: toStringSafe(source.userId),
+    fullName: toStringSafe(source.fullName),
+    email: toStringSafe(source.email),
+    avatarUrl: toStringSafe(source.avatarUrl) || undefined,
+    blockedAt: toStringSafe(source.blockedAt, new Date().toISOString()),
+    reason: toStringSafe(source.reason) || undefined,
+  };
+};
+
+const normalizeBlockStatus = (payload: unknown): BlockStatusDto => {
+  const source = isRecord(payload) ? payload : {};
+
+  return {
+    blocked: toBooleanSafe(source.isBlocked, toBooleanSafe(source.blocked)),
+    blockedAt: toStringSafe(source.blockedAt) || undefined,
+    reason: toStringSafe(source.reason) || undefined,
   };
 };
 
@@ -146,12 +173,13 @@ const normalizePageResponse = <T>(
 
 const getThreads = async (
   page = 0,
-  size = DEFAULT_PAGE_SIZE
+  size = DEFAULT_PAGE_SIZE,
+  archived = false
 ): Promise<PageResponse<ThreadSummary>> => {
   const response = await api.get<RestEnvelope<PageResponse<ThreadSummary>>>(
     "/messages/threads",
     {
-      params: { page, size, sort: "lastMessageAt,desc" },
+      params: { page, size, sort: "lastMessageAt,desc", archived },
     }
   );
 
@@ -218,6 +246,43 @@ const deleteMessage = async (messageId: string): Promise<void> => {
   await api.delete(`/messages/${messageId}`);
 };
 
+const unsendMessage = async (messageId: string): Promise<void> => {
+  await api.delete(`/messages/${messageId}/unsend`);
+};
+
+const deleteThread = async (threadId: string): Promise<void> => {
+  await api.delete(`/messages/threads/${threadId}`);
+};
+
+const archiveThread = async (threadId: string): Promise<void> => {
+  await api.post(`/messages/threads/${threadId}/archive`);
+};
+
+const unarchiveThread = async (threadId: string): Promise<void> => {
+  await api.post(`/messages/threads/${threadId}/unarchive`);
+};
+
+const blockUser = async (userId: string, reason?: string): Promise<void> => {
+  await api.post(`/users/${userId}/block`, { reason });
+};
+
+const unblockUser = async (userId: string): Promise<void> => {
+  await api.delete(`/users/${userId}/block`);
+};
+
+const getBlockedUsers = async (): Promise<BlockedUserDto[]> => {
+  const response = await api.get<RestEnvelope<BlockedUserDto[]>>("/users/blocked");
+  const unwrapped = unwrapEnvelope<unknown>(response.data);
+  const list = Array.isArray(unwrapped) ? unwrapped : [];
+  return list.map((item) => normalizeBlockedUser(item));
+};
+
+const getBlockStatus = async (userId: string): Promise<BlockStatusDto> => {
+  const response = await api.get<RestEnvelope<BlockStatusDto>>(`/users/${userId}/block`);
+  const unwrapped = unwrapEnvelope<unknown>(response.data);
+  return normalizeBlockStatus(unwrapped);
+};
+
 const getUnreadCount = async (): Promise<number> => {
   const response = await api.get<RestEnvelope<{ count: number }>>(
     "/messages/unread-count"
@@ -238,6 +303,14 @@ export const messagingApi = {
   sendMessage,
   markThreadAsRead,
   deleteMessage,
+  unsendMessage,
+  deleteThread,
+  archiveThread,
+  unarchiveThread,
+  blockUser,
+  unblockUser,
+  getBlockedUsers,
+  getBlockStatus,
   getUnreadCount,
 };
 

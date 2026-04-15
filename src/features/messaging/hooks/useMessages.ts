@@ -328,20 +328,28 @@ export const useMessages = (threadId: string | null) => {
         return false;
       }
 
+      const previousMessages = useMessagingStore.getState().messages[threadId] ?? [];
+      const target = previousMessages.find((message) => message.id === messageId);
+      if (!target) {
+        return false;
+      }
+
+      applyMessageDeletedEvent({
+        threadId,
+        messageId,
+        deletedAt: new Date().toISOString(),
+      });
+
       try {
-        await messagingApi.deleteMessage(messageId);
-        applyMessageDeletedEvent({
-          threadId,
-          messageId,
-          deletedAt: new Date().toISOString(),
-        });
+        await messagingApi.unsendMessage(messageId);
         return true;
       } catch (error: unknown) {
+        setMessagesForThread(threadId, previousMessages);
         setMessagesError(resolveErrorMessage(error));
         return false;
       }
     },
-    [applyMessageDeletedEvent, threadId]
+    [applyMessageDeletedEvent, setMessagesForThread, threadId]
   );
 
   const markThreadAsRead = useCallback(async () => {

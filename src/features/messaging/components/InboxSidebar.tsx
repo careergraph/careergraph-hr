@@ -1,14 +1,36 @@
 import { useMemo, useState } from "react";
-import { MessageSquareMore, Search } from "lucide-react";
+import {
+  Archive,
+  Ban,
+  ChevronsUpDown,
+  Inbox,
+  MessageSquareMore,
+  Search,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import messagingApi from "@/features/messaging/api/messagingApi";
+import BlockedCandidatesModal from "@/features/messaging/components/BlockedCandidatesModal";
 import ThreadItem from "@/features/messaging/components/ThreadItem";
 import useThreads from "@/features/messaging/hooks/useThreads";
+import type { ThreadSummary } from "@/features/messaging/types/messaging.types";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface InboxSidebarProps {
+  view: "all" | "archived";
+  onViewChange: (view: "all" | "archived") => void;
+  archived?: boolean;
   selectedThreadId: string | null;
-  onSelectThread: (threadId: string) => void;
+  onSelectThread: (threadId: string | null) => void;
+  totalUnread: number;
   className?: string;
 }
 
@@ -28,21 +50,81 @@ function ThreadSkeleton() {
 }
 
 export function InboxSidebar({
+  view,
+  onViewChange,
+  archived = false,
   selectedThreadId,
   onSelectThread,
+  totalUnread,
   className,
 }: InboxSidebarProps) {
   const [keyword, setKeyword] = useState("");
+  const [isBlockedModalOpen, setIsBlockedModalOpen] = useState(false);
 
   const {
     threads,
     threadsLoading,
     threadsError,
     threadsHasMore,
-    totalUnread,
     loadMoreThreads,
     refreshThreads,
-  } = useThreads({ autoLoad: true });
+  } = useThreads({ autoLoad: true, archived });
+
+  const activeViewLabel = view === "archived" ? "Đã lưu trữ" : "Hộp thư";
+
+  const handleArchiveToggle = async (thread: ThreadSummary) => {
+    try {
+      if (thread.isArchived) {
+        await messagingApi.unarchiveThread(thread.threadId);
+        toast.success("Đã bỏ lưu trữ hội thoại");
+      } else {
+        await messagingApi.archiveThread(thread.threadId);
+        toast.success("Đã lưu trữ hội thoại");
+      }
+
+      if (selectedThreadId === thread.threadId) {
+        onSelectThread(null);
+      }
+
+      await refreshThreads();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không thể cập nhật lưu trữ hội thoại.";
+      toast.error(message);
+    }
+  };
+
+  const handleDeleteThread = async (thread: ThreadSummary) => {
+    try {
+      await messagingApi.deleteThread(thread.threadId);
+      toast.success("Đã xóa hội thoại khỏi hộp thư của bạn");
+
+      if (selectedThreadId === thread.threadId) {
+        onSelectThread(null);
+      }
+
+      await refreshThreads();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không thể xóa hội thoại.";
+      toast.error(message);
+    }
+  };
+
+  const handleBlockToggle = async (thread: ThreadSummary, reason?: string) => {
+    try {
+      if (thread.isBlocked) {
+        await messagingApi.unblockUser(thread.otherUser.id);
+        toast.success("Đã bỏ chặn ứng viên");
+      } else {
+        await messagingApi.blockUser(thread.otherUser.id, reason);
+        toast.success("Đã chặn ứng viên");
+      }
+
+      await refreshThreads();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không thể cập nhật trạng thái chặn.";
+      toast.error(message);
+    }
+  };
 
   const filteredThreads = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
@@ -72,34 +154,77 @@ export function InboxSidebar({
   return (
     <aside
       className={cn(
-        "flex h-full flex-col border-r border-gray-200 bg-white/95 dark:border-gray-800 dark:bg-gray-900/95",
+        "flex h-full min-h-0 flex-col border-r border-gray-200 bg-white/95 dark:border-gray-800 dark:bg-gray-900/95",
         className
       )}
     >
       <div className="border-b border-gray-200 px-3 py-3 dark:border-gray-800 sm:px-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white/90">
-              Hộp thư
-            </h2>
+            <div className="inline-flex items-center gap-2">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white/90">
+                {activeViewLabel}
+              </h2>
+              {!archived && totalUnread > 0 ? (
+                <span className="rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                  {totalUnread > 99 ? "99+" : totalUnread}
+                </span>
+              ) : null}
+            </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {totalUnread > 0
+              {archived
+                ? "Các hội thoại bạn đã lưu trữ"
+                : totalUnread > 0
                 ? `${totalUnread} tin chưa đọc`
                 : "Không có tin nhắn chưa đọc"}
             </p>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 rounded-lg px-2 text-xs"
-            onClick={() => {
-              void refreshThreads();
-            }}
-          >
-            Làm mới
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-lg px-2 text-xs"
+              onClick={() => {
+                void refreshThreads();
+              }}
+            >
+              Làm mới
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1 rounded-lg px-2 text-xs"
+                >
+                  Tùy chọn
+                  <ChevronsUpDown className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-52 border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
+              >
+                <DropdownMenuItem onClick={() => onViewChange("all")}>
+                  <Inbox className="h-4 w-4" />
+                  Hộp thư chính
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onViewChange("archived")}>
+                  <Archive className="h-4 w-4" />
+                  Hội thoại đã lưu trữ
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsBlockedModalOpen(true)}>
+                  <Ban className="h-4 w-4" />
+                  Ứng viên đã chặn
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         <div className="relative">
@@ -134,10 +259,12 @@ export function InboxSidebar({
               <MessageSquareMore className="h-6 w-6" />
             </div>
             <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-              Chưa có cuộc hội thoại
+              {archived ? "Không có hội thoại lưu trữ" : "Chưa có cuộc hội thoại"}
             </p>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Khi bạn nhắn tin với ứng viên, hội thoại sẽ xuất hiện tại đây.
+              {archived
+                ? "Lưu trữ hội thoại để quản lý hộp thư gọn hơn."
+                : "Khi bạn nhắn tin với ứng viên, hội thoại sẽ xuất hiện tại đây."}
             </p>
           </div>
         ) : null}
@@ -149,6 +276,9 @@ export function InboxSidebar({
               thread={thread}
               isSelected={selectedThreadId === thread.threadId}
               onClick={() => onSelectThread(thread.threadId)}
+              onArchiveToggle={handleArchiveToggle}
+              onDeleteThread={handleDeleteThread}
+              onBlockToggle={handleBlockToggle}
             />
           ))}
         </div>
@@ -169,6 +299,12 @@ export function InboxSidebar({
           </Button>
         </div>
       ) : null}
+
+      <BlockedCandidatesModal
+        open={isBlockedModalOpen}
+        onClose={() => setIsBlockedModalOpen(false)}
+        onUpdated={refreshThreads}
+      />
     </aside>
   );
 }

@@ -41,6 +41,8 @@ export interface ThreadSummary {
   lastMessageAt: string | null;
   unreadCount: number;
   isOnline: boolean;
+  isArchived: boolean;
+  isBlocked: boolean;
 }
 
 export interface Message {
@@ -57,6 +59,26 @@ export interface Message {
   isRead: boolean;
   readAt?: string;
   localStatus?: MessageDeliveryStatus;
+}
+
+export interface MessageWithMeta extends Message {
+  canUnsend: boolean;
+  secondsUntilUnsendExpiry: number;
+}
+
+export interface BlockedUserDto {
+  userId: string;
+  fullName: string;
+  email: string;
+  avatarUrl?: string;
+  blockedAt: string;
+  reason?: string;
+}
+
+export interface BlockStatusDto {
+  blocked: boolean;
+  blockedAt?: string;
+  reason?: string;
 }
 
 export interface TypingStatus {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, type MutableRefObject } from "react";
 import { jwtDecode } from "jwt-decode";
 import { io, type Socket } from "socket.io-client";
+import { toast } from "sonner";
 import { useAuthStore } from "@/stores/authStore";
 import { useMessagingStore } from "@/features/messaging/store/messagingStore";
 import type {
@@ -36,23 +37,33 @@ const toBooleanSafe = (value: unknown, fallback = false): boolean =>
 
 const normalizeUser = (payload: unknown): UserSummary => {
   const source = isRecord(payload) ? payload : {};
+  const displayName = toStringSafe(source.displayName).trim();
+  const displayParts = displayName ? displayName.split(/\s+/) : [];
 
   return {
     id: toStringSafe(source.id, toStringSafe(source.userId)),
-    firstName: toStringSafe(source.firstName),
-    lastName: toStringSafe(source.lastName),
+    firstName: toStringSafe(source.firstName, displayParts[0] ?? ""),
+    lastName: toStringSafe(source.lastName, displayParts.slice(1).join(" ")),
     email: toStringSafe(source.email),
-    avatarUrl: toStringSafe(source.avatarUrl) || undefined,
+    avatarUrl: toStringSafe(source.avatarUrl, toStringSafe(source.avatar)) || undefined,
   };
 };
 
 const normalizeMessage = (payload: unknown, threadId: string): Message => {
   const source = isRecord(payload) ? payload : {};
 
+  const senderPayload = isRecord(source.sender)
+    ? source.sender
+    : {
+        id: toStringSafe(source.senderId),
+        displayName: toStringSafe(source.senderName),
+        avatar: toStringSafe(source.senderAvatar),
+      };
+
   return {
     id: toStringSafe(source.id),
     threadId: toStringSafe(source.threadId, threadId),
-    sender: normalizeUser(source.sender),
+    sender: normalizeUser(senderPayload),
     content: toStringSafe(source.content),
     contentType: toStringSafe(
       source.contentType,
@@ -104,6 +115,7 @@ const attachSocketListeners = (currentUserIdRef: MutableRefObject<string>) => {
   const applyThreadReadEvent = useMessagingStore.getState().applyThreadReadEvent;
   const applyMessageDeletedEvent = useMessagingStore.getState().applyMessageDeletedEvent;
   const applyThreadOnlineUsers = useMessagingStore.getState().applyThreadOnlineUsers;
+  const patchThreadSummary = useMessagingStore.getState().patchThreadSummary;
 
   sharedSocket.on("new-message", (payload: unknown) => {
     if (!isRecord(payload)) return;
@@ -215,6 +227,25 @@ const attachSocketListeners = (currentUserIdRef: MutableRefObject<string>) => {
     });
   });
 
+  sharedSocket.on("blocked-by-hr", (payload: unknown) => {
+    if (!isRecord(payload)) return;
+
+    const threadId = toStringSafe(payload.threadId);
+    if (!threadId) return;
+
+    patchThreadSummary(threadId, { isBlocked: true });
+    toast.warning("Bạn đã bị chặn bởi nhà tuyển dụng trong cuộc trò chuyện này.");
+  });
+
+  sharedSocket.on("unblocked-by-hr", (payload: unknown) => {
+    if (!isRecord(payload)) return;
+
+    const threadId = toStringSafe(payload.threadId);
+    if (!threadId) return;
+
+    patchThreadSummary(threadId, { isBlocked: false });
+  });
+
   listenersAttached = true;
 };
 
@@ -229,6 +260,8 @@ const detachSocketListeners = () => {
   sharedSocket.removeAllListeners("thread-online-users");
   sharedSocket.removeAllListeners("messages-read");
   sharedSocket.removeAllListeners("message-deleted");
+  sharedSocket.removeAllListeners("blocked-by-hr");
+  sharedSocket.removeAllListeners("unblocked-by-hr");
 
   listenersAttached = false;
 };

@@ -4,6 +4,8 @@ Date: 2026-04-14
 Tester mode: strict review (implementation + build/lint verification)
 Scope: FE HR chat inbox, kanban message tab integration, realtime hooks, notification dropdown migration
 
+Last updated: 2026-04-15 (Phase 3 Addendum Advanced)
+
 ## Environment and commands
 
 - Build command: `npm run build`
@@ -11,10 +13,9 @@ Scope: FE HR chat inbox, kanban message tab integration, realtime hooks, notific
 - Evidence: TypeScript build and Vite bundle completed successfully.
 
 - Lint command: `npm run lint`
-- Result: FAIL (pre-existing unrelated issues)
+- Result: PASS
 - Notes:
-  - Existing `no-explicit-any` and unused variables in old modules outside the new messaging/notification scope.
-  - No new lint errors were introduced in the newly added messaging/notification files.
+  - Latest run after Addendum implementation returns exit code `0` with no warnings/errors.
 
 ## Functional checklist
 
@@ -84,3 +85,32 @@ Scope: FE HR chat inbox, kanban message tab integration, realtime hooks, notific
 - Documentation synchronized for HR/Candidate layout parity:
   - `careergraph-api/docs/chat_notify/03_PHASE3_HR_FE_CHAT.md`
   - `careergraph-api/docs/chat_notify/04_PHASE4_CANDIDATE_FE_CHAT.md`
+
+## Addendum Advanced QA - 2026-04-15
+
+### Functional checklist (03b_PHASE3_ADDENDUM_ADVANCED.md)
+
+| Item | Status | Notes |
+|---|---|---|
+| MessageBubble có action gỡ tin kèm countdown 60s | PASS | `MessageBubble` dùng `useUnsendCountdown`, hiển thị `Gỡ tin nhắn` + thời gian còn lại. |
+| Hết thời gian thì không cho gỡ | PASS | Countdown về `0` thì action chuyển sang trạng thái disabled `Không thể gỡ`. |
+| Unsend dùng endpoint mới `/messages/{id}/unsend` | PASS | `messagingApi.unsendMessage` được gọi trong `useMessages.deleteSentMessage`. |
+| Optimistic unsend + rollback khi API fail | PASS | Tin nhắn bị đánh dấu deleted ngay, rollback danh sách tin nếu API lỗi. |
+| Thread context menu có archive/unarchive | PASS | `ThreadItem` dropdown menu hỗ trợ lưu trữ và bỏ lưu trữ. |
+| Thread context menu có delete thread | PASS | Có confirm dialog tiếng Việt trước khi xóa hội thoại phía HR. |
+| Thread context menu có block/unblock | PASS | Có `BlockDialog` chọn lý do + confirm bỏ chặn. |
+| Blocked banner trong ChatWindow | PASS | Hiển thị banner cảnh báo, có nút bỏ chặn ngay trên header chat area. |
+| Khi bị block thì disable message input | PASS | `MessageInput` nhận `disabled` + placeholder phù hợp trạng thái blocked. |
+| Inbox có tab `Đã lưu trữ` | PASS | `MessagesPage` thêm toggle `Hộp thư` / `Đã lưu trữ`, load theo `archived` param. |
+| API layer có đầy đủ advanced endpoints | PASS | Bổ sung unsend, delete thread, archive/unarchive, block/unblock/get blocked users/status. |
+| Navigation hiển thị unread badge | PASS | `AppSidebar` hiển thị badge cho menu `Tin nhắn`. |
+| Candidate Detail tab vẫn hoạt động | PASS | Không đổi contract, `CandidateMessageTab` tiếp tục dùng `ChatWindow` với thread đảm bảo từ API. |
+
+### Build/Lint regression
+
+- `npm run build`: PASS
+- `npm run lint`: PASS
+
+### Residual risk
+
+- Chưa có automated e2e cho các flow menu/confirm dialog/socket event block-unblock; hiện được xác thực bằng code audit + compile/lint.

@@ -1,8 +1,10 @@
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { RotateCcw, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { MoreHorizontal, RotateCcw, Undo2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ReadReceipt from "@/features/messaging/components/ReadReceipt";
+import useUnsendCountdown from "@/features/messaging/hooks/useUnsendCountdown";
 import type { Message, UserSummary } from "@/features/messaging/types/messaging.types";
 import { cn } from "@/lib/utils";
 
@@ -51,13 +53,46 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const canDelete = isOwn && !message.deleted && !message.id.startsWith("temp-");
   const canRetry = isOwn && message.localStatus === "failed";
+  const { canUnsend, secondsLeft, urgent } = useUnsendCountdown(message.createdAt);
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement | null>(null);
 
   const sender = otherUser ?? message.sender;
+
+  useEffect(() => {
+    if (!isActionMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!actionMenuRef.current) {
+        return;
+      }
+
+      if (!actionMenuRef.current.contains(event.target as Node)) {
+        setIsActionMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsActionMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isActionMenuOpen]);
 
   return (
     <div
       className={cn(
-        "group message-bubble-enter flex w-full items-end gap-2",
+        "message-bubble-enter flex w-full min-w-0 items-end gap-2",
         isOwn ? "justify-end" : "justify-start"
       )}
     >
@@ -74,28 +109,64 @@ export function MessageBubble({
 
       <div
         className={cn(
-          "max-w-[82%] space-y-1",
+          "group flex min-w-0 max-w-[85%] flex-col space-y-1 sm:max-w-[82%]",
           isOwn ? "items-end text-right" : "items-start text-left"
         )}
       >
         <div
           className={cn(
-            "relative rounded-2xl px-3.5 py-2.5 text-sm shadow-sm",
+            "relative inline-flex w-fit min-w-0 max-w-full rounded-2xl px-3.5 py-2.5 text-sm shadow-sm",
             isOwn
               ? "bg-brand-500 text-white"
               : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
           )}
         >
           {canDelete ? (
-            <button
-              type="button"
-              className="absolute -top-2 -right-2 hidden h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:text-red-500 group-hover:flex dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-              onClick={() => onDelete?.(message.id)}
-              aria-label="Thu hồi tin nhắn"
-              title="Thu hồi tin nhắn"
+            <div
+              ref={actionMenuRef}
+              className="absolute -top-3 right-0 z-20 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto"
             >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+              <button
+                type="button"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                aria-label="Tùy chọn tin nhắn"
+                aria-expanded={isActionMenuOpen}
+                onClick={() => setIsActionMenuOpen((current) => !current)}
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </button>
+
+              {isActionMenuOpen ? (
+                <div className="absolute right-0 top-full mt-2 w-48 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-[0_14px_36px_rgba(15,23,42,0.22)] dark:border-slate-700 dark:bg-slate-900">
+                  {canUnsend ? (
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-red-600 transition hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-500/10"
+                      onClick={() => {
+                        setIsActionMenuOpen(false);
+                        onDelete?.(message.id);
+                      }}
+                    >
+                      <Undo2 className="h-4 w-4" />
+                      <span>Gỡ tin nhắn</span>
+                      <span
+                        className={cn(
+                          "ml-auto text-[11px] font-semibold",
+                          urgent ? "text-red-500" : "text-gray-400"
+                        )}
+                      >
+                        {secondsLeft}s
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-gray-400">
+                      <Undo2 className="h-4 w-4" />
+                      <span>Không thể gỡ</span>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
           ) : null}
 
           {canRetry ? (
@@ -113,7 +184,12 @@ export function MessageBubble({
           {message.deleted ? (
             <p className="italic opacity-80">Tin nhắn đã được thu hồi</p>
           ) : (
-            <p className="whitespace-pre-wrap wrap-break-word">{message.content}</p>
+            <p
+              className="block max-w-full whitespace-pre-wrap break-words"
+              style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+            >
+              {message.content}
+            </p>
           )}
         </div>
 
@@ -128,7 +204,6 @@ export function MessageBubble({
         </div>
       </div>
 
-      {isOwn ? <div className="w-8" /> : null}
     </div>
   );
 }

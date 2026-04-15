@@ -7,15 +7,18 @@ import InboxSidebar from "@/features/messaging/components/InboxSidebar";
 import useThreads from "@/features/messaging/hooks/useThreads";
 import "@/features/messaging/styles/messaging.css";
 
+type InboxTab = "all" | "archived";
+
 export function MessagesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryThreadId = searchParams.get("thread");
+  const [activeTab, setActiveTab] = useState<InboxTab>("all");
 
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(
     queryThreadId
   );
 
-  const { openThread } = useThreads({ autoLoad: true });
+  const { openThread, totalUnread } = useThreads({ autoLoad: true, archived: false });
 
   useEffect(() => {
     setSelectedThreadId(queryThreadId);
@@ -38,7 +41,7 @@ export function MessagesPage() {
   );
 
   const handleSelectThread = useCallback(
-    (threadId: string) => {
+    (threadId: string | null) => {
       setSelectedThreadId(threadId);
       openThread(threadId);
       applyQueryThread(threadId);
@@ -66,11 +69,18 @@ export function MessagesPage() {
     <>
       <PageMeta title="Inbox - CareerGraph HR" description="Quản lý hội thoại tuyển dụng" />
 
-      <div className="messaging-page-enter flex h-[calc(100vh-190px)] min-h-140 w-full overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <div className="messaging-page-enter flex h-[calc(100dvh-8.5rem)] min-h-[32rem] w-full overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 lg:h-[calc(100dvh-9rem)]">
         <div className={`${sidebarVisibleClass} w-full md:w-65 xl:w-80`}>
           <InboxSidebar
+            view={activeTab}
+            onViewChange={(next: InboxTab) => {
+              setActiveTab(next);
+              handleSelectThread(null);
+            }}
+            archived={activeTab === "archived"}
             selectedThreadId={selectedThreadId}
             onSelectThread={handleSelectThread}
+            totalUnread={totalUnread}
             className="w-full"
           />
         </div>

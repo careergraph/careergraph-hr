@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Circle } from "lucide-react";
+import { ArrowLeft, Circle, ShieldAlert } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import messagingApi from "@/features/messaging/api/messagingApi";
 import MessageBubble from "@/features/messaging/components/MessageBubble";
 import MessageInput from "@/features/messaging/components/MessageInput";
 import TypingIndicator from "@/features/messaging/components/TypingIndicator";
@@ -12,6 +13,7 @@ import { useMessagingStore } from "@/features/messaging/store/messagingStore";
 import type { Message } from "@/features/messaging/types/messaging.types";
 import { useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface ChatWindowProps {
   threadId: string;
@@ -98,6 +100,7 @@ export function ChatWindow({
   );
 
   const clearThreadTyping = useMessagingStore((state) => state.clearThreadTyping);
+  const patchThreadSummary = useMessagingStore((state) => state.patchThreadSummary);
 
   const { accessToken } = useAuthStore();
   const {
@@ -138,7 +141,7 @@ export function ChatWindow({
     }
 
     return null;
-  }, [currentUser.id, messages]);
+  }, [currentUser, messages]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
     if (!viewportRef.current) {
@@ -170,7 +173,7 @@ export function ChatWindow({
     await markThreadAsRead();
     broadcastRead(threadId, lastMessage.id);
     lastReadBroadcastRef.current = lastMessage.id;
-  }, [broadcastRead, currentUser.id, markThreadAsRead, messages, threadId]);
+  }, [broadcastRead, currentUser, markThreadAsRead, messages, threadId]);
 
   const loadOlderMessagesWithPosition = useCallback(async () => {
     if (!viewportRef.current || loadingOlderRef.current || !hasMoreMessages) {
@@ -247,7 +250,7 @@ export function ChatWindow({
     const latest = messages[currentCount - 1];
     const nearBottom = isNearBottom(viewportRef.current);
 
-    if (nearBottom || latest.sender.id === currentUser.id) {
+    if (nearBottom || isOwnMessage(latest, currentUser)) {
       requestAnimationFrame(() => {
         scrollToBottom("smooth");
       });
@@ -257,7 +260,7 @@ export function ChatWindow({
     }
 
     previousMessageCountRef.current = currentCount;
-  }, [currentUser.id, isMessagesLoading, messages, scrollToBottom]);
+  }, [currentUser, isMessagesLoading, messages, scrollToBottom]);
 
   useEffect(() => {
     void markAsReadIfNeeded();
@@ -298,6 +301,22 @@ export function ChatWindow({
     [broadcastDeleted, deleteSentMessage, threadId]
   );
 
+  const handleUnblock = useCallback(async () => {
+    if (!thread?.isBlocked) {
+      return;
+    }
+
+    try {
+      await messagingApi.unblockUser(thread.otherUser.id);
+      patchThreadSummary(thread.threadId, { isBlocked: false });
+      toast.success("Đã bỏ chặn ứng viên. Bạn có thể tiếp tục nhắn tin.");
+      await loadLatestMessages();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không thể bỏ chặn ứng viên.";
+      toast.error(message);
+    }
+  }, [loadLatestMessages, patchThreadSummary, thread]);
+
   const displayName =
     `${thread?.otherUser.firstName ?? ""} ${thread?.otherUser.lastName ?? ""}`.trim() ||
     thread?.otherUser.email ||
@@ -305,8 +324,9 @@ export function ChatWindow({
 
   const avatarFallback = firstLetter(displayName);
 
+
   return (
-    <section className="flex h-full min-h-0 flex-1 flex-col bg-white dark:bg-gray-900">
+    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-gray-900">
       {!compact ? (
         <header className="flex items-center justify-between gap-3 border-b border-gray-200 px-3 py-3 dark:border-gray-800 sm:px-4">
           <div className="flex items-center gap-3">
@@ -358,9 +378,25 @@ export function ChatWindow({
       ) : null}
 
       <div className="relative flex min-h-0 flex-1 flex-col">
+        {thread?.isBlocked ? (
+          <div className="mx-3 mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200 sm:mx-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="inline-flex items-center gap-2 font-medium">
+                <ShieldAlert className="h-4 w-4" />
+                Bạn đã chặn ứng viên này. Họ không thể gửi tin nhắn cho bạn.
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={() => {
+                void handleUnblock();
+              }}>
+                Bỏ chặn
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         <div
           ref={viewportRef}
-          className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 py-3 sm:px-4"
+          className="custom-scrollbar flex min-h-0 flex-1 scroll-smooth flex-col gap-3 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4"
           onScroll={() => {
             if (!viewportRef.current) {
               return;
@@ -375,16 +411,7 @@ export function ChatWindow({
             }
           }}
         >
-          {isMessagesLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div
-                  key={`msg-skeleton-${index}`}
-                  className="messaging-pulse h-12 w-3/4 rounded-2xl bg-gray-100 dark:bg-gray-800"
-                />
-              ))}
-            </div>
-          ) : null}
+
 
           {!isMessagesLoading && messages.length === 0 ? (
             <EmptyChat
@@ -424,7 +451,7 @@ export function ChatWindow({
         </div>
 
         {showNewMessageBanner ? (
-          <div className="pointer-events-none absolute bottom-20 left-0 right-0 flex justify-center">
+          <div className="pointer-events-none absolute bottom-24 left-0 right-0 z-10 flex justify-center px-3">
             <Button
               type="button"
               size="sm"
@@ -449,6 +476,8 @@ export function ChatWindow({
           onSend={handleSendMessage}
           onTypingStart={() => sendTypingStart(threadId)}
           onTypingStop={() => sendTypingStop(threadId)}
+          disabled={Boolean(thread?.isBlocked)}
+          placeholder={thread?.isBlocked ? "Bỏ chặn để tiếp tục nhắn tin" : "Nhập tin nhắn..."}
           compact={compact}
         />
       </div>

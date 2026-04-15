@@ -102,7 +102,7 @@ export function CandidateMessageTab({
           Tin nhắn với ứng viên
         </div>
       </div>
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 mr-2">
         <ChatWindow threadId={threadId} compact />
       </div>
     </div>

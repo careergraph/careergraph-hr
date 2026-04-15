@@ -9,6 +9,7 @@ interface MessageInputProps {
   onTypingStop?: () => void;
   disabled?: boolean;
   compact?: boolean;
+  placeholder?: string;
 }
 
 const MAX_TEXTAREA_HEIGHT = 140;
@@ -20,6 +21,7 @@ export function MessageInput({
   onTypingStop,
   disabled = false,
   compact = false,
+  placeholder = "Nhập tin nhắn...",
 }: MessageInputProps) {
   const [value, setValue] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -130,7 +132,7 @@ export function MessageInput({
               void submitMessage();
             }
           }}
-          placeholder="Nhập tin nhắn..."
+          placeholder={placeholder}
           className="min-h-10.5 max-h-35 resize-none rounded-2xl border-gray-200 bg-gray-50 text-sm shadow-inner focus-visible:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800"
           disabled={disabled || isSending}
         />
