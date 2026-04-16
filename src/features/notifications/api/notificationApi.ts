@@ -28,6 +28,10 @@ const unwrapEnvelope = <T>(payload: unknown): T => {
 
 const normalizeNotification = (payload: unknown): NotificationItem => {
   const source = isRecord(payload) ? payload : {};
+  const readValue =
+    typeof source.read === "boolean"
+      ? source.read
+      : toBooleanSafe(source.isRead);
 
   return {
     id: toStringSafe(source.id),
@@ -36,31 +40,38 @@ const normalizeNotification = (payload: unknown): NotificationItem => {
     body: toStringSafe(source.body),
     data: isRecord(source.data) ? source.data : undefined,
     createdAt: toStringSafe(source.createdAt, new Date().toISOString()),
-    read: toBooleanSafe(source.read),
+    read: readValue,
   };
 };
 
+const countUnread = (items: NotificationItem[]): number =>
+  items.reduce((total, item) => total + (item.read ? 0 : 1), 0);
+
 const normalizePage = (payload: unknown): NotificationPageResponse => {
   const source = isRecord(payload) ? payload : {};
-  const rawContent = Array.isArray(source.content) ? source.content : [];
+  const rawNotifications = Array.isArray(source.notifications)
+    ? source.notifications
+    : Array.isArray(source.content)
+      ? source.content
+      : [];
+  const notifications = rawNotifications.map((item) => normalizeNotification(item));
 
-  const size = toNumberSafe(source.size, NOTIFICATION_PAGE_SIZE);
-  const totalElements = toNumberSafe(source.totalElements, rawContent.length);
-  const totalPages = toNumberSafe(
-    source.totalPages,
-    size > 0 ? Math.ceil(totalElements / size) : 1
-  );
-  const pageNumber = toNumberSafe(source.number, 0);
+  const hasMoreFromPage = (() => {
+    const size = toNumberSafe(source.size, NOTIFICATION_PAGE_SIZE);
+    const totalElements = toNumberSafe(source.totalElements, notifications.length);
+    const totalPages = toNumberSafe(
+      source.totalPages,
+      size > 0 ? Math.ceil(totalElements / size) : 1
+    );
+    const pageNumber = toNumberSafe(source.number, 0);
+    const isLast = toBooleanSafe(source.last, pageNumber >= totalPages - 1);
+    return !isLast && pageNumber + 1 < totalPages;
+  })();
 
   return {
-    content: rawContent.map((item) => normalizeNotification(item)),
-    totalElements,
-    totalPages,
-    size,
-    number: pageNumber,
-    first: toBooleanSafe(source.first, pageNumber <= 0),
-    last: toBooleanSafe(source.last, pageNumber >= totalPages - 1),
-    empty: toBooleanSafe(source.empty, rawContent.length === 0),
+    notifications,
+    totalUnread: toNumberSafe(source.totalUnread, countUnread(notifications)),
+    hasMore: toBooleanSafe(source.hasMore, hasMoreFromPage),
   };
 };
 

@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import { io, type Socket } from "socket.io-client";
 import notificationApi from "@/features/notifications/api/notificationApi";
 import { useNotificationStore } from "@/features/notifications/store/notificationStore";
 import type {
@@ -9,12 +8,7 @@ import type {
 import { useMessagingStore } from "@/features/messaging/store/messagingStore";
 import { useAuthStore } from "@/stores/authStore";
 
-const NOTIFY_SOCKET_URL =
-  import.meta.env.VITE_RTC_BASE_URL ?? "http://localhost:4000";
-
 const PAGE_SIZE = 20;
-
-type NotifySocket = Socket<Record<string, never>, Record<string, never>>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -27,6 +21,10 @@ const toBooleanSafe = (value: unknown, fallback = false): boolean =>
 
 const normalizeNotification = (payload: unknown): NotificationItem => {
   const source = isRecord(payload) ? payload : {};
+  const read =
+    typeof source.read === "boolean"
+      ? source.read
+      : toBooleanSafe(source.isRead);
 
   return {
     id: toStringSafe(source.id, `notify-${Date.now()}`),
@@ -35,7 +33,7 @@ const normalizeNotification = (payload: unknown): NotificationItem => {
     body: toStringSafe(source.body, "Bạn có một thông báo mới."),
     data: isRecord(source.data) ? source.data : undefined,
     createdAt: toStringSafe(source.createdAt, new Date().toISOString()),
-    read: toBooleanSafe(source.read),
+    read,
   };
 };
 
@@ -67,6 +65,7 @@ export const useNotifications = () => {
   const replaceItems = useNotificationStore((state) => state.replaceItems);
   const appendItems = useNotificationStore((state) => state.appendItems);
   const prependItem = useNotificationStore((state) => state.prependItem);
+  const reset = useNotificationStore((state) => state.reset);
   const markRead = useNotificationStore((state) => state.markRead);
   const markAllReadLocal = useNotificationStore((state) => state.markAllRead);
 
@@ -89,13 +88,14 @@ export const useNotifications = () => {
         );
 
         if (reset) {
-          replaceItems(response.content);
+          replaceItems(response.notifications);
         } else {
-          appendItems(response.content);
+          appendItems(response.notifications);
         }
 
+        setUnreadCount(response.totalUnread);
         setPage(targetPage + 1);
-        setHasMore(!response.last && targetPage + 1 < response.totalPages);
+        setHasMore(response.hasMore);
         setInitialized(true);
       } catch (reason: unknown) {
         setError(resolveError(reason));
@@ -114,6 +114,7 @@ export const useNotifications = () => {
       setInitialized,
       setLoading,
       setPage,
+      setUnreadCount,
     ]
   );
 
@@ -155,25 +156,16 @@ export const useNotifications = () => {
     }
   }, [markAllReadLocal, setUnreadCount]);
 
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
-
-    const socket: NotifySocket = io(`${NOTIFY_SOCKET_URL}/notify`, {
-      auth: { token },
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-    });
-
-    socket.on("notification", (payload: unknown) => {
+  const handleSocketNotification = useCallback(
+    (payload: unknown) => {
       const nextItem = normalizeNotification(payload);
       prependItem(nextItem);
-    });
+    },
+    [prependItem]
+  );
 
-    socket.on("unread-counts", (payload: UnreadCountsPayload) => {
+  const handleSocketUnreadCounts = useCallback(
+    (payload: UnreadCountsPayload) => {
       if (typeof payload.notifications === "number") {
         setUnreadCount(payload.notifications);
       }
@@ -181,16 +173,16 @@ export const useNotifications = () => {
       if (typeof payload.messages === "number") {
         useMessagingStore.getState().setTotalUnread(payload.messages);
       }
-    });
+    },
+    [setUnreadCount]
+  );
 
-    socket.on("connect_error", (reason: Error) => {
-      console.error("[notify socket] connect error:", reason.message);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [prependItem, setUnreadCount, token]);
+  useEffect(() => {
+    if (!token) {
+      reset();
+      return;
+    }
+  }, [reset, token]);
 
   useEffect(() => {
     if (!token) {
@@ -211,6 +203,8 @@ export const useNotifications = () => {
     refreshUnreadCount,
     markAsRead,
     markAllAsRead,
+    handleSocketNotification,
+    handleSocketUnreadCounts,
   };
 };
 
