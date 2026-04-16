@@ -138,7 +138,7 @@ export function MessageInput({
         compact ? "sm:px-3" : "sm:px-4"
       }`}
     >
-      <div className="flex items-end gap-2">
+      <div className="flex items-center gap-2">
         <Textarea
           ref={textareaRef}
           value={value}
