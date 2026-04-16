@@ -13,7 +13,7 @@ interface MessageInputProps {
 }
 
 const MAX_TEXTAREA_HEIGHT = 140;
-const TYPING_STOP_DELAY = 2800;
+const TYPING_HEARTBEAT_INTERVAL = 2200;
 
 export function MessageInput({
   onSend,
@@ -26,8 +26,9 @@ export function MessageInput({
   const [value, setValue] = useState("");
   const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const typingTimeoutRef = useRef<number | null>(null);
+  const typingHeartbeatRef = useRef<number | null>(null);
   const isTypingRef = useRef(false);
+  const isFocusedRef = useRef(false);
 
   const stopTyping = useCallback(() => {
     if (isTypingRef.current) {
@@ -35,11 +36,26 @@ export function MessageInput({
       isTypingRef.current = false;
     }
 
-    if (typingTimeoutRef.current !== null) {
-      window.clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
+    if (typingHeartbeatRef.current !== null) {
+      window.clearInterval(typingHeartbeatRef.current);
+      typingHeartbeatRef.current = null;
     }
   }, [onTypingStop]);
+
+  const startTypingHeartbeat = useCallback(() => {
+    if (isTypingRef.current) {
+      return;
+    }
+
+    isTypingRef.current = true;
+    onTypingStart?.();
+
+    typingHeartbeatRef.current = window.setInterval(() => {
+      if (isTypingRef.current && isFocusedRef.current) {
+        onTypingStart?.();
+      }
+    }, TYPING_HEARTBEAT_INTERVAL);
+  }, [onTypingStart]);
 
   const resizeTextarea = useCallback(() => {
     if (!textareaRef.current) {
@@ -53,16 +69,6 @@ export function MessageInput({
     )}px`;
   }, []);
 
-  const scheduleTypingStop = useCallback(() => {
-    if (typingTimeoutRef.current !== null) {
-      window.clearTimeout(typingTimeoutRef.current);
-    }
-
-    typingTimeoutRef.current = window.setTimeout(() => {
-      stopTyping();
-    }, TYPING_STOP_DELAY);
-  }, [stopTyping]);
-
   const handleChange = useCallback(
     (nextValue: string) => {
       setValue(nextValue);
@@ -70,19 +76,16 @@ export function MessageInput({
 
       const hasMeaningfulContent = nextValue.trim().length > 0;
 
-      if (hasMeaningfulContent && !isTypingRef.current) {
-        onTypingStart?.();
-        isTypingRef.current = true;
-      }
-
       if (!hasMeaningfulContent) {
         stopTyping();
         return;
       }
 
-      scheduleTypingStop();
+      if (isFocusedRef.current) {
+        startTypingHeartbeat();
+      }
     },
-    [onTypingStart, resizeTextarea, scheduleTypingStop, stopTyping]
+    [resizeTextarea, startTypingHeartbeat, stopTyping]
   );
 
   const submitMessage = useCallback(async () => {
@@ -115,6 +118,20 @@ export function MessageInput({
     };
   }, [stopTyping]);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopTyping();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [stopTyping]);
+
   return (
     <div
       className={`border-t border-gray-200 bg-white/95 px-3 py-3 dark:border-gray-800 dark:bg-gray-900/90 ${
@@ -131,6 +148,16 @@ export function MessageInput({
               event.preventDefault();
               void submitMessage();
             }
+          }}
+          onFocus={() => {
+            isFocusedRef.current = true;
+            if (value.trim().length > 0) {
+              startTypingHeartbeat();
+            }
+          }}
+          onBlur={() => {
+            isFocusedRef.current = false;
+            stopTyping();
           }}
           placeholder={placeholder}
           className="min-h-10.5 max-h-35 resize-none rounded-2xl border-gray-200 bg-gray-50 text-sm shadow-inner focus-visible:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800"

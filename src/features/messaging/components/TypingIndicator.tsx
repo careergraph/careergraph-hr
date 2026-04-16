@@ -22,7 +22,7 @@ export function TypingIndicator({ users }: TypingIndicatorProps) {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-gray-100/80 px-3 py-2 text-xs font-medium text-gray-600 dark:bg-gray-800/70 dark:text-gray-300">
+    <div className="inline-flex items-center gap-2 rounded-lg bg-gray-100/95 px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm dark:bg-gray-800/85 dark:text-gray-300">
       <div className="flex items-center gap-1">
         <span className="typing-dot h-2 w-2 rounded-full bg-brand-500" />
         <span className="typing-dot h-2 w-2 rounded-full bg-brand-500" />

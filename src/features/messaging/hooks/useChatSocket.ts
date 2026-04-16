@@ -35,6 +35,23 @@ const toStringSafe = (value: unknown, fallback = ""): string =>
 const toBooleanSafe = (value: unknown, fallback = false): boolean =>
   typeof value === "boolean" ? value : fallback;
 
+const resolveTypingDisplayName = (payload: unknown, fallback: string): string => {
+  const source = isRecord(payload) ? payload : {};
+  const displayName = toStringSafe(source.displayName).trim();
+  if (displayName && !displayName.includes("@")) {
+    return displayName;
+  }
+
+  const firstName = toStringSafe(source.firstName).trim();
+  const lastName = toStringSafe(source.lastName).trim();
+  const fullName = `${firstName} ${lastName}`.trim();
+  if (fullName) {
+    return fullName;
+  }
+
+  return fallback;
+};
+
 const normalizeUser = (payload: unknown): UserSummary => {
   const source = isRecord(payload) ? payload : {};
   const displayName = toStringSafe(source.displayName).trim();
@@ -132,7 +149,7 @@ const attachSocketListeners = (currentUserIdRef: MutableRefObject<string>) => {
 
     const threadId = toStringSafe(payload.threadId);
     const userId = toStringSafe(payload.userId);
-    const displayName = toStringSafe(payload.displayName);
+    const displayName = resolveTypingDisplayName(payload, "Ứng viên");
 
     if (!threadId || !userId || userId === currentUserIdRef.current) return;
 
@@ -166,19 +183,23 @@ const attachSocketListeners = (currentUserIdRef: MutableRefObject<string>) => {
   sharedSocket.on("user-online", (payload: unknown) => {
     if (!isRecord(payload)) return;
 
+    const threadId = toStringSafe(payload.threadId);
     const userId = toStringSafe(payload.userId);
-    if (!userId) return;
+    if (!threadId || !userId || userId === currentUserIdRef.current) return;
 
     setUserOnline(userId, true);
+    patchThreadSummary(threadId, { isOnline: true });
   });
 
   sharedSocket.on("user-offline", (payload: unknown) => {
     if (!isRecord(payload)) return;
 
+    const threadId = toStringSafe(payload.threadId);
     const userId = toStringSafe(payload.userId);
-    if (!userId) return;
+    if (!threadId || !userId || userId === currentUserIdRef.current) return;
 
     setUserOnline(userId, false);
+    patchThreadSummary(threadId, { isOnline: false });
   });
 
   sharedSocket.on("thread-online-users", (payload: unknown) => {
@@ -192,6 +213,9 @@ const attachSocketListeners = (currentUserIdRef: MutableRefObject<string>) => {
     if (!threadId) return;
 
     applyThreadOnlineUsers(threadId, onlineUsers);
+
+    const hasPeerOnline = onlineUsers.some((userId) => userId !== currentUserIdRef.current);
+    patchThreadSummary(threadId, { isOnline: hasPeerOnline });
   });
 
   sharedSocket.on("messages-read", (payload: unknown) => {

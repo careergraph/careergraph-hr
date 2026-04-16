@@ -69,7 +69,7 @@ export function MessagesPage() {
     <>
       <PageMeta title="Inbox - CareerGraph HR" description="Quản lý hội thoại tuyển dụng" />
 
-      <div className="messaging-page-enter flex h-[calc(100dvh-8.5rem)] min-h-[32rem] w-full overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 lg:h-[calc(100dvh-9rem)]">
+      <div className="messaging-page-enter flex h-full min-h-0 w-full overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className={`${sidebarVisibleClass} w-full md:w-65 xl:w-80`}>
           <InboxSidebar
             view={activeTab}

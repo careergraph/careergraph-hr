@@ -10,7 +10,7 @@ import EmptyChat from "@/features/messaging/components/EmptyChat";
 import useChatSocket from "@/features/messaging/hooks/useChatSocket";
 import useMessages from "@/features/messaging/hooks/useMessages";
 import { useMessagingStore } from "@/features/messaging/store/messagingStore";
-import type { Message } from "@/features/messaging/types/messaging.types";
+import type { Message, ThreadSummary } from "@/features/messaging/types/messaging.types";
 import { useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -39,6 +39,28 @@ const isOwnMessage = (message: Message, currentUser: { id: string; email: string
   const currentUserEmail = normalize(currentUser.email);
 
   return Boolean(senderEmail && currentUserEmail && senderEmail === currentUserEmail);
+};
+
+const resolveDisplayName = (thread: ThreadSummary | null): string => {
+  if (!thread) {
+    return "Ứng viên";
+  }
+
+  const fullName = `${thread.otherUser.firstName ?? ""} ${thread.otherUser.lastName ?? ""}`.trim();
+  if (fullName) {
+    return fullName;
+  }
+
+  return "Ứng viên";
+};
+
+const resolveTypingDisplayName = (typingName: string, thread: ThreadSummary | null): string => {
+  const normalized = typingName.trim();
+  if (normalized && !normalized.includes("@")) {
+    return normalized;
+  }
+
+  return resolveDisplayName(thread);
 };
 
 const firstLetter = (value: string): string => {
@@ -129,8 +151,14 @@ export function ChatWindow({
   } = useMessages(threadId);
 
   const peerTypingUsers = useMemo(
-    () => typingUsers.filter((user) => user.userId !== currentUser.id),
-    [currentUser.id, typingUsers]
+    () =>
+      typingUsers
+        .filter((user) => user.userId !== currentUser.id)
+        .map((user) => ({
+          ...user,
+          displayName: resolveTypingDisplayName(user.displayName, thread),
+        })),
+    [currentUser.id, thread, typingUsers]
   );
 
   const lastOwnMessageId = useMemo(() => {
@@ -317,10 +345,7 @@ export function ChatWindow({
     }
   }, [loadLatestMessages, patchThreadSummary, thread]);
 
-  const displayName =
-    `${thread?.otherUser.firstName ?? ""} ${thread?.otherUser.lastName ?? ""}`.trim() ||
-    thread?.otherUser.email ||
-    "Ứng viên";
+  const displayName = resolveDisplayName(thread);
 
   const avatarFallback = firstLetter(displayName);
 
@@ -445,9 +470,10 @@ export function ChatWindow({
             );
           })}
 
-          {peerTypingUsers.length > 0 ? (
-            <TypingIndicator users={peerTypingUsers} />
-          ) : null}
+        </div>
+
+        <div className="pointer-events-none absolute bottom-16 left-3 right-3 z-20 sm:left-4 sm:right-4">
+          {peerTypingUsers.length > 0 ? <TypingIndicator users={peerTypingUsers} /> : null}
         </div>
 
         {showNewMessageBanner ? (

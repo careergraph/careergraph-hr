@@ -114,3 +114,23 @@ Last updated: 2026-04-15 (Phase 3 Addendum Advanced)
 ### Residual risk
 
 - Chưa có automated e2e cho các flow menu/confirm dialog/socket event block-unblock; hiện được xác thực bằng code audit + compile/lint.
+
+## Addendum Hotfix - 2026-04-16 (Production UX + Realtime Stability)
+
+### Fixed items
+
+| Item | Status | Notes |
+|---|---|---|
+| Typing indicator không còn hiện email raw | PASS | `useChatSocket` + `ChatWindow` chuẩn hóa displayName và fallback về nhãn ứng viên. |
+| Typing hiển thị liên tục khi đang ở input | PASS | `MessageInput` chuyển sang heartbeat typing ~2.2s, dừng khi blur/empty/submit/tab hidden. |
+| Presence online/offline đúng theo thread realtime | PASS | Presence cập nhật theo `threadId` events (`thread-online-users`, `user-online`, `user-offline`). |
+| Messages page không bị lệch chiều cao trong viewport | PASS | `AppLayout` dành container full-height riêng cho route `/messages`. |
+| Kanban MessagesTab có trạng thái ứng viên + online | PASS | `MessagesTab` thêm status strip và trạng thái realtime. |
+
+### Build regression check
+
+- `npm run build`: PASS
+
+### Notes
+
+- Vite vẫn cảnh báo chunk size lớn (không phải regression của hotfix messaging).

@@ -1,11 +1,14 @@
 import { SidebarProvider, useSidebar } from "../context/SidebarContext";
 import { Outlet } from "react-router";
+import { useLocation } from "react-router";
 import AppHeader from "./AppHeader";
 import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
 
 const LayoutContent: React.FC = () => {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
+  const { pathname } = useLocation();
+  const isMessagesRoute = pathname.startsWith("/messages");
 
   return (
     <div className="min-h-screen xl:flex">
@@ -19,7 +22,11 @@ const LayoutContent: React.FC = () => {
         } ${isMobileOpen ? "ml-0" : ""}`}
       >
         <AppHeader />
-        <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 overflow-x-auto w-full">
+        <div
+          className={isMessagesRoute
+            ? "h-[calc(100dvh-4.75rem)] min-h-0 w-full overflow-hidden"
+            : "mx-auto w-full max-w-(--breakpoint-2xl) overflow-x-auto p-4 md:p-6"}
+        >
           <Outlet />
         </div>
       </div>

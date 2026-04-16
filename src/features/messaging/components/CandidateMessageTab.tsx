@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, MessageCircleMore } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import ChatWindow from "@/features/messaging/components/ChatWindow";
 import useThreads from "@/features/messaging/hooks/useThreads";
 import "@/features/messaging/styles/messaging.css";
@@ -7,11 +7,13 @@ import "@/features/messaging/styles/messaging.css";
 interface CandidateMessageTabProps {
   candidateId: string;
   applicationId?: string;
+  onThreadReady?: (threadId: string) => void;
 }
 
 export function CandidateMessageTab({
   candidateId,
   applicationId,
+  onThreadReady,
 }: CandidateMessageTabProps) {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,6 +44,7 @@ export function CandidateMessageTab({
 
         setThreadId(thread.threadId);
         openThread(thread.threadId);
+        onThreadReady?.(thread.threadId);
       })
       .catch((reason: unknown) => {
         if (!mounted) {
@@ -64,7 +67,7 @@ export function CandidateMessageTab({
     return () => {
       mounted = false;
     };
-  }, [applicationId, candidateId, ensureThread, openThread]);
+  }, [applicationId, candidateId, ensureThread, onThreadReady, openThread]);
 
   if (loading) {
     return (
@@ -96,13 +99,7 @@ export function CandidateMessageTab({
 
   return (
     <div className="messaging-page-enter flex h-full min-h-0 flex-col">
-      <div className="border-b border-gray-200 px-4 py-3 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
-        <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 font-medium dark:bg-gray-800">
-          <MessageCircleMore className="h-3.5 w-3.5" />
-          Tin nhắn với ứng viên
-        </div>
-      </div>
-      <div className="min-h-0 flex-1 mr-2">
+      <div className="min-h-0 flex-1">
         <ChatWindow threadId={threadId} compact />
       </div>
     </div>
