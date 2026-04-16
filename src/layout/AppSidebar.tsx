@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
+import useThreads from "@/features/messaging/hooks/useThreads";
 
 // Assume these icons are imported from an icon library
 import {
   CalenderIcon,
+  ChatIcon,
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
-  ListIcon,
   TableIcon,
   UserCircleIcon,
   VideoIcon,
@@ -28,11 +29,11 @@ const navItems: NavItem[] = [
     name: "Dashboard",
     path: "/dashboard",
   },
-  {
-    name: "Kanban",
-    icon: <ListIcon />,
-    path: "/kanbans",
-  },
+  // {
+  //   name: "Kanban",
+  //   icon: <ListIcon />,
+  //   path: "/kanbans",
+  // },
   {
     icon: <CalenderIcon />,
     name: "Calendar",
@@ -47,6 +48,11 @@ const navItems: NavItem[] = [
     icon: <UserCircleIcon />,
     name: "Candidates",
     path: "/candidates",
+  },
+  {
+    icon: <ChatIcon />,
+    name: "Tin nhắn",
+    path: "/messages",
   },
   {
     name: "Jobs",
@@ -66,6 +72,7 @@ const othersItems: NavItem[] = [];
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
+  const { totalUnread } = useThreads({ autoLoad: true, archived: false });
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
@@ -191,6 +198,11 @@ const AppSidebar: React.FC = () => {
                 {(isExpanded || isHovered || isMobileOpen) && (
                   <span className="menu-item-text">{nav.name}</span>
                 )}
+                {nav.path === "/messages" && totalUnread > 0 ? (
+                  <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                    {totalUnread > 99 ? "99+" : totalUnread}
+                  </span>
+                ) : null}
               </Link>
             )
           )}

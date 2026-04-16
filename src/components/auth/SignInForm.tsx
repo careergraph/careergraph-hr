@@ -164,6 +164,20 @@ const resolveErrorMessage = (error: unknown): string => {
   return "Đăng nhập thất bại. Vui lòng thử lại.";
 };
 
+const resolveErrorStatus = (error: unknown): number | null => {
+  if (isAxiosError(error)) {
+    return typeof error.response?.status === "number"
+      ? error.response.status
+      : null;
+  }
+
+  if (isObject(error) && typeof error.status === "number") {
+    return error.status;
+  }
+
+  return null;
+};
+
 export default function SignInForm() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -260,9 +274,10 @@ export default function SignInForm() {
 
       toast.success("Đăng nhập thành công!");
       navigate("/dashboard");
-    } catch (error: Error | any) {
+    } catch (error: unknown) {
       if (!token) {
-        if (error?.status === 403 || error?.status === 505) {
+        const status = resolveErrorStatus(error);
+        if (status === 403 || status === 505) {
           saveOtpContext({email: values.email.trim(),purpose: "verify_email",redirectTo: "/signin", })
           navigate("/verify-otp", {
             replace: true,

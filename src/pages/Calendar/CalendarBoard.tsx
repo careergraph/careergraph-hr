@@ -6,6 +6,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import {
   DateSelectArg,
+  EventApi,
   EventClickArg,
   EventContentArg,
   DatesSetArg,
@@ -138,7 +139,7 @@ export const CalendarBoard = ({
           headerToolbar={false}
           height="auto"
           events={events}
-          eventOrder={((a: any, b: any) => {
+          eventOrder={((a: EventApi, b: EventApi) => {
             const priorityA = Number(a.extendedProps?.priority ?? 999);
             const priorityB = Number(b.extendedProps?.priority ?? 999);
             if (priorityA !== priorityB) return priorityA - priorityB;

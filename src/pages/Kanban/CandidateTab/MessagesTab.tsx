@@ -1,76 +1,76 @@
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useCallback, useMemo, useState } from "react";
+import { Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { MessageSquare } from "lucide-react";
-import type { CandidateMessagesResponse, MessageItem } from "@/types/candidateTab";
-
-// MessagesTab cung cấp giao diện trao đổi trực tiếp với ứng viên.
+import CandidateMessageTab from "@/features/messaging/components/CandidateMessageTab";
+import { useMessagingStore } from "@/features/messaging/store/messagingStore";
+import type { Candidate } from "@/types/candidate";
 
 type MessagesTabProps = {
-  messagesData?: CandidateMessagesResponse | null;
-  loading?: boolean;
-  error?: string | null;
+  candidate: Candidate;
 };
 
-export function MessagesTab({ messagesData, loading, error }: MessagesTabProps) {
+export function MessagesTab({ candidate }: MessagesTabProps) {
+  const [threadId, setThreadId] = useState<string | null>(null);
+
+  const thread = useMessagingStore(
+    useCallback(
+      (state) =>
+        threadId
+          ? state.threads.find((item) => item.threadId === threadId) ?? null
+          : null,
+      [threadId]
+    )
+  );
+
+  const statusLabel = useMemo(() => {
+    if (!candidate.status) {
+      return "Chưa cập nhật";
+    }
+
+    const normalized = candidate.status.toLowerCase();
+    if (normalized === "screening") return "Đang sàng lọc";
+    if (normalized === "contacted") return "Đã liên hệ";
+    if (normalized === "interview") return "Phỏng vấn";
+    if (normalized === "offer") return "Đã gửi offer";
+    if (normalized === "hired") return "Đã tuyển";
+    if (normalized === "rejected") return "Đã từ chối";
+
+    return candidate.status;
+  }, [candidate.status]);
+
   return (
-    <div className="flex h-full flex-col justify-between bg-white">
-      {loading ? (
-        <div className="px-6 pt-4 text-sm text-slate-500">Đang tải tin nhắn...</div>
-      ) : error ? (
-        <div className="ml-10 text-sm text-indigo-500">Thông báo: Tính năng đang trong quá trình hoàn thiện!</div>
-      ) : messagesData ? (
-        <div className="px-6 pt-4">
-          {messagesData.messages?.length ? (
-            <div className="space-y-3">
-              {messagesData.messages.map((m: MessageItem) => (
-                <div key={m.id} className={`rounded-xl border p-3 ${m.direction === "inbound" ? "bg-white" : "bg-slate-50"}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm text-slate-700">{m.body}</p>
-                      <p className="mt-1 text-xs text-slate-400">{m.sender ?? (m.direction === "inbound" ? "Ứng viên" : "Bạn")}</p>
-                    </div>
-                    <div className="text-xs text-slate-400">{m.createdAt}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-sm text-slate-500">Chưa có cuộc trò chuyện nào.</div>
-          )}
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
+      <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-800">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">
+            {candidate.name}
+          </p>
+          <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+            {candidate.position}
+          </p>
         </div>
-      ) : null}
-      <ScrollArea className="h-full px-6 pt-5 sm:px-8">
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm text-slate-500">
-            Chưa có cuộc trò chuyện nào với ứng viên. Hãy sử dụng khung soạn thảo bên dưới để bắt đầu.
-          </div>
-        </div>
-      </ScrollArea>
-      {/* Khối nhập tin nhắn và gửi đi. */}
-      <div className="border-t border-slate-100 bg-slate-50/80 px-6 py-5 sm:px-8">
-        <div className="flex flex-col gap-3">
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Soạn tin nhắn nhanh
-          </label>
-          <textarea
-            className="h-24 w-full resize-none rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600 shadow-inner outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
-            placeholder="Nhập nội dung trao đổi với ứng viên..."
-          />
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex gap-2">
-              <Badge
-                variant="outline"
-                className="border-slate-200 bg-white text-[11px] text-slate-500"
-              >
-                <MessageSquare className="mr-1 h-3.5 w-3.5" />
-                Mẫu trả lời gợi ý
-              </Badge>
-            </div>
-            <Button className="px-6">Gửi tin nhắn</Button>
-          </div>
+
+        <div className="flex items-center gap-2">
+          <Badge
+            className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            variant="secondary"
+          >
+            {statusLabel}
+          </Badge>
+          <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+            <Circle
+              className={`h-2.5 w-2.5 fill-current ${thread?.isOnline ? "text-emerald-500" : "text-gray-300"}`}
+            />
+            {thread?.isOnline ? "Đang hoạt động" : "Ngoại tuyến"}
+          </span>
         </div>
       </div>
+
+      <CandidateMessageTab
+        candidateId={candidate.candidateId}
+        applicationId={candidate.id}
+        onThreadReady={setThreadId}
+      />
     </div>
   );
 }

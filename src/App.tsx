@@ -22,6 +22,7 @@ import LandingPage from "@/pages/Landing/LandingPage";
 import ForgotPassword from "./pages/AuthPages/ForgotPassword";
 import ResetPassword from "./pages/AuthPages/ResetPassword";
 import NotFound from "@/pages/Common/NotFound";
+import MessagesPage from "@/features/messaging/pages/MessagesPage";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 const HAS_VALID_GOOGLE_CLIENT_ID =
@@ -49,6 +50,7 @@ const AppRoutes = () => (
             <Route path="/jobs/new" element={<AddJob />} />
             <Route path="/employees" element={<EmployeesTable />} />
             <Route path="/candidates" element={<SuggestionCandidates />} />
+            <Route path="/messages" element={<MessagesPage />} />
           </Route>
         </Route>
 

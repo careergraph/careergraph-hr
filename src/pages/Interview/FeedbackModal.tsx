@@ -77,6 +77,25 @@ export default function FeedbackModal({
 
   const canSubmit = targetInterviewId && targetInterviewId.trim().length > 0;
 
+  const resolveSubmitErrorMessage = (error: unknown): string => {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "response" in error
+    ) {
+      const response = (error as { response?: { data?: { message?: unknown } } }).response;
+      if (typeof response?.data?.message === "string" && response.data.message.trim()) {
+        return response.data.message;
+      }
+    }
+
+    if (error instanceof Error && error.message.trim()) {
+      return error.message;
+    }
+
+    return "Không thể gửi đánh giá";
+  };
+
   const handleSubmit = async () => {
     if (!canSubmit) {
       setFormError("Vui lòng chọn ứng viên cần đánh giá.");
@@ -105,8 +124,8 @@ export default function FeedbackModal({
 
       toast.success("Đã gửi đánh giá thành công");
       onClose();
-    } catch(error: any) {
-      setFormError(error?.response?.data?.message || "Không thể gửi đánh giá");
+    } catch (error: unknown) {
+      setFormError(resolveSubmitErrorMessage(error));
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
     }
   };

@@ -16,6 +16,7 @@ interface RequireAuthProps {
 const RequireAuth: React.FC<RequireAuthProps> = ({ redirectTo = "/signin" }) => {
   const location = useLocation();
   const { accessToken, user, isAuthenticating, updateUser, setCompany, company } = useAuthStore();
+  const userRole = user?.role;
 
   // NOTE: We intentionally do NOT hydrate an "account" from `/accounts/me` here.
   // The application uses `/companies/me` for company-scoped details and other
@@ -25,7 +26,7 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ redirectTo = "/signin" }) => 
 
   useEffect(() => {
     // Re-fetch if we have no company OR if user.role is missing (stale cache)
-    if (!accessToken || (company && user?.role)) return;
+    if (!accessToken || (company && userRole)) return;
 
     let isMounted = true;
 
@@ -53,7 +54,7 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ redirectTo = "/signin" }) => 
     return () => {
       isMounted = false;
     };
-  }, [accessToken, company, setCompany, updateUser]);
+  }, [accessToken, company, setCompany, updateUser, userRole]);
 
   if (!accessToken) {
     return <Navigate to={redirectTo} replace state={{ from: location }} />;

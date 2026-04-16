@@ -32,14 +32,16 @@ const useLocation = (provinceCode?: string, districtCode?: string) => {
 
   // Lấy danh sách Quận/Huyện dựa trên provinceCode
   useEffect(() => {
-    if (provinceCode) {
+    const provinceId = Number(provinceCode);
+
+    if (provinceCode && Number.isFinite(provinceId)) {
       const fetchDistricts = async () => {
         setLoadingDistricts(true);
         setDistricts([]);
         setWards([]);
         try {
           const response = await axios.get(
-            `${LOCATION_API_URL}/p/${Number(provinceCode)}?depth=2`
+            `${LOCATION_API_URL}/p/${provinceId}?depth=2`
           );
           setDistricts(response.data.districts);
         } catch (err) {
@@ -58,13 +60,15 @@ const useLocation = (provinceCode?: string, districtCode?: string) => {
 
   // Lấy danh sách Phường/Xã dựa trên districtCode truyền vào
   useEffect(() => {
-    if (districtCode) {
+    const districtId = Number(districtCode);
+
+    if (districtCode && Number.isFinite(districtId)) {
       const fetchWards = async () => {
         setLoadingWards(true);
         setWards([]);
         try {
           const response = await axios.get(
-            `${LOCATION_API_URL}/d/${Number(districtCode)}?depth=2`
+            `${LOCATION_API_URL}/d/${districtId}?depth=2`
           );
           setWards(response.data.wards);
         } catch (err) {
