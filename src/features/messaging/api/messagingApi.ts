@@ -7,6 +7,7 @@ import type {
   PageResponse,
   RestEnvelope,
   ThreadSummary,
+  ThreadJob,
   UserSummary,
 } from "@/features/messaging/types/messaging.types";
 
@@ -75,10 +76,33 @@ const normalizeThreadSummary = (payload: unknown): ThreadSummary => {
       }
     : undefined;
 
+  const normalizeThreadJob = (jobPayload: unknown): ThreadJob => {
+    const jobSource = isRecord(jobPayload) ? jobPayload : {};
+
+    return {
+      jobId: toStringSafe(jobSource.jobId),
+      jobTitle: toStringSafe(jobSource.jobTitle),
+      jobStatus: toStringSafe(jobSource.jobStatus),
+      unreadCount: toNumberSafe(jobSource.unreadCount),
+      lastMessageAt: toStringSafe(jobSource.lastMessageAt) || null,
+      hasMessages: toBooleanSafe(jobSource.hasMessages),
+    };
+  };
+
+  const jobs = Array.isArray(source.jobs)
+    ? source.jobs.map((job) => normalizeThreadJob(job)).filter((job) => Boolean(job.jobId))
+    : [];
+
+  const primaryJob = isRecord(source.primaryJob)
+    ? normalizeThreadJob(source.primaryJob)
+    : undefined;
+
   return {
     threadId: toStringSafe(source.threadId),
     otherUser,
     application,
+    jobs,
+    primaryJob,
     lastMessagePreview: toStringSafe(source.lastMessagePreview),
     lastMessageAt: toStringSafe(source.lastMessageAt) || null,
     unreadCount: toNumberSafe(source.unreadCount),
@@ -136,6 +160,13 @@ const normalizeMessage = (payload: unknown): Message => {
         ? source.fileSize
         : undefined,
     deleted: toBooleanSafe(source.deleted),
+    jobContext: isRecord(source.jobContext)
+      ? {
+          jobId: toStringSafe(source.jobContext.jobId),
+          jobTitle: toStringSafe(source.jobContext.jobTitle),
+          jobStatus: toStringSafe(source.jobContext.jobStatus),
+        }
+      : null,
     createdAt: toStringSafe(source.createdAt, new Date().toISOString()),
     isRead: toBooleanSafe(source.isRead),
     readAt: toStringSafe(source.readAt) || undefined,
@@ -207,13 +238,14 @@ const getOrCreateThread = async (params: {
 
 const getMessages = async (
   threadId: string,
+  jobId: string | null = null,
   page = 0,
   size = DEFAULT_MESSAGE_PAGE_SIZE
 ): Promise<PageResponse<Message>> => {
   const response = await api.get<RestEnvelope<PageResponse<Message>>>(
     `/messages/threads/${threadId}/messages`,
     {
-      params: { page, size },
+      params: { page, size, ...(jobId ? { jobId } : {}) },
     }
   );
 
@@ -224,13 +256,15 @@ const getMessages = async (
 const sendMessage = async (
   threadId: string,
   content: string,
-  contentType: MessageContentType = "TEXT"
+  contentType: MessageContentType = "TEXT",
+  jobContextId: string | null = null
 ): Promise<Message> => {
   const response = await api.post<RestEnvelope<Message>>(
     `/messages/threads/${threadId}/messages`,
     {
       content,
       contentType,
+      ...(jobContextId ? { jobContextId } : {}),
     }
   );
 
@@ -240,6 +274,26 @@ const sendMessage = async (
 
 const markThreadAsRead = async (threadId: string): Promise<void> => {
   await api.post(`/messages/threads/${threadId}/read`);
+};
+
+const getThreadJobs = async (threadId: string): Promise<ThreadJob[]> => {
+  const response = await api.get<RestEnvelope<ThreadJob[]>>(`/messages/threads/${threadId}/jobs`);
+  const unwrapped = unwrapEnvelope<unknown>(response.data);
+  const items = Array.isArray(unwrapped) ? unwrapped : [];
+
+  return items
+    .map((item) => {
+      const source = isRecord(item) ? item : {};
+      return {
+        jobId: toStringSafe(source.jobId),
+        jobTitle: toStringSafe(source.jobTitle),
+        jobStatus: toStringSafe(source.jobStatus),
+        unreadCount: toNumberSafe(source.unreadCount),
+        lastMessageAt: toStringSafe(source.lastMessageAt) || null,
+        hasMessages: toBooleanSafe(source.hasMessages),
+      } as ThreadJob;
+    })
+    .filter((job) => Boolean(job.jobId));
 };
 
 const deleteMessage = async (messageId: string): Promise<void> => {
@@ -301,6 +355,7 @@ export const messagingApi = {
   getOrCreateThread,
   getMessages,
   sendMessage,
+  getThreadJobs,
   markThreadAsRead,
   deleteMessage,
   unsendMessage,

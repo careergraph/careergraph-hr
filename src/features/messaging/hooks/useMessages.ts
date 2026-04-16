@@ -70,7 +70,7 @@ const buildUserSummaryFromAuthState = (params: {
   };
 };
 
-export const useMessages = (threadId: string | null) => {
+export const useMessages = (threadId: string | null, activeJobFilterId: string | null = null) => {
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const authUser = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -136,6 +136,7 @@ export const useMessages = (threadId: string | null) => {
     try {
       const firstPage = await messagingApi.getMessages(
         threadId,
+        activeJobFilterId,
         0,
         MESSAGE_PAGE_SIZE
       );
@@ -157,6 +158,7 @@ export const useMessages = (threadId: string | null) => {
           ? firstPage
           : await messagingApi.getMessages(
               threadId,
+              activeJobFilterId,
               latestPageIndex,
               MESSAGE_PAGE_SIZE
             );
@@ -172,7 +174,7 @@ export const useMessages = (threadId: string | null) => {
       setMessagesError(resolveErrorMessage(error));
       setMessageMeta(threadId, { loading: false, loadingOlder: false });
     }
-  }, [setMessageMeta, setMessagesForThread, threadId]);
+  }, [activeJobFilterId, setMessageMeta, setMessagesForThread, threadId]);
 
   const loadOlderMessages = useCallback(async (): Promise<boolean> => {
     if (!threadId) {
@@ -191,6 +193,7 @@ export const useMessages = (threadId: string | null) => {
     try {
       const page = await messagingApi.getMessages(
         threadId,
+        activeJobFilterId,
         nextOlderPage,
         MESSAGE_PAGE_SIZE
       );
@@ -211,12 +214,13 @@ export const useMessages = (threadId: string | null) => {
       setMessageMeta(threadId, { loadingOlder: false });
       return false;
     }
-  }, [prependMessagesForThread, setMessageMeta, threadId]);
+  }, [activeJobFilterId, prependMessagesForThread, setMessageMeta, threadId]);
 
   const sendMessage = useCallback(
     async (
       content: string,
-      contentType: MessageContentType = "TEXT"
+      contentType: MessageContentType = "TEXT",
+      jobContextId: string | null = null
     ): Promise<SendMessageResult> => {
       if (!threadId) {
         return { ok: false };
@@ -247,7 +251,8 @@ export const useMessages = (threadId: string | null) => {
         const createdMessage = await messagingApi.sendMessage(
           threadId,
           normalizedContent,
-          contentType
+          contentType,
+          jobContextId
         );
 
         replaceMessageInThread(threadId, tempMessageId, {
@@ -298,7 +303,8 @@ export const useMessages = (threadId: string | null) => {
         const createdMessage = await messagingApi.sendMessage(
           threadId,
           targetMessage.content,
-          targetMessage.contentType
+          targetMessage.contentType,
+          targetMessage.jobContext?.jobId ?? null
         );
 
         replaceMessageInThread(threadId, messageId, {

@@ -140,12 +140,14 @@ export function InboxSidebar({
 
       const email = thread.otherUser.email.toLowerCase();
       const jobTitle = thread.application?.jobTitle?.toLowerCase() ?? "";
+      const jobTitles = (thread.jobs ?? []).map((job) => job.jobTitle.toLowerCase()).join(" ");
       const preview = thread.lastMessagePreview.toLowerCase();
 
       return (
         fullName.includes(normalizedKeyword) ||
         email.includes(normalizedKeyword) ||
         jobTitle.includes(normalizedKeyword) ||
+        jobTitles.includes(normalizedKeyword) ||
         preview.includes(normalizedKeyword)
       );
     });

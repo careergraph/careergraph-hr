@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import BlockDialog from "@/features/messaging/components/BlockDialog";
 import type { ThreadSummary } from "@/features/messaging/types/messaging.types";
+import { getJobColor } from "@/features/messaging/utils/jobColor";
 import { cn } from "@/lib/utils";
 
 interface ThreadItemProps {
@@ -191,8 +192,25 @@ export function ThreadItem({
             </div>
 
             <p className="truncate text-xs text-gray-500 dark:text-gray-400">
-              {thread.application?.jobTitle || "Tin nhắn ứng viên"}
+              {thread.primaryJob?.jobTitle || thread.application?.jobTitle || "Tin nhắn ứng viên"}
             </p>
+
+            {thread.jobs && thread.jobs.length > 0 ? (
+              <div className="thread-job-chips mt-1 flex-col">
+                {thread.jobs.slice(0, 2).map((job) => (
+                  <span
+                    key={job.jobId}
+                    className={cn("job-chip", job.unreadCount > 0 && "has-unread")}
+                  >
+                    <span
+                      className="chip-dot"
+                      style={{ background: getJobColor(job.jobId) }}
+                    />
+                    <span className="truncate">{job.jobTitle}</span>
+                  </span>
+                ))}
+              </div>
+            ) : null}
 
             <div className="mt-1 flex items-center justify-between gap-2">
               <p className="truncate text-xs text-gray-500 dark:text-gray-400">

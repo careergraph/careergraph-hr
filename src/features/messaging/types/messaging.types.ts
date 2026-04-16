@@ -33,10 +33,27 @@ export interface ThreadApplicationSummary {
   status: string;
 }
 
+export interface ThreadJob {
+  jobId: string;
+  jobTitle: string;
+  jobStatus: string;
+  unreadCount: number;
+  lastMessageAt: string | null;
+  hasMessages: boolean;
+}
+
+export interface MessageJobContext {
+  jobId: string;
+  jobTitle: string;
+  jobStatus: string;
+}
+
 export interface ThreadSummary {
   threadId: string;
   otherUser: UserSummary;
   application?: ThreadApplicationSummary;
+  jobs?: ThreadJob[];
+  primaryJob?: ThreadJob;
   lastMessagePreview: string;
   lastMessageAt: string | null;
   unreadCount: number;
@@ -55,6 +72,7 @@ export interface Message {
   fileName?: string;
   fileSize?: number;
   deleted: boolean;
+  jobContext?: MessageJobContext | null;
   createdAt: string;
   isRead: boolean;
   readAt?: string;

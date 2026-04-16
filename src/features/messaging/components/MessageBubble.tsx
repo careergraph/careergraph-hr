@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ReadReceipt from "@/features/messaging/components/ReadReceipt";
 import useUnsendCountdown from "@/features/messaging/hooks/useUnsendCountdown";
 import type { Message, UserSummary } from "@/features/messaging/types/messaging.types";
+import { getJobColor } from "@/features/messaging/utils/jobColor";
 import { cn } from "@/lib/utils";
 
 interface MessageBubbleProps {
@@ -199,6 +200,15 @@ export function MessageBubble({
             isOwn ? "justify-end" : "justify-start"
           )}
         >
+          {message.jobContext ? (
+            <span className="msg-job-tag">
+              <span
+                className="job-tag-dot"
+                style={{ background: getJobColor(message.jobContext.jobId) }}
+              />
+              <span>{message.jobContext.jobTitle}</span>
+            </span>
+          ) : null}
           <span>{toDisplayTime(message.createdAt)}</span>
           {isOwn && showReadReceipt ? <ReadReceipt message={message} /> : null}
         </div>

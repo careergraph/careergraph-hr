@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
 import { ArrowLeft, Circle, ShieldAlert } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import messagingApi from "@/features/messaging/api/messagingApi";
+import JobContextSelector from "@/features/messaging/components/JobContextSelector";
+import JobDivider from "@/features/messaging/components/JobDivider";
+import JobFilterBar from "@/features/messaging/components/JobFilterBar";
 import MessageBubble from "@/features/messaging/components/MessageBubble";
 import MessageInput from "@/features/messaging/components/MessageInput";
 import TypingIndicator from "@/features/messaging/components/TypingIndicator";
@@ -10,7 +15,7 @@ import EmptyChat from "@/features/messaging/components/EmptyChat";
 import useChatSocket from "@/features/messaging/hooks/useChatSocket";
 import useMessages from "@/features/messaging/hooks/useMessages";
 import { useMessagingStore } from "@/features/messaging/store/messagingStore";
-import type { Message, ThreadSummary } from "@/features/messaging/types/messaging.types";
+import type { Message, ThreadJob, ThreadSummary } from "@/features/messaging/types/messaging.types";
 import { useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -95,6 +100,46 @@ const isGroupedWithPrevious = (messages: Message[], index: number): boolean => {
   return currentTime - previousTime <= FIVE_MINUTES;
 };
 
+interface MessageGroup {
+  jobId: string | null;
+  jobTitle: string | null;
+  firstDate: string;
+  messages: Message[];
+}
+
+const groupMessagesByJob = (messages: Message[]): MessageGroup[] => {
+  const groups: MessageGroup[] = [];
+
+  for (const message of messages) {
+    const jobId = message.jobContext?.jobId ?? null;
+    const jobTitle = message.jobContext?.jobTitle ?? null;
+    const currentGroup = groups[groups.length - 1];
+
+    if (!currentGroup || currentGroup.jobId !== jobId) {
+      groups.push({
+        jobId,
+        jobTitle,
+        firstDate: message.createdAt,
+        messages: [message],
+      });
+      continue;
+    }
+
+    currentGroup.messages.push(message);
+  }
+
+  return groups;
+};
+
+const toRelativeDate = (dateString: string): string => {
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  return formatDistanceToNow(parsed, { addSuffix: true, locale: vi });
+};
+
 export function ChatWindow({
   threadId,
   compact = false,
@@ -106,6 +151,9 @@ export function ChatWindow({
   const lastReadBroadcastRef = useRef<string | null>(null);
 
   const [showNewMessageBanner, setShowNewMessageBanner] = useState(false);
+  const [threadJobs, setThreadJobs] = useState<ThreadJob[]>([]);
+  const [composeJobId, setComposeJobId] = useState<string | null>(null);
+  const [activeFilterJobId, setActiveFilterJobId] = useState<string | null>(null);
 
   const thread = useMessagingStore(
     useCallback(
@@ -148,7 +196,50 @@ export function ChatWindow({
     retryMessage,
     deleteSentMessage,
     markThreadAsRead,
-  } = useMessages(threadId);
+  } = useMessages(threadId, activeFilterJobId);
+
+  useEffect(() => {
+    const fallbackJobs = thread?.jobs ?? [];
+
+    let mounted = true;
+
+    const loadThreadJobs = async () => {
+      try {
+        const jobs = await messagingApi.getThreadJobs(threadId);
+        if (!mounted) {
+          return;
+        }
+
+        const nextJobs = jobs.length > 0 ? jobs : fallbackJobs;
+        setThreadJobs(nextJobs);
+        setComposeJobId(thread?.primaryJob?.jobId ?? null);
+      } catch {
+        if (!mounted) {
+          return;
+        }
+
+        setThreadJobs(fallbackJobs);
+        setComposeJobId(thread?.primaryJob?.jobId ?? null);
+      }
+    };
+
+    void loadThreadJobs();
+
+    return () => {
+      mounted = false;
+    };
+  }, [thread?.jobs, thread?.primaryJob?.jobId, threadId]);
+
+  useEffect(() => {
+    if (!activeFilterJobId) {
+      return;
+    }
+
+    const exists = threadJobs.some((job) => job.jobId === activeFilterJobId);
+    if (!exists) {
+      setActiveFilterJobId(null);
+    }
+  }, [activeFilterJobId, threadJobs]);
 
   const peerTypingUsers = useMemo(
     () =>
@@ -296,7 +387,7 @@ export function ChatWindow({
 
   const handleSendMessage = useCallback(
     async (content: string): Promise<boolean> => {
-      const result = await sendMessage(content, "TEXT");
+      const result = await sendMessage(content, "TEXT", composeJobId);
 
       if (result.ok && result.message) {
         broadcastNewMessage(threadId, result.message);
@@ -304,7 +395,7 @@ export function ChatWindow({
 
       return result.ok;
     },
-    [broadcastNewMessage, sendMessage, threadId]
+    [broadcastNewMessage, composeJobId, sendMessage, threadId]
   );
 
   const handleRetryMessage = useCallback(
@@ -348,6 +439,12 @@ export function ChatWindow({
   const displayName = resolveDisplayName(thread);
 
   const avatarFallback = firstLetter(displayName);
+
+  const groupedMessages = useMemo(() => groupMessagesByJob(messages), [messages]);
+  const selectedComposeJob = useMemo(
+    () => threadJobs.find((job) => job.jobId === composeJobId) ?? null,
+    [composeJobId, threadJobs]
+  );
 
 
   return (
@@ -402,6 +499,12 @@ export function ChatWindow({
         </header>
       ) : null}
 
+      <JobFilterBar
+        jobs={threadJobs}
+        activeFilter={activeFilterJobId}
+        onFilter={setActiveFilterJobId}
+      />
+
       <div className="relative flex min-h-0 flex-1 flex-col">
         {thread?.isBlocked ? (
           <div className="mx-3 mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200 sm:mx-4">
@@ -446,29 +549,38 @@ export function ChatWindow({
             />
           ) : null}
 
-          {messages.map((message, index) => {
-            const grouped = isGroupedWithPrevious(messages, index);
-            const isOwn = isOwnMessage(message, currentUser);
+          {groupedMessages.map((group, groupIndex) => (
+            <div key={`group-${group.jobId ?? "general"}-${groupIndex}`}>
+              <JobDivider
+                jobTitle={group.jobTitle}
+                date={toRelativeDate(group.firstDate)}
+              />
 
-            return (
-              <div
-                key={message.id}
-                className={cn(grouped ? "mt-1" : "mt-2")}
-              >
-                <MessageBubble
-                  message={message}
-                  isOwn={isOwn}
-                  showAvatar={!grouped}
-                  showReadReceipt={message.id === lastOwnMessageId}
-                  otherUser={thread?.otherUser}
-                  onDelete={handleDeleteMessage}
-                  onRetry={(messageId) => {
-                    void handleRetryMessage(messageId);
-                  }}
-                />
-              </div>
-            );
-          })}
+              {group.messages.map((message, index) => {
+                const grouped = isGroupedWithPrevious(group.messages, index);
+                const isOwn = isOwnMessage(message, currentUser);
+
+                return (
+                  <div
+                    key={message.id}
+                    className={cn(grouped ? "mt-1" : "mt-2")}
+                  >
+                    <MessageBubble
+                      message={message}
+                      isOwn={isOwn}
+                      showAvatar={!grouped}
+                      showReadReceipt={message.id === lastOwnMessageId}
+                      otherUser={thread?.otherUser}
+                      onDelete={handleDeleteMessage}
+                      onRetry={(messageId) => {
+                        void handleRetryMessage(messageId);
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
 
         </div>
 
@@ -498,12 +610,24 @@ export function ChatWindow({
           </div>
         ) : null}
 
+        <JobContextSelector
+          jobs={threadJobs}
+          selectedJobId={composeJobId}
+          onSelect={setComposeJobId}
+        />
+
         <MessageInput
           onSend={handleSendMessage}
           onTypingStart={() => sendTypingStart(threadId)}
           onTypingStop={() => sendTypingStop(threadId)}
           disabled={Boolean(thread?.isBlocked)}
-          placeholder={thread?.isBlocked ? "Bỏ chặn để tiếp tục nhắn tin" : "Nhập tin nhắn..."}
+          placeholder={
+            thread?.isBlocked
+              ? "Bỏ chặn để tiếp tục nhắn tin"
+              : selectedComposeJob
+              ? `Nhắn về ${selectedComposeJob.jobTitle}...`
+              : "Nhập tin nhắn..."
+          }
           compact={compact}
         />
       </div>
