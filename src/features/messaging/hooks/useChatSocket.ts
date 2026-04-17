@@ -25,6 +25,7 @@ let sharedSocket: ChatSocket | null = null;
 let sharedToken: string | null = null;
 let activeConsumers = 0;
 let listenersAttached = false;
+const subscribedThreadIds = new Set<string>();
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -290,6 +291,22 @@ const detachSocketListeners = () => {
   listenersAttached = false;
 };
 
+const emitJoinThread = (threadId: string) => {
+  if (!threadId) return;
+  sharedSocket?.emit("join-thread", threadId);
+};
+
+const emitLeaveThread = (threadId: string) => {
+  if (!threadId) return;
+  sharedSocket?.emit("leave-thread", threadId);
+};
+
+const rejoinSubscribedThreads = () => {
+  for (const threadId of subscribedThreadIds) {
+    emitJoinThread(threadId);
+  }
+};
+
 const ensureSocket = (token: string): ChatSocket => {
   if (sharedSocket && sharedToken === token) {
     return sharedSocket;
@@ -305,7 +322,12 @@ const ensureSocket = (token: string): ChatSocket => {
     transports: ["websocket"],
     reconnection: true,
     reconnectionDelay: 1000,
-    reconnectionAttempts: 5,
+    reconnectionDelayMax: 10000,
+    reconnectionAttempts: Infinity,
+  });
+
+  sharedSocket.on("connect", () => {
+    rejoinSubscribedThreads();
   });
 
   sharedToken = token;
@@ -355,16 +377,21 @@ export const useChatSocket = (token: string | null): UseChatSocketResult => {
         sharedSocket.disconnect();
         sharedSocket = null;
         sharedToken = null;
+        subscribedThreadIds.clear();
       }
     };
   }, [token]);
 
   const joinThread = useCallback((threadId: string) => {
-    sharedSocket?.emit("join-thread", threadId);
+    if (!threadId) return;
+    subscribedThreadIds.add(threadId);
+    emitJoinThread(threadId);
   }, []);
 
   const leaveThread = useCallback((threadId: string) => {
-    sharedSocket?.emit("leave-thread", threadId);
+    if (!threadId) return;
+    subscribedThreadIds.delete(threadId);
+    emitLeaveThread(threadId);
   }, []);
 
   const sendTypingStart = useCallback((threadId: string) => {

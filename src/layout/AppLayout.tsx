@@ -4,6 +4,7 @@ import { useLocation } from "react-router";
 import AppHeader from "./AppHeader";
 import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
+import MessagingRealtimeBootstrap from "@/features/messaging/components/MessagingRealtimeBootstrap";
 
 const LayoutContent: React.FC = () => {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
@@ -22,6 +23,7 @@ const LayoutContent: React.FC = () => {
         } ${isMobileOpen ? "ml-0" : ""}`}
       >
         <AppHeader />
+        <MessagingRealtimeBootstrap />
         <div
           className={isMessagesRoute
             ? "h-[calc(100dvh-4.75rem)] min-h-0 w-full overflow-hidden"
