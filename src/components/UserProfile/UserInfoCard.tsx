@@ -5,9 +5,11 @@ import Button from "../custom/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import { useAuthStore } from "@/stores/authStore";
+import { toast } from "sonner";
+import companyService from "@/services/companyService";
 
 export default function UserInfoCard() {
-  const { user, company } = useAuthStore();
+  const { user, company, setCompany, updateUser } = useAuthStore();
   const { isOpen, openModal, closeModal } = useModal();
 
   const [formValues, setFormValues] = useState({
@@ -39,8 +41,39 @@ export default function UserInfoCard() {
     setFormValues((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
-  const handleSave = () => {
-    closeModal();
+  const handleSave = async () => {
+    if (!company?.id) {
+      toast.error("Không tìm thấy thông tin công ty");
+      return;
+    }
+
+    try {
+      const updated = await companyService.updateMyCompanyProfile({
+        ceoName: [formValues.firstName, formValues.lastName].filter(Boolean).join(" ").trim(),
+        contact: {
+          type: "PHONE",
+          value: formValues.phoneNumber,
+          isPrimary: true,
+        },
+      });
+
+      if (updated) {
+        setCompany(updated);
+        const [firstName = "", ...rest] = (updated.ceoName ?? "").trim().split(/\s+/);
+        updateUser({
+          firstName,
+          lastName: rest.join(" "),
+          phoneNumber: formValues.phoneNumber,
+          email: updated.email ?? user?.email,
+        });
+      }
+
+      toast.success("Đã lưu thông tin cá nhân");
+      closeModal();
+    } catch (error) {
+      toast.error("Lưu thông tin thất bại");
+      console.error(error);
+    }
   };
 
   return (
@@ -94,7 +127,7 @@ export default function UserInfoCard() {
                 </div>
                 <div className="col-span-2 lg:col-span-1">
                   <Label>Email</Label>
-                  <Input type="email" value={formValues.email} onChange={handleChange("email")} />
+                  <Input type="email" value={formValues.email} onChange={handleChange("email")} disabled />
                 </div>
                 <div className="col-span-2 lg:col-span-1">
                   <Label>Số điện thoại</Label>

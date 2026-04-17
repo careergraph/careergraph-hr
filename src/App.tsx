@@ -4,6 +4,7 @@ import SignIn from "@/pages/AuthPages/SignIn";
 import SignUp from "@/pages/AuthPages/SignUp";
 import Verify from "@/pages/AuthPages/Verify";
 import UserProfiles from "@/pages/Profile/UserProfiles";
+import AccountSettings from "@/pages/Profile/AccountSettings";
 import Calendar from "@/pages/Calendar/Calendar";
 import InterviewList from "@/pages/Interview/InterviewList";
 import InterviewDetail from "@/pages/Interview/InterviewDetail";
@@ -40,6 +41,7 @@ const AppRoutes = () => (
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Home />} />
             <Route path="/profile" element={<UserProfiles />} />
+            <Route path="/account" element={<AccountSettings />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/interviews" element={<InterviewList />} />
             <Route path="/interviews/:id" element={<InterviewDetail />} />

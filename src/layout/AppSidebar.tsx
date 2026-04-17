@@ -296,7 +296,7 @@ const AppSidebar: React.FC = () => {
         }}
       >
         <div className="flex items-center gap-3 py-6">
-          <Link to="/dashboard" className="flex items-center">
+          <Link to="/" className="flex items-center">
             <img
               className="w-10 h-10"
               src="/images/logo/logo.svg"
@@ -304,12 +304,13 @@ const AppSidebar: React.FC = () => {
               width={40}
               height={40}
             />
+            {(isExpanded || isHovered || isMobileOpen) && (
+              <div className="bg-gradient-to-r text-xl font-semibold from-[#583DF2] to-[#F3359D] bg-clip-text text-transparent ml-2">
+                CareerGraph
+              </div>
+            )}
+
           </Link>
-          {(isExpanded || isHovered || isMobileOpen) && (
-            <div className="bg-gradient-to-r text-xl font-semibold from-[#583DF2] to-[#F3359D] bg-clip-text text-transparent ml-2">
-              CareerGraph
-            </div>
-          )}
         </div>
         <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
           <nav className="mb-6">

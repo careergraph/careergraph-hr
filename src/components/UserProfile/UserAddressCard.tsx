@@ -5,9 +5,11 @@ import Button from "@/components/custom/button/Button";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import { useAuthStore } from "@/stores/authStore";
+import { toast } from "sonner";
+import companyService from "@/services/companyService";
 
 export default function UserAddressCard() {
-  const { company } = useAuthStore();
+  const { company, setCompany } = useAuthStore();
   const { isOpen, openModal, closeModal } = useModal();
 
   const primaryAddress = useMemo(() => company?.addresses?.[0] ?? null, [company?.addresses]);
@@ -39,8 +41,33 @@ export default function UserAddressCard() {
     setAddressForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
-  const handleSave = () => {
-    closeModal();
+  const handleSave = async () => {
+    if (!company?.id) {
+      toast.error("Không tìm thấy thông tin công ty");
+      return;
+    }
+
+    try {
+      const updated = await companyService.updateMyCompanyProfile({
+        address: {
+          country: addressForm.country,
+          province: addressForm.city,
+          district: addressForm.district,
+          ward: addressForm.street,
+          isPrimary: true,
+        },
+      });
+
+      if (updated) {
+        setCompany(updated);
+      }
+
+      toast.success("Đã lưu địa chỉ");
+      closeModal();
+    } catch (error) {
+      toast.error("Lưu địa chỉ thất bại");
+      console.error(error);
+    }
   };
 
   return (
