@@ -130,7 +130,7 @@ export function LandingHeader({
             to="/dashboard"
             className="rounded-xl bg-gradient-to-r from-[#4f46e5] via-[#7c3aed] to-[#ec4899] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:opacity-95"
           >
-            Vào Dashboard
+            Vào Dashboard 
           </Link>
         </div>
       ) : (

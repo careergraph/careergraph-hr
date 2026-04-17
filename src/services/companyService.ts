@@ -23,16 +23,31 @@ const unwrap = <T>(payload: ApiEnvelope<T>): T => {
 const mapAddress = (raw: Record<string, unknown>): CompanyAddress => ({
   // Chỉ chấp nhận chuỗi/number hợp lệ, tránh undefined gây crash UI.
   label: typeof raw.label === "string" ? raw.label : undefined,
-  street: typeof raw.street === "string" ? raw.street : undefined,
+  street:
+    typeof raw.street === "string"
+      ? raw.street
+      : typeof raw.ward === "string"
+      ? raw.ward
+      : undefined,
   district: typeof raw.district === "string" ? raw.district : undefined,
-  city: typeof raw.city === "string" ? raw.city : undefined,
+  city:
+    typeof raw.city === "string"
+      ? raw.city
+      : typeof raw.province === "string"
+      ? raw.province
+      : undefined,
   country: typeof raw.country === "string" ? raw.country : undefined,
   latitude: typeof raw.latitude === "number" ? raw.latitude : undefined,
   longitude: typeof raw.longitude === "number" ? raw.longitude : undefined,
 });
 
 const mapContact = (raw: Record<string, unknown>): CompanyContact => ({
-  type: typeof raw.type === "string" ? raw.type : undefined,
+  type:
+    typeof raw.type === "string"
+      ? raw.type
+      : typeof raw.contactType === "string"
+      ? raw.contactType
+      : undefined,
   value: typeof raw.value === "string" ? raw.value : undefined,
   label: typeof raw.label === "string" ? raw.label : undefined,
 });
@@ -95,6 +110,39 @@ const companyService = {
 
     // Trả về profile đã được chuẩn hóa; null nếu thiếu dữ liệu.
     return mapCompany(data as Record<string, unknown>);
+  },
+
+  updateMyCompanyProfile: async (payload: Record<string, unknown>): Promise<CompanyProfile | null> => {
+    const response = await api.put("/companies/me/profile", payload);
+    const wrapped = unwrap(response.data);
+    if (!wrapped || typeof wrapped !== "object") {
+      return null;
+    }
+
+    const data = unwrap(wrapped as ApiEnvelope<Record<string, unknown>>);
+    if (!data || typeof data !== "object") {
+      return null;
+    }
+
+    return mapCompany(data as Record<string, unknown>);
+  },
+
+  uploadCompanyImage: async (companyId: string, file: File, fileType: "AVATAR" | "COVER") => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await api.post(
+      `/media/image?ownerType=company&idd=${encodeURIComponent(companyId)}&fileType=${encodeURIComponent(fileType)}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    const payload = unwrap(response.data) as { url?: string } | null;
+    return payload?.url ?? null;
   },
 };
 

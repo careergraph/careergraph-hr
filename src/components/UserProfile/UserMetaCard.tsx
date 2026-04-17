@@ -1,9 +1,13 @@
-import { Facebook, Twitter, Linkedin, Instagram, Globe2 } from "lucide-react";
-import { type ReactNode, useMemo } from "react";
+import { Facebook, Twitter, Linkedin, Instagram, Globe2, Camera } from "lucide-react";
+import { type ChangeEvent, type ReactNode, useMemo, useRef } from "react";
 import { useAuthStore } from "@/stores/authStore";
+import companyService from "@/services/companyService";
+import { toast } from "sonner";
 
 export default function UserMetaCard() {
-  const { user, company } = useAuthStore();
+  const { user, company, setCompany } = useAuthStore();
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
 
   const fullName = useMemo(() => {
     const trimmedFirst = user?.firstName?.trim();
@@ -15,8 +19,9 @@ export default function UserMetaCard() {
 
     if (trimmedLast) return trimmedLast;
     if (trimmedFirst) return trimmedFirst;
+    if (company?.ceoName?.trim()) return company.ceoName.trim();
     return "HR";
-  }, [user?.firstName, user?.lastName]);
+  }, [user?.firstName, user?.lastName, company?.ceoName]);
 
   const position = user?.jobTitle ?? user?.role ?? "Quản trị viên";
   const companyName = company?.name ?? "Doanh nghiệp";
@@ -57,14 +62,75 @@ export default function UserMetaCard() {
     return entries;
   }, [company?.contacts, websiteLink]);
 
-  const avatarUrl = user?.avatarUrl ?? "/images/user/owner.jpg";
+  const avatarUrl = company?.avatar ?? user?.avatarUrl ?? "/images/user/owner.jpg";
+
+  const handleUpload = async (event: ChangeEvent<HTMLInputElement>, type: "AVATAR" | "COVER") => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file || !company?.id) {
+      return;
+    }
+
+    try {
+      const uploadedUrl = await companyService.uploadCompanyImage(company.id, file, type);
+      if (!uploadedUrl) {
+        toast.error("Không thể tải ảnh lên");
+        return;
+      }
+
+      const updated = await companyService.updateMyCompanyProfile(
+        type === "AVATAR" ? { avatar: uploadedUrl } : { cover: uploadedUrl }
+      );
+
+      if (updated) {
+        setCompany(updated);
+      }
+
+      toast.success(type === "AVATAR" ? "Đã cập nhật ảnh đại diện" : "Đã cập nhật ảnh bìa");
+    } catch (error) {
+      toast.error("Tải ảnh thất bại");
+      console.error(error);
+    }
+  };
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900 lg:p-6">
+      <input
+        ref={avatarInputRef}
+        type="file"
+        className="hidden"
+        accept="image/*"
+        onChange={(event) => handleUpload(event, "AVATAR")}
+      />
+      <input
+        ref={coverInputRef}
+        type="file"
+        className="hidden"
+        accept="image/*"
+        onChange={(event) => handleUpload(event, "COVER")}
+      />
+
+      <div className="mb-4 h-28 w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
+        {company?.cover ? (
+          <img src={company.cover} alt="Cover" className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-r from-slate-300 via-slate-200 to-slate-300 dark:from-gray-700 dark:via-gray-800 dark:to-gray-700" />
+        )}
+      </div>
+
       <div className="flex flex-col items-center gap-6 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex w-full flex-col items-center gap-6 xl:flex-row">
-          <div className="h-20 w-20 overflow-hidden rounded-full border border-gray-200 shadow-sm dark:border-gray-700">
+          <div className="relative h-20 w-20 overflow-hidden rounded-full border border-gray-200 shadow-sm dark:border-gray-700">
             <img src={avatarUrl} alt={fullName} className="h-full w-full object-cover" />
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              className="absolute bottom-0 right-0 rounded-full border border-gray-200 bg-white p-1 text-gray-700 shadow-sm dark:border-gray-700 dark:bg-gray-900"
+              aria-label="Đổi ảnh đại diện"
+            >
+              <Camera className="h-3.5 w-3.5" />
+            </button>
           </div>
 
           <div className="text-center xl:text-left">
@@ -80,9 +146,16 @@ export default function UserMetaCard() {
                 </>
               )}
             </div>
-            {user?.email && (
-              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{user.email}</p>
+            {(user?.email || company?.email) && (
+              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{user?.email ?? company?.email}</p>
             )}
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              className="mt-2 text-xs font-medium text-brand-600 hover:underline"
+            >
+              Đổi ảnh bìa
+            </button>
           </div>
 
             {socials.length > 0 && (

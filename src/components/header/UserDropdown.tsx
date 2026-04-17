@@ -19,12 +19,13 @@ export default function UserDropdown() {
 
     if (trimmedLast) return trimmedLast;
     if (trimmedFirst) return trimmedFirst;
+    if (company?.ceoName?.trim()) return company.ceoName.trim();
     return "HR";
-  }, [user?.firstName, user?.lastName]);
+  }, [user?.firstName, user?.lastName, company?.ceoName]);
 
   const email = user?.email ?? "Chưa cập nhật";
   const title = user?.jobTitle ?? company?.name ?? "Nhà tuyển dụng";
-  const avatarUrl = user?.avatarUrl ?? "/images/user/owner.jpg";
+  const avatarUrl = company?.avatar ?? user?.avatarUrl ?? "/images/user/owner.jpg";
 
   const toggleDropdown = () => {
     setIsOpen((prev) => !prev);
@@ -116,7 +117,7 @@ export default function UserDropdown() {
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
-              to="/profile"
+              to="/account"
               className="group flex items-center gap-3 rounded-lg px-3 py-2 text-theme-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-100"
             >
               <svg

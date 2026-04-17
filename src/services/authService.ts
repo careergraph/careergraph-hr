@@ -45,6 +45,24 @@ export interface ResetPassword {
   newPassword?: string
 }
 
+export interface RequestEmailChangeOtpPayload {
+  newEmail: string;
+}
+
+export interface ConfirmEmailChangePayload {
+  newEmail: string;
+  otp: string;
+}
+
+export interface RequestPasswordChangeOtpPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ConfirmPasswordChangePayload {
+  otp: string;
+}
+
 const authService = {
   registerHr: async (payload: RegisterHrPayload) => {
     // Đăng ký tài khoản HR mới.
@@ -87,6 +105,26 @@ const authService = {
   },
   resetPassword: async(payload: ResetPassword) => {
     const res = await api.put("/auth/reset-password", payload);
+    return res.data;
+  },
+
+  requestEmailChangeOtp: async (payload: RequestEmailChangeOtpPayload) => {
+    const res = await api.post("/auth/email-change/request-otp", payload);
+    return res.data;
+  },
+
+  confirmEmailChange: async (payload: ConfirmEmailChangePayload) => {
+    const res = await api.post("/auth/email-change/confirm", payload);
+    return res.data;
+  },
+
+  requestPasswordChangeOtp: async (payload: RequestPasswordChangeOtpPayload) => {
+    const res = await api.post("/auth/password-change/request-otp", payload);
+    return res.data;
+  },
+
+  confirmPasswordChange: async (payload: ConfirmPasswordChangePayload) => {
+    const res = await api.post("/auth/password-change/confirm", payload);
     return res.data;
   },
 
