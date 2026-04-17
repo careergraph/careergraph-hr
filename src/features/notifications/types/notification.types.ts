@@ -9,14 +9,9 @@ export interface NotificationItem {
 }
 
 export interface NotificationPageResponse {
-  content: NotificationItem[];
-  totalElements: number;
-  totalPages: number;
-  size: number;
-  number: number;
-  first: boolean;
-  last: boolean;
-  empty: boolean;
+  notifications: NotificationItem[];
+  totalUnread: number;
+  hasMore: boolean;
 }
 
 export interface UnreadCountsPayload {

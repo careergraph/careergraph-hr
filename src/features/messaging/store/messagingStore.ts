@@ -62,6 +62,37 @@ const upsertThread = (
 const computeTotalUnread = (threads: ThreadSummary[]): number =>
   threads.reduce((total, thread) => total + Math.max(0, thread.unreadCount), 0);
 
+const applyRealtimeThreadState = (
+  currentThreads: ThreadSummary[],
+  incomingThreads: ThreadSummary[],
+  onlineUsers: Record<string, boolean>
+): ThreadSummary[] => {
+  const currentById = new Map<string, ThreadSummary>();
+
+  for (const thread of currentThreads) {
+    currentById.set(thread.threadId, thread);
+  }
+
+  return incomingThreads.map((thread) => {
+    const previous = currentById.get(thread.threadId);
+    const candidateUserId = thread.otherUser?.id || previous?.otherUser?.id || "";
+
+    const realtimeOnline = candidateUserId
+      ? onlineUsers[candidateUserId]
+      : undefined;
+
+    return {
+      ...thread,
+      isOnline:
+        typeof realtimeOnline === "boolean"
+          ? realtimeOnline
+          : typeof previous?.isOnline === "boolean"
+            ? previous.isOnline
+            : thread.isOnline,
+    };
+  });
+};
+
 const sortMessagesByCreatedAt = (messages: Message[]): Message[] => {
   return [...messages].sort(
     (a, b) =>
@@ -164,7 +195,12 @@ export const useMessagingStore = create<MessagingStore>()((set, get) => ({
   setThreadsHasMore: (threadsHasMore) => set({ threadsHasMore }),
 
   replaceThreads: (threads) => {
-    const sorted = sortThreadsByRecent(threads);
+    const nextThreads = applyRealtimeThreadState(
+      get().threads,
+      threads,
+      get().onlineUsers
+    );
+    const sorted = sortThreadsByRecent(nextThreads);
     set({
       threads: sorted,
       totalUnread: computeTotalUnread(sorted),

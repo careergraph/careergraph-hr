@@ -1,16 +1,31 @@
 import { useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
-import { BellRing, CheckCheck, Loader2 } from "lucide-react";
-import { Link } from "react-router";
+import {
+  BellRing,
+  Briefcase,
+  CalendarCheck2,
+  CheckCheck,
+  Eye,
+  Loader2,
+  MessageSquareText,
+  SearchCheck,
+  UserRoundPlus,
+  XCircle,
+} from "lucide-react";
+import { Link, useNavigate } from "react-router";
 import { Dropdown } from "@/components/custom/dropdown/Dropdown";
 import { DropdownItem } from "@/components/custom/dropdown/DropdownItem";
 import useNotifications from "@/features/notifications/hooks/useNotifications";
+import type { NotificationItem } from "@/features/notifications/types/notification.types";
 
 interface NotificationDropdownProps {
+  dropdownId?: string;
   isOpen: boolean;
   onClose: () => void;
 }
+
+type NotificationData = Record<string, unknown> | undefined;
 
 const toRelativeTime = (value: string): string => {
   const date = new Date(value);
@@ -25,7 +40,113 @@ const toRelativeTime = (value: string): string => {
   });
 };
 
-export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
+const toDataString = (data: NotificationData, key: string): string | null => {
+  if (!data || typeof data[key] === "undefined" || data[key] === null) {
+    return null;
+  }
+
+  const value = data[key];
+  return typeof value === "string" ? value : String(value);
+};
+
+const normalizeNavigatePathForHr = (
+  rawPath: string,
+  data: NotificationData
+): string | null => {
+  if (!rawPath.startsWith("/")) {
+    return null;
+  }
+
+  if (rawPath.startsWith("/messages")) {
+    return rawPath;
+  }
+
+  if (rawPath.startsWith("/jobs/") && rawPath.endsWith("/applications")) {
+    const jobId = rawPath.split("/")[2] || toDataString(data, "jobId");
+    return jobId ? `/kanbans/${jobId}` : "/kanbans";
+  }
+
+  if (rawPath.startsWith("/applications/")) {
+    return "/kanbans";
+  }
+
+  if (rawPath === "/jobs") {
+    return "/jobs";
+  }
+
+  return rawPath;
+};
+
+const getNavigatePath = (notification: NotificationItem): string | null => {
+  const data = notification.data;
+  const explicitPath = toDataString(data, "navigateTo");
+
+  if (explicitPath) {
+    const normalized = normalizeNavigatePathForHr(explicitPath, data);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  const threadId = toDataString(data, "threadId");
+  const jobId = toDataString(data, "jobId");
+
+  switch (notification.type) {
+    case "NEW_MESSAGE":
+      return threadId ? `/messages?thread=${threadId}` : "/messages";
+    case "NEW_APPLICATION":
+      return jobId ? `/kanbans/${jobId}` : "/kanbans";
+    default:
+      return null;
+  }
+};
+
+const getNotificationTypeMeta = (type: string) => {
+  switch (type) {
+    case "NEW_MESSAGE":
+      return {
+        icon: <MessageSquareText className="h-4 w-4" />,
+        iconClass: "bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300",
+      };
+    case "NEW_APPLICATION":
+      return {
+        icon: <UserRoundPlus className="h-4 w-4" />,
+        iconClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300",
+      };
+    case "APPLICATION_VIEWED":
+      return {
+        icon: <Eye className="h-4 w-4" />,
+        iconClass: "bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300",
+      };
+    case "APPLICATION_SHORTLISTED":
+      return {
+        icon: <SearchCheck className="h-4 w-4" />,
+        iconClass: "bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300",
+      };
+    case "APPLICATION_INTERVIEW_SCHEDULED":
+      return {
+        icon: <CalendarCheck2 className="h-4 w-4" />,
+        iconClass: "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300",
+      };
+    case "APPLICATION_REJECTED":
+      return {
+        icon: <XCircle className="h-4 w-4" />,
+        iconClass: "bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300",
+      };
+    default:
+      return {
+        icon: <Briefcase className="h-4 w-4" />,
+        iconClass: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
+      };
+  }
+};
+
+export function NotificationDropdown({
+  dropdownId,
+  isOpen,
+  onClose,
+}: NotificationDropdownProps) {
+  const navigate = useNavigate();
   const {
     items,
     loading,
@@ -37,6 +158,19 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
     markAllAsRead,
   } = useNotifications();
 
+  const handleClickNotification = async (item: NotificationItem) => {
+    if (!item.read) {
+      await markAsRead(item.id);
+    }
+
+    const nextPath = getNavigatePath(item);
+    onClose();
+
+    if (nextPath) {
+      navigate(nextPath);
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -47,6 +181,7 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
 
   return (
     <Dropdown
+      id={dropdownId}
       isOpen={isOpen}
       onClose={onClose}
       className="absolute -right-62.5 mt-4.25 flex h-125 w-90 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark sm:w-95 lg:right-0"
@@ -98,12 +233,14 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
           </li>
         ) : null}
 
-        {items.map((item) => (
+        {items.map((item) => {
+          const { icon, iconClass } = getNotificationTypeMeta(item.type);
+
+          return (
           <li key={item.id}>
             <DropdownItem
               onItemClick={() => {
-                void markAsRead(item.id);
-                onClose();
+                void handleClickNotification(item);
               }}
               className={`rounded-xl px-3 py-2.5 text-left transition ${
                 item.read
@@ -113,13 +250,21 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
             >
               <div className="flex items-start gap-3">
                 <span
-                  className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
-                    item.read ? "bg-gray-300" : "bg-brand-500"
-                  }`}
-                />
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${iconClass}`}
+                  aria-hidden="true"
+                >
+                  {icon}
+                </span>
                 <span className="block min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">
-                    {item.title}
+                  <span className="flex items-center gap-2">
+                    <span className="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">
+                      {item.title}
+                    </span>
+                    {!item.read ? (
+                      <span className="rounded-full border border-brand-200 bg-brand-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700 dark:border-brand-500/50 dark:bg-brand-500/20 dark:text-brand-200">
+                        Mới
+                      </span>
+                    ) : null}
                   </span>
                   <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
                     {item.body}
@@ -128,10 +273,18 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                     {toRelativeTime(item.createdAt)}
                   </span>
                 </span>
+
+                {!item.read ? (
+                  <span
+                    className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-brand-500"
+                    aria-hidden="true"
+                  />
+                ) : null}
               </div>
             </DropdownItem>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       <div className="mt-3 flex items-center justify-between gap-2">

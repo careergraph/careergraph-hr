@@ -593,7 +593,7 @@ export function ChatWindow({
             <Button
               type="button"
               size="sm"
-              className="pointer-events-auto rounded-full px-4 shadow-lg"
+              className="pointer-events-auto rounded-full px-4 shadow-lg bg-white"
               onClick={() => {
                 scrollToBottom("smooth");
                 setShowNewMessageBanner(false);
