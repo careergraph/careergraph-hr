@@ -1,37 +1,41 @@
 import Chart from "react-apexcharts";
 import type { ApexOptions } from "apexcharts";
-import ChartTab from "../common/ChartTab";
+import type { DashboardFunnelConversion } from "@/features/dashboard/types/dashboard.types";
 
-const MONTH_LABELS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+type FunnelConversionChartProps = {
+  data?: DashboardFunnelConversion | null;
+  loading?: boolean;
+  error?: string | null;
+};
 
-const SERIES = [
-  {
-    name: "Phỏng vấn hoàn tất",
-    data: [42, 45, 51, 48, 55, 53, 59, 62, 68, 70, 74, 78],
-  },
-  {
-    name: "Offer gửi đi",
-    data: [18, 20, 24, 22, 25, 26, 30, 31, 35, 37, 39, 41],
-  },
-];
+const isFunnelEmpty = (data?: DashboardFunnelConversion | null): boolean => {
+  if (!data || data.monthly.length === 0) return true;
+
+  return data.monthly.every(
+    (item) => item.interviewsCompleted === 0 && item.offersSent === 0
+  );
+};
 
 /**
  * FunnelConversionChart theo dõi tỷ lệ chuyển đổi giữa giai đoạn phỏng vấn và offer.
  */
-export default function FunnelConversionChart() {
+export default function FunnelConversionChart({
+  data,
+  loading = false,
+  error = null,
+}: FunnelConversionChartProps) {
+  const categories = data?.monthly.map((item) => item.monthLabel) ?? [];
+  const series = [
+    {
+      name: "Phỏng vấn hoàn tất",
+      data: data?.monthly.map((item) => item.interviewsCompleted) ?? [],
+    },
+    {
+      name: "Offer gửi đi",
+      data: data?.monthly.map((item) => item.offersSent) ?? [],
+    },
+  ];
+
   const options: ApexOptions = {
     legend: {
       show: true,
@@ -76,7 +80,7 @@ export default function FunnelConversionChart() {
       },
     },
     xaxis: {
-      categories: MONTH_LABELS,
+      categories,
       axisBorder: { show: false },
       axisTicks: { show: false },
     },
@@ -94,8 +98,30 @@ export default function FunnelConversionChart() {
     },
   };
 
+  if (loading) {
+    return (
+      <div className="h-104.5 animate-pulse rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/3" />
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50/70 p-5 text-sm text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+        Không thể tải biểu đồ chuyển đổi funnel. {error}
+      </div>
+    );
+  }
+
+  if (isFunnelEmpty(data)) {
+    return (
+      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-600 dark:border-gray-700 dark:bg-white/2 dark:text-gray-300">
+        Chưa có dữ liệu chuyển đổi phỏng vấn và offer trong khoảng thời gian đã chọn.
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-6 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
+    <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-6 pt-5 dark:border-gray-800 dark:bg-white/3 sm:px-6 sm:pt-6">
       <div className="mb-6 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
@@ -105,15 +131,11 @@ export default function FunnelConversionChart() {
             So sánh số buổi phỏng vấn hoàn tất và offer gửi đi theo từng tháng
           </p>
         </div>
-        <div className="flex w-full items-start justify-start gap-3 sm:w-auto sm:justify-end">
-          {/* ChartTab giúp chuyển đổi nhanh phạm vi thời gian */}
-          <ChartTab />
-        </div>
       </div>
 
       <div className="custom-scrollbar -ml-5 overflow-x-auto xl:ml-0">
-        <div className="min-w-[1000px] xl:min-w-full">
-          <Chart options={options} series={SERIES} type="area" height={320} />
+        <div className="min-w-250 xl:min-w-full">
+          <Chart options={options} series={series} type="area" height={320} />
         </div>
       </div>
     </div>
