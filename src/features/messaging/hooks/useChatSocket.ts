@@ -35,6 +35,32 @@ const toStringSafe = (value: unknown, fallback = ""): string =>
 const toBooleanSafe = (value: unknown, fallback = false): boolean =>
   typeof value === "boolean" ? value : fallback;
 
+const HAS_TIMEZONE_SUFFIX = /(?:[zZ]|[+-]\d{2}(?::?\d{2})?)$/;
+
+const normalizeIsoTimestamp = (value: unknown, fallback = ""): string => {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+
+  const withSeparator = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
+  const withZone = HAS_TIMEZONE_SUFFIX.test(withSeparator)
+    ? withSeparator
+    : `${withSeparator}Z`;
+  const millisNormalized = withZone.replace(/\.(\d{3})\d+/, ".$1");
+
+  const parsed = new Date(millisNormalized);
+  if (Number.isNaN(parsed.getTime())) {
+    return fallback;
+  }
+
+  return parsed.toISOString();
+};
+
 const resolveTypingDisplayName = (payload: unknown, fallback: string): string => {
   const source = isRecord(payload) ? payload : {};
   const displayName = toStringSafe(source.displayName).trim();
@@ -93,9 +119,9 @@ const normalizeMessage = (payload: unknown, threadId: string): Message => {
         ? source.fileSize
         : undefined,
     deleted: toBooleanSafe(source.deleted),
-    createdAt: toStringSafe(source.createdAt, new Date().toISOString()),
+    createdAt: normalizeIsoTimestamp(source.createdAt, new Date().toISOString()),
     isRead: toBooleanSafe(source.isRead),
-    readAt: toStringSafe(source.readAt) || undefined,
+    readAt: normalizeIsoTimestamp(source.readAt, "") || undefined,
     localStatus: "sent",
   };
 };
@@ -228,7 +254,7 @@ const attachSocketListeners = (currentUserIdRef: MutableRefObject<string>) => {
       threadId: toStringSafe(payload.threadId),
       userId,
       lastReadMessageId: toStringSafe(payload.lastReadMessageId) || undefined,
-      readAt: toStringSafe(payload.readAt, new Date().toISOString()),
+      readAt: normalizeIsoTimestamp(payload.readAt, new Date().toISOString()),
     };
 
     if (!event.threadId) return;
@@ -247,7 +273,7 @@ const attachSocketListeners = (currentUserIdRef: MutableRefObject<string>) => {
     applyMessageDeletedEvent({
       threadId,
       messageId,
-      deletedAt: toStringSafe(payload.deletedAt, new Date().toISOString()),
+      deletedAt: normalizeIsoTimestamp(payload.deletedAt, new Date().toISOString()),
     });
   });
 
