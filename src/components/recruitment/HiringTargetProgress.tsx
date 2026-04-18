@@ -4,15 +4,38 @@ import type { ApexOptions } from "apexcharts";
 import { Dropdown } from "../custom/dropdown/Dropdown";
 import { DropdownItem } from "../custom/dropdown/DropdownItem";
 import { CheckCircleIcon, MoreDotIcon } from "@/icons";
+import type { DashboardHiringTargetProgress } from "@/features/dashboard/types/dashboard.types";
+
+type HiringTargetProgressProps = {
+  data?: DashboardHiringTargetProgress | null;
+  loading?: boolean;
+  error?: string | null;
+};
+
+const isHiringTargetEmpty = (data?: DashboardHiringTargetProgress | null): boolean => {
+  if (!data) return true;
+
+  return (
+    data.quarterTargetPositions === 0 &&
+    data.hiredThisWeek === 0 &&
+    data.pendingOffers === 0
+  );
+};
 
 /**
  * HiringTargetProgress hiển thị mức độ hoàn thành mục tiêu tuyển dụng theo tháng.
  * Biểu đồ radial giúp lãnh đạo nhanh chóng nắm tỷ lệ vị trí đã được lấp đầy.
  */
-export default function HiringTargetProgress() {
+export default function HiringTargetProgress({
+  data,
+  loading = false,
+  error = null,
+}: HiringTargetProgressProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const series = [68];
+  const completionPercent = data?.completionPercent ?? 0;
+  const changePercent = data?.changePercent ?? 0;
+  const series = [completionPercent];
 
   const options: ApexOptions = {
     colors: ["#465FFF"],
@@ -52,8 +75,30 @@ export default function HiringTargetProgress() {
   const toggleDropdown = () => setIsOpen((prev) => !prev);
   const closeDropdown = () => setIsOpen(false);
 
+  if (loading) {
+    return (
+      <div className="h-120 animate-pulse rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/3" />
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50/70 p-5 text-sm text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+        Không thể tải tiến độ tuyển dụng. {error}
+      </div>
+    );
+  }
+
+  if (isHiringTargetEmpty(data)) {
+    return (
+      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-600 dark:border-gray-700 dark:bg-white/2 dark:text-gray-300">
+        Chưa có dữ liệu mục tiêu tuyển dụng trong kỳ hiện tại.
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div className="rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/3">
       <div className="rounded-2xl bg-white px-5 pb-10 pt-5 shadow-default dark:bg-gray-900 sm:px-6 sm:pt-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -65,7 +110,12 @@ export default function HiringTargetProgress() {
             </p>
           </div>
           <div className="relative inline-block self-end sm:self-auto">
-            <button className="dropdown-toggle" onClick={toggleDropdown}>
+            <button
+              className="dropdown-toggle"
+              onClick={toggleDropdown}
+              title="Mở tùy chọn"
+              aria-label="Mở tùy chọn"
+            >
               <MoreDotIcon className="size-6 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300" />
             </button>
             <Dropdown
@@ -92,7 +142,7 @@ export default function HiringTargetProgress() {
         {/* Biểu đồ radial thể hiện % vị trí đã tuyển */}
         <div className="relative flex flex-col items-center">
           <div
-            className="mx-auto max-h-[330px] max-w-[320px]"
+            className="mx-auto max-h-82.5 max-w-[320px]"
             id="hiringTargetChart"
           >
             <Chart
@@ -104,9 +154,9 @@ export default function HiringTargetProgress() {
           </div>
 
           {/* Trend badge */}
-          <div className="mt-[-50px] flex items-center gap-1 rounded-full border border-success-200 bg-success-50 px-3 py-1.5 text-sm font-semibold text-success-600 shadow-sm dark:border-success-500/20 dark:bg-success-500/10 dark:text-success-300">
+          <div className="-mt-12.5 flex items-center gap-1 rounded-full border border-success-200 bg-success-50 px-3 py-1.5 text-sm font-semibold text-success-600 shadow-sm dark:border-success-500/20 dark:bg-success-500/10 dark:text-success-300">
             <CheckCircleIcon className="size-4" />
-            +6% so với tháng trước
+            {`${changePercent >= 0 ? "+" : ""}${changePercent.toFixed(1)}% so với kỳ trước`}
           </div>
         </div>
       </div>
@@ -118,7 +168,7 @@ export default function HiringTargetProgress() {
             Mục tiêu quý
           </p>
           <p className="mt-1 text-base font-semibold text-gray-800 dark:text-white/90">
-            72 vị trí
+            {`${(data?.quarterTargetPositions ?? 0).toLocaleString("vi-VN")} vị trí`}
           </p>
         </div>
         <div className="h-px w-full bg-gray-200 dark:bg-gray-800 sm:h-8 sm:w-px" />
@@ -127,7 +177,7 @@ export default function HiringTargetProgress() {
             Đã tuyển mới
           </p>
           <p className="mt-1 text-base font-semibold text-gray-800 dark:text-white/90">
-            18 tuần này
+            {(data?.hiredThisWeek ?? 0).toLocaleString("vi-VN")} tuần này
           </p>
         </div>
         <div className="h-px w-full bg-gray-200 dark:bg-gray-800 sm:h-8 sm:w-px" />
@@ -136,7 +186,7 @@ export default function HiringTargetProgress() {
             Đề xuất sắp tới
           </p>
           <p className="mt-1 text-base font-semibold text-gray-800 dark:text-white/90">
-            5 offer chờ ký
+            {(data?.pendingOffers ?? 0).toLocaleString("vi-VN")} offer chờ ký
           </p>
         </div>
       </div>
