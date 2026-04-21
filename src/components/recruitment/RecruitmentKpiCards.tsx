@@ -67,7 +67,7 @@ export default function RecruitmentKpiCards() {
         return (
           <div
             key={metric.id}
-            className="group flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-white/[0.03]"
+            className="group flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-white/3"
           >
             {/* Phần icon hiển thị loại KPI giúp nhận biết nhanh */}
             <div className="flex justify-between items-center">

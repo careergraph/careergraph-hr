@@ -10,6 +10,7 @@ type SourceMetric = {
   percentage: number;
   description: string;
   accentClass: string;
+  widthClass: string;
 };
 
 const SOURCES: SourceMetric[] = [
@@ -20,6 +21,7 @@ const SOURCES: SourceMetric[] = [
     percentage: 46,
     description: "Tăng 12 hồ sơ so với tuần trước",
     accentClass: "bg-brand-500",
+    widthClass: "w-[46%]",
   },
   {
     id: "linkedin",
@@ -28,6 +30,7 @@ const SOURCES: SourceMetric[] = [
     percentage: 33,
     description: "Giảm nhẹ do tạm dừng gói quảng cáo",
     accentClass: "bg-info-500",
+    widthClass: "w-[33%]",
   },
   {
     id: "career-site",
@@ -36,6 +39,7 @@ const SOURCES: SourceMetric[] = [
     percentage: 21,
     description: "Cần tối ưu landing page job",
     accentClass: "bg-success-500",
+    widthClass: "w-[21%]",
   },
 ];
 
@@ -50,7 +54,7 @@ export default function TalentSourceCard() {
   const closeDropdown = () => setIsOpen(false);
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] sm:p-6">
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/3 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
@@ -61,7 +65,13 @@ export default function TalentSourceCard() {
           </p>
         </div>
         <div className="relative inline-block self-end sm:self-auto">
-          <button className="dropdown-toggle" onClick={toggleDropdown}>
+          <button
+            type="button"
+            className="dropdown-toggle"
+            onClick={toggleDropdown}
+            title="Mở tùy chọn"
+            aria-label="Mở tùy chọn"
+          >
             <MoreDotIcon className="size-6 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300" />
           </button>
           <Dropdown
@@ -107,10 +117,7 @@ export default function TalentSourceCard() {
 
             {/* Thanh tỷ lệ mô tả đóng góp của từng nguồn */}
             <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
-              <div
-                className={`absolute left-0 top-0 h-full ${source.accentClass}`}
-                style={{ width: `${source.percentage}%` }}
-              />
+              <div className={`absolute left-0 top-0 h-full ${source.accentClass} ${source.widthClass}`} />
             </div>
 
             <p className="text-xs text-gray-500 dark:text-gray-400">

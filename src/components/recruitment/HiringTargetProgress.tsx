@@ -53,7 +53,7 @@ export default function HiringTargetProgress() {
   const closeDropdown = () => setIsOpen(false);
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div className="rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/3">
       <div className="rounded-2xl bg-white px-5 pb-10 pt-5 shadow-default dark:bg-gray-900 sm:px-6 sm:pt-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -65,7 +65,13 @@ export default function HiringTargetProgress() {
             </p>
           </div>
           <div className="relative inline-block self-end sm:self-auto">
-            <button className="dropdown-toggle" onClick={toggleDropdown}>
+            <button
+              type="button"
+              className="dropdown-toggle"
+              onClick={toggleDropdown}
+              title="Mở tùy chọn"
+              aria-label="Mở tùy chọn"
+            >
               <MoreDotIcon className="size-6 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300" />
             </button>
             <Dropdown
@@ -92,7 +98,7 @@ export default function HiringTargetProgress() {
         {/* Biểu đồ radial thể hiện % vị trí đã tuyển */}
         <div className="relative flex flex-col items-center">
           <div
-            className="mx-auto max-h-[330px] max-w-[320px]"
+            className="mx-auto max-h-82.5 max-w-[320px]"
             id="hiringTargetChart"
           >
             <Chart
@@ -104,7 +110,7 @@ export default function HiringTargetProgress() {
           </div>
 
           {/* Trend badge */}
-          <div className="mt-[-50px] flex items-center gap-1 rounded-full border border-success-200 bg-success-50 px-3 py-1.5 text-sm font-semibold text-success-600 shadow-sm dark:border-success-500/20 dark:bg-success-500/10 dark:text-success-300">
+          <div className="-mt-12.5 flex items-center gap-1 rounded-full border border-success-200 bg-success-50 px-3 py-1.5 text-sm font-semibold text-success-600 shadow-sm dark:border-success-500/20 dark:bg-success-500/10 dark:text-success-300">
             <CheckCircleIcon className="size-4" />
             +6% so với tháng trước
           </div>

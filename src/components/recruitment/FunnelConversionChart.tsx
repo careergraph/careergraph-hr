@@ -95,7 +95,7 @@ export default function FunnelConversionChart() {
   };
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-6 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
+    <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-6 pt-5 dark:border-gray-800 dark:bg-white/3 sm:px-6 sm:pt-6">
       <div className="mb-6 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
@@ -112,7 +112,7 @@ export default function FunnelConversionChart() {
       </div>
 
       <div className="custom-scrollbar -ml-5 overflow-x-auto xl:ml-0">
-        <div className="min-w-[1000px] xl:min-w-full">
+        <div className="min-w-250 xl:min-w-full">
           <Chart options={options} series={SERIES} type="area" height={320} />
         </div>
       </div>

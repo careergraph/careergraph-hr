@@ -435,7 +435,7 @@ export default function JobsGrid() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background">
+    <div className="min-h-screen bg-linear-to-br from-background via-muted/20 to-background">
       {/* Bố cục trang việc làm gồm breadcrumb, bộ lọc và danh sách kết quả. */}
       {/* Page metadata */}
       <PageMeta title="HR - CareerGraph" description="HR - CareerGraph" />

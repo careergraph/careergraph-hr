@@ -149,9 +149,18 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
   // ── Socket connection (no localStream needed) ────────
   useEffect(() => {
     if (!roomCode || !token) return;
+
+    setJoinRequests([]);
+    setPeerCount(0);
+    setWaitingCount(0);
+    setPeerMediaStates({});
+    setRemotePeerId(null);
+    setRoomStatus("WAITING");
+
     const socket = io(RTC_URL, {
       auth: { token },
       transports: ["websocket"],
+      autoConnect: false,
     });
     socketRef.current = socket;
 
@@ -259,6 +268,8 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
     socket.on("peer-media-changed", ({ socketId, media }: { socketId: string; userId?: string; media: PeerMediaState }) => {
       setPeerMediaStates((prev) => ({ ...prev, [socketId]: media }));
     });
+
+    socket.connect();
 
     return () => {
       closePeer();

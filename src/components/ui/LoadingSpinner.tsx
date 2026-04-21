@@ -20,6 +20,7 @@ export default function LoadingSpinner({
   };
 
   const dotSize = dotSizes[size] || dotSizes.md;
+  const dotToneClasses = ["bg-primary", "bg-primary/80", "bg-primary/60"];
 
   if (variant === "overlay") {
     return (
@@ -30,18 +31,12 @@ export default function LoadingSpinner({
       <div className="absolute inset-0 z-60 flex items-center justify-center bg-white/70 backdrop-blur-sm">
         <div className="flex flex-col items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <div
-              className={`${dotSize} bg-primary rounded-full animate-bounce`}
-              style={{ animationDelay: "0ms" }}
-            />
-            <div
-              className={`${dotSize} bg-primary/80 rounded-full animate-bounce`}
-              style={{ animationDelay: "150ms" }}
-            />
-            <div
-              className={`${dotSize} bg-primary/60 rounded-full animate-bounce`}
-              style={{ animationDelay: "300ms" }}
-            />
+            {dotToneClasses.map((toneClass) => (
+              <div
+                key={`overlay-dot-${toneClass}`}
+                className={`${dotSize} ${toneClass} rounded-full animate-bounce`}
+              />
+            ))}
           </div>
           {message ? (
             <div className="text-center">
@@ -54,20 +49,14 @@ export default function LoadingSpinner({
   }
 
   return (
-  <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-4">
       <div className="flex items-center gap-1.5">
-        <div
-          className={`${dotSize} bg-primary rounded-full animate-bounce`}
-          style={{ animationDelay: "0ms" }}
-        />
-        <div
-          className={`${dotSize} bg-primary/80 rounded-full animate-bounce`}
-          style={{ animationDelay: "150ms" }}
-        />
-        <div
-          className={`${dotSize} bg-primary/60 rounded-full animate-bounce`}
-          style={{ animationDelay: "300ms" }}
-        />
+        {dotToneClasses.map((toneClass) => (
+          <div
+            key={`inline-dot-${toneClass}`}
+            className={`${dotSize} ${toneClass} rounded-full animate-bounce`}
+          />
+        ))}
       </div>
       {message ? (
         <div className="text-center">
