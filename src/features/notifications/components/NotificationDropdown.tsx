@@ -95,6 +95,7 @@ const getNavigatePath = (notification: NotificationItem): string | null => {
     case "NEW_MESSAGE":
       return threadId ? `/messages?thread=${threadId}` : "/messages";
     case "NEW_APPLICATION":
+    case "APPLICATION_AI_SCREENING":
       return jobId ? `/kanbans/${jobId}` : "/kanbans";
     default:
       return null;
@@ -112,6 +113,11 @@ const getNotificationTypeMeta = (type: string) => {
       return {
         icon: <UserRoundPlus className="h-4 w-4" />,
         iconClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300",
+      };
+    case "APPLICATION_AI_SCREENING":
+      return {
+        icon: <SearchCheck className="h-4 w-4" />,
+        iconClass: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-300",
       };
     case "APPLICATION_VIEWED":
       return {

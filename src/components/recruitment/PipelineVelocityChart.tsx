@@ -4,42 +4,31 @@ import type { ApexOptions } from "apexcharts";
 import { Dropdown } from "../custom/dropdown/Dropdown";
 import { DropdownItem } from "../custom/dropdown/DropdownItem";
 import { MoreDotIcon } from "@/icons";
+import type { DashboardPipelineVelocity } from "@/features/dashboard/types/dashboard.types";
 
-const MONTH_LABELS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+type PipelineVelocityChartProps = {
+  data?: DashboardPipelineVelocity | null;
+  loading?: boolean;
+  error?: string | null;
+};
 
-const SERIES_DATA = [
-  52,
-  68,
-  61,
-  74,
-  70,
-  79,
-  83,
-  77,
-  88,
-  95,
-  90,
-  92,
-];
+const isPipelineEmpty = (data?: DashboardPipelineVelocity | null): boolean => {
+  if (!data || data.monthly.length === 0) return true;
+  return data.monthly.every((item) => item.totalTransitions === 0);
+};
 
 /**
  * PipelineVelocityChart hiển thị số lượng ứng viên chuyển bước mỗi tháng.
  */
-export default function PipelineVelocityChart() {
+export default function PipelineVelocityChart({
+  data,
+  loading = false,
+  error = null,
+}: PipelineVelocityChartProps) {
   const [isOpen, setIsOpen] = useState(false);
+
+  const categories = data?.monthly.map((item) => item.monthLabel) ?? [];
+  const values = data?.monthly.map((item) => item.totalTransitions) ?? [];
 
   const options: ApexOptions = {
     colors: ["#465FFF"],
@@ -68,7 +57,7 @@ export default function PipelineVelocityChart() {
       colors: ["transparent"],
     },
     xaxis: {
-      categories: MONTH_LABELS,
+      categories,
       axisBorder: { show: false },
       axisTicks: { show: false },
     },
@@ -102,12 +91,34 @@ export default function PipelineVelocityChart() {
   const series = [
     {
       name: "Ứng viên chuyển bước",
-      data: SERIES_DATA,
+      data: values,
     },
   ];
 
   const toggleDropdown = () => setIsOpen((prev) => !prev);
   const closeDropdown = () => setIsOpen(false);
+
+  if (loading) {
+    return (
+      <div className="h-79.5 animate-pulse rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/3" />
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50/70 p-5 text-sm text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+        Không thể tải biểu đồ tốc độ pipeline. {error}
+      </div>
+    );
+  }
+
+  if (isPipelineEmpty(data)) {
+    return (
+      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-600 dark:border-gray-700 dark:bg-white/2 dark:text-gray-300">
+        Chưa có dữ liệu chuyển bước ứng viên trong khoảng thời gian đã chọn.
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-white/3 sm:px-6 sm:pt-6">
@@ -122,7 +133,6 @@ export default function PipelineVelocityChart() {
         </div>
         <div className="relative inline-block self-end sm:self-auto">
           <button
-            type="button"
             className="dropdown-toggle"
             onClick={toggleDropdown}
             title="Mở tùy chọn"

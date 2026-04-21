@@ -79,11 +79,6 @@ const SuggestionCandidate = () => {
         setCandidates(mappedCandidates);
         setTotalPages(response.totalPages);
         setTotalElements(response.totalElements);
-
-        // Auto-select first candidate if none selected
-        if (mappedCandidates.length > 0 && !selectedCandidate) {
-          setSelectedCandidate(mappedCandidates[0]);
-        }
       } else {
         setCandidates([]);
         setTotalPages(0);
@@ -98,7 +93,7 @@ const SuggestionCandidate = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedQuery, filters, page, selectedCandidate]);
+  }, [debouncedQuery, filters, page]);
 
   // Trigger fetch when dependencies change
   useEffect(() => {
@@ -110,6 +105,17 @@ const SuggestionCandidate = () => {
       }
     };
   }, [fetchCandidates]);
+
+  useEffect(() => {
+    if (candidates.length === 0) {
+      setSelectedCandidate(null);
+      return;
+    }
+
+    if (!selectedCandidate || !candidates.some((c) => c.id === selectedCandidate.id)) {
+      setSelectedCandidate(candidates[0]);
+    }
+  }, [candidates, selectedCandidate]);
 
   // Handle search input change
   const handleSearchChange = useCallback((value: string) => {

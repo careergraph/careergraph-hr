@@ -323,7 +323,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
                 </h3>
                 <div className="flex items-center gap-4 rounded-lg border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
                   <div className="relative h-20 w-20">
-                    <svg className="h-20 w-20 -rotate-90 transform">
+                    <svg viewBox="0 0 80 80" className="h-20 w-20 -rotate-90 transform">
                       <circle
                         cx="40"
                         cy="40"

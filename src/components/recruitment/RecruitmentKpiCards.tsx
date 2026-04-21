@@ -7,62 +7,110 @@ import {
   TaskIcon,
 } from "@/icons";
 import Badge from "../custom/badge/Badge";
+import type { DashboardKpiSummary } from "@/features/dashboard/types/dashboard.types";
 
 type MetricTrend = "up" | "down";
 
-type Metric = {
+type MetricTemplate = {
   id: string;
   label: string;
-  value: string;
-  change: string;
-  trend: MetricTrend;
+  valueKey: keyof DashboardKpiSummary;
   icon: ReactNode;
 };
 
-const METRICS: Metric[] = [
+type RecruitmentKpiCardsProps = {
+  data?: DashboardKpiSummary | null;
+  loading?: boolean;
+  error?: string | null;
+};
+
+const METRICS: MetricTemplate[] = [
   {
     id: "active-candidates",
     label: "Ứng viên",
-    value: "862",
-    change: "+8.4%",
-    trend: "up",
+    valueKey: "candidates",
     icon: <GroupIcon className="size-6 text-brand-500" />,
   },
   {
     id: "new-applications",
     label: "Hồ sơ mới",
-    value: "126",
-    change: "-3.2%",
-    trend: "down",
+    valueKey: "newApplications",
     icon: <TaskIcon className="size-6 text-warning-500" />,
   },
   {
     id: "interviews-scheduled",
     label: "Lịch phỏng vấn",
-    value: "48",
-    change: "+12.6%",
-    trend: "up",
+    valueKey: "scheduledInterviews",
     icon: <CalenderIcon className="size-6 text-success-500" />,
   },
-  // {
-  //   id: "time-to-hire",
-  //   label: "Thời gian tuyển",
-  //   value: "28",
-  //   change: "-5d",
-  //   trend: "down",
-  //   icon: <TimeIcon className="size-6 text-info-500" />,
-  // },
 ];
+
+const formatNumber = (value: number): string =>
+  new Intl.NumberFormat("vi-VN").format(value);
+
+const formatChange = (value: number): string => {
+  const rounded = Math.abs(value).toFixed(1);
+  if (value > 0) return `+${rounded}%`;
+  if (value < 0) return `-${rounded}%`;
+  return "0.0%";
+};
+
+const isKpiEmpty = (data?: DashboardKpiSummary | null): boolean => {
+  if (!data) return true;
+
+  return (
+    data.candidates.value === 0 &&
+    data.newApplications.value === 0 &&
+    data.scheduledInterviews.value === 0
+  );
+};
+
+const renderSkeleton = () => (
+  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+    {Array.from({ length: 3 }).map((_, index) => (
+      <div
+        key={`kpi-skeleton-${index}`}
+        className="h-31.5 animate-pulse rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/3"
+      />
+    ))}
+  </div>
+);
 
 /**
  * RecruitmentKpiCards trình bày các KPI chính giúp HR theo dõi sức khỏe pipeline.
  */
-export default function RecruitmentKpiCards() {
+export default function RecruitmentKpiCards({
+  data,
+  loading = false,
+  error = null,
+}: RecruitmentKpiCardsProps) {
+  if (loading) {
+    return renderSkeleton();
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50/70 p-5 text-sm text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+        Không thể tải KPI dashboard. {error}
+      </div>
+    );
+  }
+
+  if (isKpiEmpty(data)) {
+    return (
+      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-600 dark:border-gray-700 dark:bg-white/2 dark:text-gray-300">
+        Chưa có dữ liệu KPI trong khoảng thời gian đã chọn.
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 xl:gap-5">
       {METRICS.map((metric) => {
-        const badgeColor = metric.trend === "up" ? "success" : "warning";
-        const TrendIcon = metric.trend === "up" ? ArrowUpIcon : ArrowDownIcon;
+        const metricValue = data?.[metric.valueKey] ?? { value: 0, changePercent: 0 };
+        const trend: MetricTrend = metricValue.changePercent >= 0 ? "up" : "down";
+        const badgeColor = trend === "up" ? "success" : "warning";
+        const TrendIcon = trend === "up" ? ArrowUpIcon : ArrowDownIcon;
 
         return (
           <div
@@ -76,7 +124,7 @@ export default function RecruitmentKpiCards() {
               </div>
               <Badge color={badgeColor} size="sm">
                 <TrendIcon />
-                {metric.change}
+                {formatChange(metricValue.changePercent)}
               </Badge>
             </div>
 
@@ -87,7 +135,7 @@ export default function RecruitmentKpiCards() {
                 </span>
               </div>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white/90">
-                {metric.value}
+                {formatNumber(metricValue.value)}
               </p>
             </div>
           </div>
