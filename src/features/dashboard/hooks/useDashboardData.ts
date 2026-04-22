@@ -11,7 +11,7 @@ interface UseDashboardDataResult {
   error: string | null;
 }
 
-export function useDashboardData(dateRange: DashboardDateRange): UseDashboardDataResult {
+export function useDashboardData(dateRange: DashboardDateRange, refreshTick = 0): UseDashboardDataResult {
   const [data, setData] = useState<DashboardSummaryDto | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +50,7 @@ export function useDashboardData(dateRange: DashboardDateRange): UseDashboardDat
     return () => {
       isCancelled = true;
     };
-  }, [dateRange.from, dateRange.to]);
+  }, [dateRange.from, dateRange.to, refreshTick]);
 
   return {
     data,

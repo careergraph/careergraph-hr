@@ -7,35 +7,96 @@ import Label from "@/components/form/Label";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import companyService from "@/services/companyService";
+import useLocation from "@/hooks/use-location";
 
 export default function UserAddressCard() {
   const { company, setCompany } = useAuthStore();
   const { isOpen, openModal, closeModal } = useModal();
 
-  const primaryAddress = useMemo(() => company?.addresses?.[0] ?? null, [company?.addresses]);
+  const primaryAddress = useMemo(
+    () => company?.addresses?.find((address) => address?.isPrimary) ?? company?.addresses?.[0] ?? null,
+    [company?.addresses]
+  );
+
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState<string>("");
+  const [selectedDistrictCode, setSelectedDistrictCode] = useState<string>("");
+
+  const { provinces, districts, loadingProvinces, loadingDistricts } = useLocation(
+    selectedProvinceCode,
+    selectedDistrictCode
+  );
 
   const [addressForm, setAddressForm] = useState({
-    country: primaryAddress?.country ?? "Việt Nam",
+    country: "Việt Nam",
     city: primaryAddress?.city ?? "",
     district: primaryAddress?.district ?? "",
     street: primaryAddress?.street ?? "",
-  
   });
+
+  const inferProvinceCode = (provinceNameOrCode?: string) => {
+    if (!provinceNameOrCode) return "";
+    const value = String(provinceNameOrCode).trim();
+    const directMatch = provinces.find((item) => String(item.code) === value);
+    if (directMatch) return String(directMatch.code);
+    const nameMatch = provinces.find(
+      (item) => item.name.toLowerCase() === value.toLowerCase()
+    );
+    return nameMatch ? String(nameMatch.code) : "";
+  };
+
+  const inferDistrictCode = (districtNameOrCode?: string) => {
+    if (!districtNameOrCode) return "";
+    const value = String(districtNameOrCode).trim();
+    const directMatch = districts.find((item) => String(item.code) === value);
+    if (directMatch) return String(directMatch.code);
+    const nameMatch = districts.find(
+      (item) => item.name.toLowerCase() === value.toLowerCase()
+    );
+    return nameMatch ? String(nameMatch.code) : "";
+  };
+
+  const displayedProvinceName = useMemo(() => {
+    const raw = primaryAddress?.province ?? primaryAddress?.city;
+    if (!raw) return "Chưa cập nhật";
+    const matched = provinces.find((item) => String(item.code) === String(raw));
+    return matched?.name ?? raw;
+  }, [primaryAddress?.province, primaryAddress?.city, provinces]);
+
+  const displayedDistrictName = useMemo(() => {
+    const raw = primaryAddress?.district;
+    if (!raw) return "Chưa cập nhật";
+    const matched = districts.find((item) => String(item.code) === String(raw));
+    return matched?.name ?? raw;
+  }, [primaryAddress?.district, districts]);
+
+  const displayedStreet = useMemo(() => {
+    return primaryAddress?.ward || primaryAddress?.street || "Chưa cập nhật";
+  }, [primaryAddress?.ward, primaryAddress?.street]);
 
   useEffect(() => {
     setAddressForm({
-      country: primaryAddress?.country ?? "Việt Nam",
-      city: primaryAddress?.city ?? "",
+      country: "Việt Nam",
+      city: primaryAddress?.province ?? primaryAddress?.city ?? "",
       district: primaryAddress?.district ?? "",
-      street: primaryAddress?.street ?? "",
-    
+      street: primaryAddress?.ward ?? primaryAddress?.street ?? "",
     });
   }, [
-    primaryAddress?.country,
+    primaryAddress?.province,
     primaryAddress?.city,
     primaryAddress?.district,
+    primaryAddress?.ward,
     primaryAddress?.street,
   ]);
+
+  useEffect(() => {
+    if (!provinces.length) return;
+    setSelectedProvinceCode(inferProvinceCode(primaryAddress?.province ?? primaryAddress?.city));
+  }, [provinces, primaryAddress?.province, primaryAddress?.city]);
+
+  useEffect(() => {
+    if (!districts.length) return;
+    setSelectedDistrictCode(inferDistrictCode(primaryAddress?.district));
+  }, [districts, primaryAddress?.district]);
 
   const handleChange = (field: keyof typeof addressForm) => (event: ChangeEvent<HTMLInputElement>) => {
     setAddressForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -48,18 +109,27 @@ export default function UserAddressCard() {
     }
 
     try {
+      const selectedProvinceName = provinces.find(
+        (item) => String(item.code) === selectedProvinceCode
+      )?.name;
+      const selectedDistrictName = districts.find(
+        (item) => String(item.code) === selectedDistrictCode
+      )?.name;
+
       const updated = await companyService.updateMyCompanyProfile({
         address: {
-          country: addressForm.country,
-          province: addressForm.city,
-          district: addressForm.district,
-          ward: addressForm.street,
+          country: "Việt Nam",
+          province: selectedProvinceCode || addressForm.city,
+          district: selectedDistrictCode || addressForm.district,
+          ward: addressForm.street.trim(),
           isPrimary: true,
         },
       });
 
-      if (updated) {
-        setCompany(updated);
+      const refreshed = updated?.id ? await companyService.getMyCompany() : updated;
+
+      if (refreshed) {
+        setCompany(refreshed);
       }
 
       toast.success("Đã lưu địa chỉ");
@@ -79,9 +149,9 @@ export default function UserAddressCard() {
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
               <InfoCell label="Quốc gia" value={primaryAddress?.country ?? "Chưa cập nhật"} />
-              <InfoCell label="Tỉnh/Thành phố" value={primaryAddress?.city ?? "Chưa cập nhật"} />
-              <InfoCell label="Quận/Huyện" value={primaryAddress?.district ?? "Chưa cập nhật"} />
-              <InfoCell label="Địa chỉ cụ thể" value={primaryAddress?.street ?? "Chưa cập nhật"} fullWidth />
+              <InfoCell label="Tỉnh/Thành phố" value={displayedProvinceName} />
+              <InfoCell label="Quận/Huyện" value={displayedDistrictName} />
+              <InfoCell label="Địa chỉ cụ thể" value={displayedStreet} fullWidth />
             </div>
           </div>
 
@@ -114,18 +184,65 @@ export default function UserAddressCard() {
             <div className="grid grid-cols-1 gap-x-6 gap-y-5 px-2 lg:grid-cols-2">
               <div>
                 <Label>Quốc gia</Label>
-                <Input type="text" value={addressForm.country} onChange={handleChange("country")} />
+                <Input type="text" value="Việt Nam" disabled />
               </div>
               <div>
                 <Label>Tỉnh/Thành phố</Label>
-                <Input type="text" value={addressForm.city} onChange={handleChange("city")} />
+                <select
+                  value={selectedProvinceCode}
+                  onChange={(event) => {
+                    const nextCode = event.target.value;
+                    setSelectedProvinceCode(nextCode);
+                    setSelectedDistrictCode("");
+                    const selected = provinces.find((item) => String(item.code) === nextCode);
+                    setAddressForm((prev) => ({
+                      ...prev,
+                      city: nextCode,
+                      district: "",
+                    }));
+                    if (!selected) {
+                      setAddressForm((prev) => ({ ...prev, city: "" }));
+                    }
+                  }}
+                  disabled={loadingProvinces}
+                  className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm shadow-theme-xs focus:outline-hidden focus:ring-3 focus:border-brand-300 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                >
+                  <option value="">{loadingProvinces ? "Đang tải tỉnh/thành..." : "Chọn tỉnh/thành"}</option>
+                  {provinces.map((province) => (
+                    <option key={province.code} value={String(province.code)}>
+                      {province.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <Label>Quận/Huyện</Label>
-                <Input type="text" value={addressForm.district} onChange={handleChange("district")} />
+                <select
+                  value={selectedDistrictCode}
+                  onChange={(event) => {
+                    const nextCode = event.target.value;
+                    setSelectedDistrictCode(nextCode);
+                    setAddressForm((prev) => ({ ...prev, district: nextCode }));
+                  }}
+                  disabled={!selectedProvinceCode || loadingDistricts}
+                  className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm shadow-theme-xs focus:outline-hidden focus:ring-3 focus:border-brand-300 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                >
+                  <option value="">
+                    {!selectedProvinceCode
+                      ? "Chọn tỉnh trước"
+                      : loadingDistricts
+                      ? "Đang tải quận/huyện..."
+                      : "Chọn quận/huyện"}
+                  </option>
+                  {districts.map((district) => (
+                    <option key={district.code} value={String(district.code)}>
+                      {district.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="lg:col-span-2">
-                <Label>Địa chỉ cụ thể</Label>
+                <Label>Phường/Xã</Label>
                 <Input type="text" value={addressForm.street} onChange={handleChange("street")} />
               </div>
             </div>

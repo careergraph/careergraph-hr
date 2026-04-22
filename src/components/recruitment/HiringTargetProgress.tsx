@@ -5,6 +5,10 @@ import { Dropdown } from "../custom/dropdown/Dropdown";
 import { DropdownItem } from "../custom/dropdown/DropdownItem";
 import { CheckCircleIcon, MoreDotIcon } from "@/icons";
 import type { DashboardHiringTargetProgress } from "@/features/dashboard/types/dashboard.types";
+import { Modal } from "@/components/custom/modal";
+import Button from "@/components/custom/button/Button";
+import { exportHiringTargetPdf } from "@/features/dashboard/utils/reportExport";
+import { toast } from "sonner";
 
 type HiringTargetProgressProps = {
   data?: DashboardHiringTargetProgress | null;
@@ -32,6 +36,7 @@ export default function HiringTargetProgress({
   error = null,
 }: HiringTargetProgressProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
 
   const completionPercent = data?.completionPercent ?? 0;
   const changePercent = data?.changePercent ?? 0;
@@ -74,6 +79,21 @@ export default function HiringTargetProgress({
 
   const toggleDropdown = () => setIsOpen((prev) => !prev);
   const closeDropdown = () => setIsOpen(false);
+
+  const openPlanDetails = () => {
+    setIsPlanModalOpen(true);
+    closeDropdown();
+  };
+
+  const handleExportPdf = () => {
+    const ok = exportHiringTargetPdf(data);
+    if (!ok) {
+      toast.error("Không có dữ liệu để xuất PDF");
+      return;
+    }
+    toast.success("Đã xuất báo cáo PDF");
+    closeDropdown();
+  };
 
   if (loading) {
     return (
@@ -124,13 +144,13 @@ export default function HiringTargetProgress({
               className="w-44 p-2"
             >
               <DropdownItem
-                onItemClick={closeDropdown}
+                onItemClick={openPlanDetails}
                 className="flex w-full rounded-lg text-left text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
               >
                 Xem chi tiết kế hoạch
               </DropdownItem>
               <DropdownItem
-                onItemClick={closeDropdown}
+                onItemClick={handleExportPdf}
                 className="flex w-full rounded-lg text-left text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
               >
                 Xuất báo cáo PDF
@@ -190,6 +210,49 @@ export default function HiringTargetProgress({
           </p>
         </div>
       </div>
+
+      <Modal isOpen={isPlanModalOpen} onClose={() => setIsPlanModalOpen(false)} className="m-4 max-w-[680px]">
+        <div className="no-scrollbar relative w-full max-w-[680px] overflow-y-auto rounded-3xl bg-white p-6 dark:bg-gray-900 lg:p-8">
+          <h4 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Chi tiết kế hoạch tuyển dụng</h4>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            Tập trung theo dõi KPI chính để điều chỉnh tốc độ pipeline và tỷ lệ chốt offer.
+          </p>
+
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <MetricCard title="Mục tiêu quý" value={`${(data?.quarterTargetPositions ?? 0).toLocaleString("vi-VN")} vị trí`} />
+            <MetricCard title="Tỷ lệ hoàn thành" value={`${(data?.completionPercent ?? 0).toFixed(1)}%`} />
+            <MetricCard title="Đã tuyển tuần này" value={`${(data?.hiredThisWeek ?? 0).toLocaleString("vi-VN")} ứng viên`} />
+            <MetricCard title="Offer chờ ký" value={`${(data?.pendingOffers ?? 0).toLocaleString("vi-VN")} offer`} />
+          </div>
+
+          <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
+            <h5 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Gợi ý hành động</h5>
+            <ul className="mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+              <li>- Đẩy nhanh lịch phỏng vấn với các vị trí đang chậm hơn kế hoạch.</li>
+              <li>- Ưu tiên xử lý offer tồn để giảm tỷ lệ rớt cuối pipeline.</li>
+              <li>- Soát lại JD ở nhóm vị trí có chuyển đổi thấp trong 2 tuần gần nhất.</li>
+            </ul>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <Button size="sm" variant="outline" onClick={() => setIsPlanModalOpen(false)}>
+              Đóng
+            </Button>
+            <Button size="sm" onClick={handleExportPdf}>
+              Xuất PDF
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+function MetricCard({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800/50">
+      <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{title}</p>
+      <p className="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">{value}</p>
     </div>
   );
 }

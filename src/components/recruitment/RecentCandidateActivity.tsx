@@ -138,7 +138,7 @@ export default function RecentCandidateActivity({
           </TableHeader>
           <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
             {data.map((activity) => (
-              <TableRow key={activity.applicationId}>
+              <TableRow key={`${activity.applicationId}-${activity.updatedAt}`}>
                 <TableCell className="py-3">
                   <div className="flex items-center gap-3">
                     <div className="h-12 w-12 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">

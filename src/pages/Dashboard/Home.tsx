@@ -6,6 +6,8 @@ import HiringTargetProgress from "@/components/recruitment/HiringTargetProgress"
 import FunnelConversionChart from "@/components/recruitment/FunnelConversionChart";
 import RecentCandidateActivity from "@/components/recruitment/RecentCandidateActivity";
 import { useDashboardData } from "@/features/dashboard/hooks/useDashboardData";
+import DatePicker from "@/components/form/date-picker";
+import { toast } from "sonner";
 
 const toInputDate = (date: Date): string => {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000);
@@ -27,8 +29,9 @@ const createDefaultDateRange = () => {
 
 export default function Home() {
   const [dateRange, setDateRange] = useState(createDefaultDateRange);
+  const [refreshTick, setRefreshTick] = useState(0);
 
-  const { data, loading, error } = useDashboardData(dateRange);
+  const { data, loading, error } = useDashboardData(dateRange, refreshTick);
 
   const rangeLabel = useMemo(() => {
     if (!dateRange.from || !dateRange.to) {
@@ -40,6 +43,41 @@ export default function Home() {
 
   const resetToLast30Days = () => {
     setDateRange(createDefaultDateRange());
+  };
+
+  const handleRefreshPipeline = () => {
+    setRefreshTick((value) => value + 1);
+    toast.success("Đã cập nhật pipeline mới nhất");
+  };
+
+  const handleSendDailyReport = async () => {
+    if (!data) {
+      toast.error("Chưa có dữ liệu để gửi báo cáo");
+      return;
+    }
+
+    const now = new Date();
+    const since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const changes24h = (data.recentActivities ?? []).filter((item) => {
+      const updatedAt = new Date(item.updatedAt);
+      return !Number.isNaN(updatedAt.getTime()) && updatedAt >= since;
+    });
+
+    const report = [
+      "Bao cao pipeline 24h",
+      `Khoang du lieu dashboard: ${data.from} -> ${data.to}`,
+      `Tong thay doi 24h: ${changes24h.length}`,
+      `Ung vien: ${data.kpi.candidates.value}`,
+      `Don ung tuyen moi: ${data.kpi.newApplications.value}`,
+      `Lich phong van da len: ${data.kpi.scheduledInterviews.value}`,
+    ].join("\n");
+
+    try {
+      await navigator.clipboard.writeText(report);
+      toast.success("Đã sao chép báo cáo 24h, sẵn sàng gửi cho stakeholder");
+    } catch {
+      toast.error("Không thể sao chép báo cáo vào clipboard");
+    }
   };
 
   return (
@@ -83,12 +121,42 @@ export default function Home() {
               }
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
             />
+            <div className="w-full min-w-[220px] sm:w-auto">
+              <DatePicker
+                id="dashboard-date-range"
+                mode="range"
+                placeholder="Chọn nhanh khoảng ngày"
+                defaultDate={[dateRange.from, dateRange.to]}
+                onChange={(selectedDates) => {
+                  if (selectedDates.length === 2) {
+                    setDateRange({
+                      from: toInputDate(selectedDates[0]),
+                      to: toInputDate(selectedDates[1]),
+                    });
+                  }
+                }}
+              />
+            </div>
             <button
               type="button"
               onClick={resetToLast30Days}
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-white/5"
             >
               30 ngày gần nhất
+            </button>
+            <button
+              type="button"
+              onClick={handleRefreshPipeline}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-white/5"
+            >
+              Cập nhật pipeline mới nhất
+            </button>
+            <button
+              type="button"
+              onClick={handleSendDailyReport}
+              className="rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600"
+            >
+              Gửi báo cáo 24h
             </button>
           </div>
         </div>

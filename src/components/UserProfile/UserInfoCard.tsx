@@ -3,6 +3,7 @@ import { useModal } from "@/hooks/use-modal";
 import { Modal } from "../custom/modal";
 import Button from "../custom/button/Button";
 import Input from "../form/input/InputField";
+import TextArea from "../form/input/TextArea";
 import Label from "../form/Label";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
@@ -13,29 +14,45 @@ export default function UserInfoCard() {
   const { isOpen, openModal, closeModal } = useModal();
 
   const [formValues, setFormValues] = useState({
-    firstName: user?.firstName ?? "",
-    lastName: user?.lastName ?? "",
+    companyName: company?.name ?? "",
+    ceoName: company?.ceoName ?? "",
     email: user?.email ?? "",
-    phoneNumber: user?.phoneNumber ?? "",
-    jobTitle: user?.jobTitle ?? user?.role ?? "",
+    phoneNumber: company?.contacts?.find((contact) => contact.type === "PHONE")?.value ?? user?.phoneNumber ?? "",
+    website: company?.website ?? "",
+    size: company?.size ?? "",
+    foundedYear: String(company?.foundedYear ?? ""),
+    noOfMembers: String(company?.noOfMembers ?? ""),
+    description: company?.description ?? "",
   });
 
   useEffect(() => {
     setFormValues({
-      firstName: user?.firstName ?? "",
-      lastName: user?.lastName ?? "",
+      companyName: company?.name ?? "",
+      ceoName: company?.ceoName ?? "",
       email: user?.email ?? "",
-      phoneNumber: user?.phoneNumber ?? "",
-      jobTitle: user?.jobTitle ?? user?.role ?? "",
+      phoneNumber: company?.contacts?.find((contact) => contact.type === "PHONE")?.value ?? user?.phoneNumber ?? "",
+      website: company?.website ?? "",
+      size: company?.size ?? "",
+      foundedYear: String(company?.foundedYear ?? ""),
+      noOfMembers: String(company?.noOfMembers ?? ""),
+      description: company?.description ?? "",
     });
-  }, [user?.firstName, user?.lastName, user?.email, user?.phoneNumber, user?.jobTitle, user?.role]);
+  }, [
+    company?.name,
+    company?.ceoName,
+    company?.contacts,
+    company?.website,
+    company?.size,
+    company?.foundedYear,
+    company?.noOfMembers,
+    company?.description,
+    user?.email,
+    user?.phoneNumber,
+  ]);
 
   const bio = useMemo(() => {
-    if (company?.ceoName) return `CEO: ${company.ceoName}`;
-    if (company?.size) return `Quy mô: ${company.size}`;
-    if (company?.website) return `Website: ${company.website}`;
-    return formValues.jobTitle || "Chưa cập nhật";
-  }, [company?.ceoName, company?.size, company?.website, formValues.jobTitle]);
+    return company?.description?.trim() || "Chưa cập nhật";
+  }, [company?.description]);
 
   const handleChange = (field: keyof typeof formValues) => (event: ChangeEvent<HTMLInputElement>) => {
     setFormValues((prev) => ({ ...prev, [field]: event.target.value }));
@@ -48,30 +65,41 @@ export default function UserInfoCard() {
     }
 
     try {
+      const parsedFoundedYear = Number(formValues.foundedYear);
+      const parsedNoOfMembers = Number(formValues.noOfMembers);
+
       const updated = await companyService.updateMyCompanyProfile({
-        ceoName: [formValues.firstName, formValues.lastName].filter(Boolean).join(" ").trim(),
+        name: formValues.companyName.trim(),
+        ceoName: formValues.ceoName.trim(),
+        website: formValues.website.trim(),
+        size: formValues.size.trim(),
+        description: formValues.description.trim(),
+        yearFounded: Number.isFinite(parsedFoundedYear) && parsedFoundedYear > 0 ? parsedFoundedYear : null,
+        noOfMembers: Number.isFinite(parsedNoOfMembers) && parsedNoOfMembers >= 0 ? parsedNoOfMembers : null,
         contact: {
           type: "PHONE",
-          value: formValues.phoneNumber,
+          value: formValues.phoneNumber.trim(),
           isPrimary: true,
         },
       });
 
-      if (updated) {
-        setCompany(updated);
-        const [firstName = "", ...rest] = (updated.ceoName ?? "").trim().split(/\s+/);
+      const refreshed = updated?.id ? await companyService.getMyCompany() : updated;
+
+      if (refreshed) {
+        setCompany(refreshed);
+        const [firstName = "", ...rest] = (refreshed.ceoName ?? "").trim().split(/\s+/);
         updateUser({
           firstName,
           lastName: rest.join(" "),
-          phoneNumber: formValues.phoneNumber,
-          email: updated.email ?? user?.email,
+          phoneNumber: formValues.phoneNumber.trim(),
+          email: refreshed.email ?? user?.email,
         });
       }
 
-      toast.success("Đã lưu thông tin cá nhân");
+      toast.success("Đã lưu thông tin doanh nghiệp");
       closeModal();
     } catch (error) {
-      toast.error("Lưu thông tin thất bại");
+      toast.error("Lưu thông tin doanh nghiệp thất bại");
       console.error(error);
     }
   };
@@ -80,14 +108,17 @@ export default function UserInfoCard() {
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900 lg:p-6">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 lg:mb-6">Thông tin cá nhân</h4>
+          <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 lg:mb-6">Thông tin doanh nghiệp</h4>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
-            <InfoRow label="Họ" value={user?.firstName ?? "-"} />
-            <InfoRow label="Tên" value={user?.lastName ?? "-"} />
-            <InfoRow label="Email" value={user?.email ?? "-"} />
-            <InfoRow label="Số điện thoại" value={user?.phoneNumber ?? "Chưa cập nhật"} />
-            <InfoRow label="Chức danh" value={formValues.jobTitle || "Chưa cập nhật"} />
+            <InfoRow label="Tên công ty" value={company?.name ?? "Chưa cập nhật"} />
+            <InfoRow label="CEO" value={company?.ceoName ?? "Chưa cập nhật"} />
+            <InfoRow label="Email" value={company?.email ?? user?.email ?? "-"} />
+            <InfoRow label="Số điện thoại" value={company?.contacts?.find((contact) => contact.type === "PHONE")?.value ?? user?.phoneNumber ?? "Chưa cập nhật"} />
+            <InfoRow label="Website" value={company?.website ?? "Chưa cập nhật"} />
+            <InfoRow label="Quy mô" value={company?.size ?? "Chưa cập nhật"} />
+            <InfoRow label="Năm thành lập" value={company?.foundedYear ? String(company.foundedYear) : "Chưa cập nhật"} />
+            <InfoRow label="Số nhân sự" value={typeof company?.noOfMembers === "number" ? `${company.noOfMembers} người` : "Chưa cập nhật"} />
             <InfoRow label="Mô tả" value={bio} fullWidth />
           </div>
         </div>
@@ -111,19 +142,19 @@ export default function UserInfoCard() {
       <Modal isOpen={isOpen} onClose={closeModal} className="m-4 max-w-[700px]">
         <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
           <div className="px-2 pr-10">
-            <h4 className="mb-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">Cập nhật thông tin</h4>
-            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">Chỉnh sửa thông tin để đồng bộ với hồ sơ doanh nghiệp.</p>
+            <h4 className="mb-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">Cập nhật thông tin doanh nghiệp</h4>
+            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">Giữ dữ liệu công ty đầy đủ để ứng viên nhìn thấy hồ sơ tin cậy hơn.</p>
           </div>
           <form className="flex flex-col">
             <div className="custom-scrollbar h-[420px] overflow-y-auto px-2 pb-3">
               <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                 <div className="col-span-2 lg:col-span-1">
-                  <Label>Họ</Label>
-                  <Input type="text" value={formValues.firstName} onChange={handleChange("firstName")} />
+                  <Label>Tên công ty</Label>
+                  <Input type="text" value={formValues.companyName} onChange={handleChange("companyName")} />
                 </div>
                 <div className="col-span-2 lg:col-span-1">
-                  <Label>Tên</Label>
-                  <Input type="text" value={formValues.lastName} onChange={handleChange("lastName")} />
+                  <Label>CEO</Label>
+                  <Input type="text" value={formValues.ceoName} onChange={handleChange("ceoName")} />
                 </div>
                 <div className="col-span-2 lg:col-span-1">
                   <Label>Email</Label>
@@ -133,9 +164,30 @@ export default function UserInfoCard() {
                   <Label>Số điện thoại</Label>
                   <Input type="tel" value={formValues.phoneNumber} onChange={handleChange("phoneNumber")} />
                 </div>
+                <div className="col-span-2 lg:col-span-1">
+                  <Label>Website</Label>
+                  <Input type="text" value={formValues.website} onChange={handleChange("website")} />
+                </div>
+                <div className="col-span-2 lg:col-span-1">
+                  <Label>Quy mô</Label>
+                  <Input type="text" value={formValues.size} onChange={handleChange("size")} placeholder="Ví dụ: 100-300 nhân sự" />
+                </div>
+                <div className="col-span-2 lg:col-span-1">
+                  <Label>Năm thành lập</Label>
+                  <Input type="number" value={formValues.foundedYear} onChange={handleChange("foundedYear")} placeholder="Ví dụ: 2018" />
+                </div>
+                <div className="col-span-2 lg:col-span-1">
+                  <Label>Số nhân sự</Label>
+                  <Input type="number" value={formValues.noOfMembers} onChange={handleChange("noOfMembers")} placeholder="Ví dụ: 250" />
+                </div>
                 <div className="col-span-2">
-                  <Label>Chức danh</Label>
-                  <Input type="text" value={formValues.jobTitle} onChange={handleChange("jobTitle")} />
+                  <Label>Mô tả công ty</Label>
+                  <TextArea
+                    rows={5}
+                    value={formValues.description}
+                    onChange={(value) => setFormValues((prev) => ({ ...prev, description: value }))}
+                    placeholder="Mô tả ngắn về lĩnh vực, văn hóa và điểm mạnh của công ty"
+                  />
                 </div>
               </div>
             </div>

@@ -4,6 +4,9 @@ export interface CompanyAddress {
   district?: string;
   city?: string;
   country?: string;
+  province?: string;
+  ward?: string;
+  isPrimary?: boolean;
   latitude?: number;
   longitude?: number;
 }
@@ -23,6 +26,8 @@ export interface CompanyProfile {
   size?: string | null;
   website?: string | null;
   ceoName?: string | null;
+  description?: string | null;
+  noOfMembers?: number | null;
   foundedYear?: string | number | null;
   followers?: number;
   following?: number;

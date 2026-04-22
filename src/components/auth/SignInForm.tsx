@@ -423,7 +423,7 @@ export default function SignInForm() {
                 </div>
                 
                 <div>
-                  <Button className="w-full" size="sm" disabled={submitting}>
+                  <Button className="w-full" size="sm" type="submit" disabled={submitting}>
                     {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
                   </Button>
                 </div>

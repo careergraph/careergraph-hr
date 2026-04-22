@@ -30,6 +30,8 @@ const mapAddress = (raw: Record<string, unknown>): CompanyAddress => ({
       ? raw.ward
       : undefined,
   district: typeof raw.district === "string" ? raw.district : undefined,
+  province: typeof raw.province === "string" ? raw.province : undefined,
+  ward: typeof raw.ward === "string" ? raw.ward : undefined,
   city:
     typeof raw.city === "string"
       ? raw.city
@@ -37,6 +39,7 @@ const mapAddress = (raw: Record<string, unknown>): CompanyAddress => ({
       ? raw.province
       : undefined,
   country: typeof raw.country === "string" ? raw.country : undefined,
+  isPrimary: typeof raw.isPrimary === "boolean" ? raw.isPrimary : undefined,
   latitude: typeof raw.latitude === "number" ? raw.latitude : undefined,
   longitude: typeof raw.longitude === "number" ? raw.longitude : undefined,
 });
@@ -71,6 +74,8 @@ const mapCompany = (raw: Record<string, unknown>): CompanyProfile => {
     size: typeof raw.size === "string" ? raw.size : undefined,
     website: typeof raw.website === "string" ? raw.website : undefined,
     ceoName: typeof raw.ceoName === "string" ? raw.ceoName : undefined,
+    description: typeof raw.description === "string" ? raw.description : undefined,
+    noOfMembers: typeof raw.noOfMembers === "number" ? raw.noOfMembers : undefined,
     foundedYear:
       typeof raw.yearFounded === "number" || typeof raw.yearFounded === "string"
         ? raw.yearFounded

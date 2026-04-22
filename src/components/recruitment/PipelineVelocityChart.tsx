@@ -5,6 +5,8 @@ import { Dropdown } from "../custom/dropdown/Dropdown";
 import { DropdownItem } from "../custom/dropdown/DropdownItem";
 import { MoreDotIcon } from "@/icons";
 import type { DashboardPipelineVelocity } from "@/features/dashboard/types/dashboard.types";
+import { exportPipelineCsv, exportPipelinePdf } from "@/features/dashboard/utils/reportExport";
+import { toast } from "sonner";
 
 type PipelineVelocityChartProps = {
   data?: DashboardPipelineVelocity | null;
@@ -98,6 +100,26 @@ export default function PipelineVelocityChart({
   const toggleDropdown = () => setIsOpen((prev) => !prev);
   const closeDropdown = () => setIsOpen(false);
 
+  const handleExportCsv = () => {
+    const ok = exportPipelineCsv(data);
+    if (!ok) {
+      toast.error("Không có dữ liệu để xuất CSV");
+      return;
+    }
+    toast.success("Đã xuất dữ liệu CSV");
+    closeDropdown();
+  };
+
+  const handleExportPdf = () => {
+    const ok = exportPipelinePdf(data);
+    if (!ok) {
+      toast.error("Không có dữ liệu để xuất PDF");
+      return;
+    }
+    toast.success("Đã xuất báo cáo PDF");
+    closeDropdown();
+  };
+
   if (loading) {
     return (
       <div className="h-79.5 animate-pulse rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/3" />
@@ -142,13 +164,13 @@ export default function PipelineVelocityChart({
           </button>
           <Dropdown isOpen={isOpen} onClose={closeDropdown} className="w-44 p-2">
             <DropdownItem
-              onItemClick={closeDropdown}
+              onItemClick={handleExportPdf}
               className="flex w-full rounded-lg text-left text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
             >
-              Xem báo cáo
+              Xuất báo cáo PDF
             </DropdownItem>
             <DropdownItem
-              onItemClick={closeDropdown}
+              onItemClick={handleExportCsv}
               className="flex w-full rounded-lg text-left text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
             >
               Xuất dữ liệu CSV
