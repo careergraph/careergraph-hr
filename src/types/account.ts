@@ -1,4 +1,5 @@
 export interface CompanyAddress {
+  name?: string;
   label?: string;
   street?: string;
   district?: string;

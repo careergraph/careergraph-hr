@@ -6,7 +6,6 @@ import HiringTargetProgress from "@/components/recruitment/HiringTargetProgress"
 import FunnelConversionChart from "@/components/recruitment/FunnelConversionChart";
 import RecentCandidateActivity from "@/components/recruitment/RecentCandidateActivity";
 import { useDashboardData } from "@/features/dashboard/hooks/useDashboardData";
-import DatePicker from "@/components/form/date-picker";
 import { toast } from "sonner";
 
 const toInputDate = (date: Date): string => {
@@ -23,6 +22,33 @@ const createDefaultDateRange = () => {
     from: toInputDate(from),
     to: toInputDate(to),
   };
+};
+
+const copyToClipboard = async (content: string): Promise<boolean> => {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(content);
+      return true;
+    }
+  } catch {
+    // Fallback below.
+  }
+
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = content;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    const copied = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return copied;
+  } catch {
+    return false;
+  }
 };
 
 // Trang Home tổng hợp các widget thống kê và biểu đồ phục vụ quản trị tuyển dụng.
@@ -72,10 +98,10 @@ export default function Home() {
       `Lich phong van da len: ${data.kpi.scheduledInterviews.value}`,
     ].join("\n");
 
-    try {
-      await navigator.clipboard.writeText(report);
+    const copied = await copyToClipboard(report);
+    if (copied) {
       toast.success("Đã sao chép báo cáo 24h, sẵn sàng gửi cho stakeholder");
-    } catch {
+    } else {
       toast.error("Không thể sao chép báo cáo vào clipboard");
     }
   };
@@ -121,22 +147,6 @@ export default function Home() {
               }
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
             />
-            <div className="w-full min-w-[220px] sm:w-auto">
-              <DatePicker
-                id="dashboard-date-range"
-                mode="range"
-                placeholder="Chọn nhanh khoảng ngày"
-                defaultDate={[dateRange.from, dateRange.to]}
-                onChange={(selectedDates) => {
-                  if (selectedDates.length === 2) {
-                    setDateRange({
-                      from: toInputDate(selectedDates[0]),
-                      to: toInputDate(selectedDates[1]),
-                    });
-                  }
-                }}
-              />
-            </div>
             <button
               type="button"
               onClick={resetToLast30Days}
@@ -156,7 +166,7 @@ export default function Home() {
               onClick={handleSendDailyReport}
               className="rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600"
             >
-              Gửi báo cáo 24h
+              Sao chép báo cáo 24h
             </button>
           </div>
         </div>

@@ -22,16 +22,26 @@ const unwrap = <T>(payload: ApiEnvelope<T>): T => {
 
 const mapAddress = (raw: Record<string, unknown>): CompanyAddress => ({
   // Chỉ chấp nhận chuỗi/number hợp lệ, tránh undefined gây crash UI.
+  name: typeof raw.name === "string" ? raw.name : undefined,
   label: typeof raw.label === "string" ? raw.label : undefined,
   street:
     typeof raw.street === "string"
       ? raw.street
       : typeof raw.ward === "string"
       ? raw.ward
+      : typeof raw.name === "string"
+      ? raw.name
       : undefined,
   district: typeof raw.district === "string" ? raw.district : undefined,
   province: typeof raw.province === "string" ? raw.province : undefined,
-  ward: typeof raw.ward === "string" ? raw.ward : undefined,
+  ward:
+    typeof raw.ward === "string"
+      ? raw.ward
+      : typeof raw.street === "string"
+      ? raw.street
+      : typeof raw.name === "string"
+      ? raw.name
+      : undefined,
   city:
     typeof raw.city === "string"
       ? raw.city

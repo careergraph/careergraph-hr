@@ -13,10 +13,25 @@ export default function UserAddressCard() {
   const { company, setCompany } = useAuthStore();
   const { isOpen, openModal, closeModal } = useModal();
 
-  const primaryAddress = useMemo(
-    () => company?.addresses?.find((address) => address?.isPrimary) ?? company?.addresses?.[0] ?? null,
-    [company?.addresses]
-  );
+  const primaryAddress = useMemo(() => {
+    const addresses = company?.addresses ?? [];
+
+    return (
+      addresses.find((address) => address?.isPrimary) ??
+      addresses.find((address) =>
+        Boolean(
+          address?.province ||
+            address?.city ||
+            address?.district ||
+            address?.ward ||
+            address?.street ||
+            address?.name
+        )
+      ) ??
+      addresses[0] ??
+      null
+    );
+  }, [company?.addresses]);
 
   const [selectedProvinceCode, setSelectedProvinceCode] = useState<string>("");
   const [selectedDistrictCode, setSelectedDistrictCode] = useState<string>("");
@@ -30,7 +45,7 @@ export default function UserAddressCard() {
     country: "Việt Nam",
     city: primaryAddress?.city ?? "",
     district: primaryAddress?.district ?? "",
-    street: primaryAddress?.street ?? "",
+    street: primaryAddress?.ward ?? primaryAddress?.street ?? primaryAddress?.name ?? "",
   });
 
   const inferProvinceCode = (provinceNameOrCode?: string) => {
@@ -70,15 +85,15 @@ export default function UserAddressCard() {
   }, [primaryAddress?.district, districts]);
 
   const displayedStreet = useMemo(() => {
-    return primaryAddress?.ward || primaryAddress?.street || "Chưa cập nhật";
-  }, [primaryAddress?.ward, primaryAddress?.street]);
+    return primaryAddress?.ward || primaryAddress?.street || primaryAddress?.name || "Chưa cập nhật";
+  }, [primaryAddress?.ward, primaryAddress?.street, primaryAddress?.name]);
 
   useEffect(() => {
     setAddressForm({
       country: "Việt Nam",
       city: primaryAddress?.province ?? primaryAddress?.city ?? "",
       district: primaryAddress?.district ?? "",
-      street: primaryAddress?.ward ?? primaryAddress?.street ?? "",
+      street: primaryAddress?.ward ?? primaryAddress?.street ?? primaryAddress?.name ?? "",
     });
   }, [
     primaryAddress?.province,
@@ -86,6 +101,7 @@ export default function UserAddressCard() {
     primaryAddress?.district,
     primaryAddress?.ward,
     primaryAddress?.street,
+    primaryAddress?.name,
   ]);
 
   useEffect(() => {
@@ -109,27 +125,18 @@ export default function UserAddressCard() {
     }
 
     try {
-      const selectedProvinceName = provinces.find(
-        (item) => String(item.code) === selectedProvinceCode
-      )?.name;
-      const selectedDistrictName = districts.find(
-        (item) => String(item.code) === selectedDistrictCode
-      )?.name;
-
       const updated = await companyService.updateMyCompanyProfile({
         address: {
           country: "Việt Nam",
-          province: selectedProvinceCode || addressForm.city,
-          district: selectedDistrictCode || addressForm.district,
+          province: selectedProvinceCode || addressForm.city || primaryAddress?.province || primaryAddress?.city || "",
+          district: selectedDistrictCode || addressForm.district || primaryAddress?.district || "",
           ward: addressForm.street.trim(),
           isPrimary: true,
         },
       });
 
-      const refreshed = updated?.id ? await companyService.getMyCompany() : updated;
-
-      if (refreshed) {
-        setCompany(refreshed);
+      if (updated) {
+        setCompany(updated);
       }
 
       toast.success("Đã lưu địa chỉ");
@@ -156,8 +163,16 @@ export default function UserAddressCard() {
           </div>
 
           <button
-            onClick={openModal}
-            className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.05] dark:hover:text-gray-100 lg:inline-flex lg:w-auto"
+            onClick={() => {
+              setAddressForm({
+                country: "Việt Nam",
+                city: primaryAddress?.province ?? primaryAddress?.city ?? "",
+                district: primaryAddress?.district ?? "",
+                street: primaryAddress?.ward ?? primaryAddress?.street ?? primaryAddress?.name ?? "",
+              });
+              openModal();
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-100 lg:inline-flex lg:w-auto"
           >
             <svg className="fill-current" width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
@@ -172,7 +187,7 @@ export default function UserAddressCard() {
         </div>
       </div>
 
-      <Modal isOpen={isOpen} onClose={closeModal} className="m-4 max-w-[700px]">
+      <Modal isOpen={isOpen} onClose={closeModal} className="m-4 max-w-175">
         <div className="custom-scrollbar relative w-full overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
           <div className="px-2 pr-10">
             <h4 className="mb-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">Cập nhật địa chỉ</h4>
@@ -190,6 +205,7 @@ export default function UserAddressCard() {
                 <Label>Tỉnh/Thành phố</Label>
                 <select
                   value={selectedProvinceCode}
+                  title="Tỉnh/Thành phố"
                   onChange={(event) => {
                     const nextCode = event.target.value;
                     setSelectedProvinceCode(nextCode);
@@ -219,6 +235,7 @@ export default function UserAddressCard() {
                 <Label>Quận/Huyện</Label>
                 <select
                   value={selectedDistrictCode}
+                  title="Quận/Huyện"
                   onChange={(event) => {
                     const nextCode = event.target.value;
                     setSelectedDistrictCode(nextCode);
@@ -242,8 +259,13 @@ export default function UserAddressCard() {
                 </select>
               </div>
               <div className="lg:col-span-2">
-                <Label>Phường/Xã</Label>
-                <Input type="text" value={addressForm.street} onChange={handleChange("street")} />
+                <Label>Địa chỉ cụ thể</Label>
+                <Input
+                  type="text"
+                  value={addressForm.street}
+                  onChange={handleChange("street")}
+                  placeholder="Ví dụ: Phường 6, đường Nguyễn Trãi"
+                />
               </div>
             </div>
             <div className="mt-6 flex items-center gap-3 px-2 lg:justify-end">

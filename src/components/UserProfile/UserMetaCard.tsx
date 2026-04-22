@@ -25,11 +25,35 @@ export default function UserMetaCard() {
 
   const position = user?.jobTitle ?? user?.role ?? "Quản trị viên";
   const companyName = company?.name ?? "Doanh nghiệp";
-  const location = useMemo(() => {
-    const address = company?.addresses?.[0];
-    const parts = [address?.city, address?.district, address?.country].filter(Boolean);
-    return parts.length > 0 ? parts.join(", ") : undefined;
+  const primaryAddress = useMemo(() => {
+    const addresses = company?.addresses ?? [];
+
+    return (
+      addresses.find((address) => address?.isPrimary) ??
+      addresses.find((address) =>
+        Boolean(
+          address?.province ||
+            address?.city ||
+            address?.district ||
+            address?.ward ||
+            address?.street ||
+            address?.name
+        )
+      ) ??
+      addresses[0] ??
+      null
+    );
   }, [company?.addresses]);
+
+  const location = useMemo(() => {
+    const parts = [
+      primaryAddress?.district,
+      primaryAddress?.province ?? primaryAddress?.city,
+      primaryAddress?.country,
+    ].filter(Boolean);
+
+    return parts.length > 0 ? parts.join(", ") : undefined;
+  }, [primaryAddress?.district, primaryAddress?.province, primaryAddress?.city, primaryAddress?.country]);
 
   const websiteLink = company?.website ?? company?.contacts?.find((contact) => contact.type === "website")?.value;
 
@@ -99,6 +123,7 @@ export default function UserMetaCard() {
       <input
         ref={avatarInputRef}
         type="file"
+        title="Chọn ảnh đại diện"
         className="hidden"
         accept="image/*"
         onChange={(event) => handleUpload(event, "AVATAR")}
@@ -106,6 +131,7 @@ export default function UserMetaCard() {
       <input
         ref={coverInputRef}
         type="file"
+        title="Chọn ảnh bìa"
         className="hidden"
         accept="image/*"
         onChange={(event) => handleUpload(event, "COVER")}
@@ -115,7 +141,7 @@ export default function UserMetaCard() {
         {company?.cover ? (
           <img src={company.cover} alt="Cover" className="h-full w-full object-cover" />
         ) : (
-          <div className="h-full w-full bg-gradient-to-r from-slate-300 via-slate-200 to-slate-300 dark:from-gray-700 dark:via-gray-800 dark:to-gray-700" />
+          <div className="h-full w-full bg-linear-to-r from-slate-300 via-slate-200 to-slate-300 dark:from-gray-700 dark:via-gray-800 dark:to-gray-700" />
         )}
       </div>
 
@@ -180,7 +206,7 @@ function SocialIcon({ href, icon, label }: { href: string; icon: ReactNode; labe
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 shadow-theme-xs transition-transform hover:scale-105 hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.05] dark:hover:text-gray-100"
+      className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 shadow-theme-xs transition-transform hover:scale-105 hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-100"
     >
       {icon}
     </a>

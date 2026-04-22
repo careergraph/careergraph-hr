@@ -83,16 +83,14 @@ export default function UserInfoCard() {
         },
       });
 
-      const refreshed = updated?.id ? await companyService.getMyCompany() : updated;
-
-      if (refreshed) {
-        setCompany(refreshed);
-        const [firstName = "", ...rest] = (refreshed.ceoName ?? "").trim().split(/\s+/);
+      if (updated) {
+        setCompany(updated);
+        const [firstName = "", ...rest] = (updated.ceoName ?? "").trim().split(/\s+/);
         updateUser({
           firstName,
           lastName: rest.join(" "),
           phoneNumber: formValues.phoneNumber.trim(),
-          email: refreshed.email ?? user?.email,
+          email: updated.email ?? user?.email,
         });
       }
 
@@ -125,7 +123,7 @@ export default function UserInfoCard() {
 
         <button
           onClick={openModal}
-          className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.05] dark:hover:text-gray-100 lg:inline-flex lg:w-auto"
+          className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-100 lg:inline-flex lg:w-auto"
         >
           <svg className="fill-current" width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path
@@ -139,14 +137,14 @@ export default function UserInfoCard() {
         </button>
       </div>
 
-      <Modal isOpen={isOpen} onClose={closeModal} className="m-4 max-w-[700px]">
-        <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
+      <Modal isOpen={isOpen} onClose={closeModal} className="m-4 max-w-175">
+        <div className="no-scrollbar relative w-full max-w-175 overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
           <div className="px-2 pr-10">
             <h4 className="mb-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">Cập nhật thông tin doanh nghiệp</h4>
             <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">Giữ dữ liệu công ty đầy đủ để ứng viên nhìn thấy hồ sơ tin cậy hơn.</p>
           </div>
           <form className="flex flex-col">
-            <div className="custom-scrollbar h-[420px] overflow-y-auto px-2 pb-3">
+            <div className="custom-scrollbar h-105 overflow-y-auto px-2 pb-3">
               <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                 <div className="col-span-2 lg:col-span-1">
                   <Label>Tên công ty</Label>

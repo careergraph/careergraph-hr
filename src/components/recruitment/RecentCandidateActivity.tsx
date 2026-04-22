@@ -6,7 +6,7 @@ import {
   TableRow,
 } from "../custom/table";
 import Badge from "../custom/badge/Badge";
-import { CalenderIcon, MailIcon, UserCircleIcon } from "@/icons";
+import { CalenderIcon, UserCircleIcon } from "@/icons";
 import type { DashboardRecentActivity } from "@/features/dashboard/types/dashboard.types";
 
 type RecentCandidateActivityProps = {
@@ -85,18 +85,12 @@ export default function RecentCandidateActivity({
             Cập nhật pipeline mới nhất
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Tổng hợp thay đổi trong 24 giờ qua giữa các giai đoạn tuyển dụng
+            Tổng hợp thay đổi theo khoảng thời gian đã chọn giữa các giai đoạn tuyển dụng
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-xs font-medium text-gray-600 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/3 dark:hover:text-gray-200">
+        <div className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-xs font-medium text-gray-600 shadow-theme-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
             <CalenderIcon className="size-4" />
             {dateRangeLabel}
-          </button>
-          <button className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-xs font-medium text-gray-600 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/3 dark:hover:text-gray-200">
-            <MailIcon className="size-4" />
-            Gửi báo cáo
-          </button>
         </div>
       </div>
 
