@@ -7,7 +7,6 @@ import { FeaturesSection } from "./FeaturesSection";
 import { WorkflowSection } from "./WorkflowSection";
 import { SolutionsSection } from "./SolutionsSection";
 import { TestimonialsSection } from "./TestimonialsSection";
-import { PricingSection } from "./PricingSection";
 import { IntegrationsSection } from "./IntegrationsSection";
 import { CallToActionSection } from "./CallToActionSection";
 import { LandingFooter } from "./LandingFooter";
@@ -125,6 +124,7 @@ const testimonials = [
   },
 ];
 
+//@ts-ignore
 const pricingPlans = [
   {
     name: "Essential",

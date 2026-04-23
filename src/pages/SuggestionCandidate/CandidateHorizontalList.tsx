@@ -214,7 +214,10 @@ const CandidateHorizontalList = ({
 
 export default CandidateHorizontalList;
 
-function CandidateCardContent({ candidate, selectedCandidate }: { candidate: SuggestionCandidateListItem; selectedCandidate: SuggestionCandidateListItem | null }) {
+function CandidateCardContent({ candidate,
+  //@ts-ignore
+  selectedCandidate 
+  }: { candidate: SuggestionCandidateListItem; selectedCandidate: SuggestionCandidateListItem | null }) {
   return (
     <>
       <div className="mb-3 flex items-center gap-3">
