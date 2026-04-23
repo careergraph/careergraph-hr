@@ -45,6 +45,7 @@ export default function UserMetaCard() {
     );
   }, [company?.addresses]);
 
+  // @ts-ignore
   const location = useMemo(() => {
     const parts = [
       primaryAddress?.district,

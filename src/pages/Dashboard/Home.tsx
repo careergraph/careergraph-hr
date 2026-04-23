@@ -78,7 +78,9 @@ export default function Home() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [dateRange, setDateRange] = useState(() => getInitialDateRange(searchParams));
   const [refreshTick, setRefreshTick] = useState(0);
+  // @ts-ignore
   const [lastCopiedReport, setLastCopiedReport] = useState<string | null>(null);
+  // @ts-ignore
   const [lastCopiedAt, setLastCopiedAt] = useState<string | null>(null);
 
   const fromInputRef = useRef<HTMLInputElement>(null);
