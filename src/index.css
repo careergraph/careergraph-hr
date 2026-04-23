@@ -844,3 +844,17 @@ textarea:disabled {
     --bottom-nav-height: calc(3.5rem + var(--safe-area-bottom));
   }
 }
+
+/* ── Flatpickr Mobile Responsive ── */
+@media (max-width: 767px) {
+  .flatpickr-calendar {
+    width: calc(100vw - 2rem) !important;
+    max-width: 320px;
+    left: 50% !important;
+    transform: translateX(-50%);
+  }
+  .flatpickr-day {
+    height: 40px;
+    line-height: 40px;
+  }
+}

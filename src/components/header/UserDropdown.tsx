@@ -49,11 +49,11 @@ export default function UserDropdown() {
         className="dropdown-toggle flex items-center text-gray-700 dark:text-gray-400"
         aria-haspopup="menu"
       >
-        <span className="mr-3 h-11 w-11 overflow-hidden rounded-full">
+        <span className="mr-2 md:mr-3 h-9 w-9 md:h-11 md:w-11 overflow-hidden rounded-full">
           <img src={avatarUrl} alt={fullName} className="h-full w-full object-cover" />
         </span>
 
-        <span className="mr-1 block font-medium text-theme-sm">{fullName}</span>
+        <span className="mr-1 block font-medium text-theme-sm truncate max-w-[120px] md:max-w-[180px]">{fullName}</span>
         <svg
           className={`stroke-gray-500 transition-transform duration-200 dark:stroke-gray-400 ${
             isOpen ? "rotate-180" : ""
@@ -77,7 +77,7 @@ export default function UserDropdown() {
       <Dropdown
         isOpen={isOpen}
         onClose={closeDropdown}
-        className="absolute right-0 mt-4.25 flex w-65 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
+        className="absolute right-0 mt-4.25 flex w-[calc(100vw-2rem)] max-w-65 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
       >
         <div>
           <span className="block text-theme-sm font-medium text-gray-700 dark:text-gray-200">{fullName}</span>
