@@ -66,7 +66,7 @@ const isKpiEmpty = (data?: DashboardKpiSummary | null): boolean => {
 };
 
 const renderSkeleton = () => (
-  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 md:gap-4 xl:gap-5">
     {Array.from({ length: 3 }).map((_, index) => (
       <div
         key={`kpi-skeleton-${index}`}
@@ -105,7 +105,7 @@ export default function RecruitmentKpiCards({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 md:gap-4 xl:gap-5">
       {METRICS.map((metric) => {
         const metricValue = data?.[metric.valueKey] ?? { value: 0, changePercent: 0 };
         const trend: MetricTrend = metricValue.changePercent >= 0 ? "up" : "down";
@@ -115,11 +115,11 @@ export default function RecruitmentKpiCards({
         return (
           <div
             key={metric.id}
-            className="group flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-white/3"
+            className="group flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-white/3 md:p-5"
           >
             {/* Phần icon hiển thị loại KPI giúp nhận biết nhanh */}
             <div className="flex justify-between items-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/15">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/15 md:h-12 md:w-12">
                 {metric.icon}
               </div>
               <Badge color={badgeColor} size="sm">
@@ -130,11 +130,11 @@ export default function RecruitmentKpiCards({
 
             <div className="mt-5 flex justify-between gap-3 items-center">
               <div className="space-y-1">
-                <span className="text-sm text-gray-500 dark:text-gray-400">
+                <span className="text-xs text-gray-500 dark:text-gray-400 md:text-sm">
                   {metric.label}
                 </span>
               </div>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white/90">
+              <p className="text-xl font-semibold text-gray-900 dark:text-white/90 md:text-2xl">
                 {formatNumber(metricValue.value)}
               </p>
             </div>

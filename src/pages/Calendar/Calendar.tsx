@@ -6,6 +6,7 @@ import { CalendarClock, CalendarDays, Clock3, UserRound } from "lucide-react";
 import PageMeta from "@/components/common/PageMeta";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import { useModal } from "@/hooks/use-modal";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 import { CalendarHero, type CalendarStatCard } from "./CalendarHero";
 import { CalendarBoard } from "./CalendarBoard";
@@ -87,6 +88,8 @@ const renderEventContent = (eventInfo: EventContentArg) => {
 };
 
 const Calendar = () => {
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  const isTablet = useMediaQuery("(min-width: 768px) and (max-width: 1023px)");
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
   const [eventTitle, setEventTitle] = useState("");
@@ -98,7 +101,13 @@ const Calendar = () => {
   const [eventNotes, setEventNotes] = useState("");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentRangeTitle, setCurrentRangeTitle] = useState("");
-  const [activeView, setActiveView] = useState("dayGridMonth");
+  const [activeView, setActiveView] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 768
+      ? "listWeek"
+      : typeof window !== "undefined" && window.innerWidth < 1024
+        ? "timeGridWeek"
+        : "dayGridMonth"
+  );
 
   const calendarRef = useRef<FullCalendar | null>(null);
   const { isOpen, openModal, closeModal } = useModal();
@@ -384,7 +393,7 @@ const Calendar = () => {
               onToday={handleToday}
             />
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
               <CalendarBoard
                 calendarRef={calendarRef}
                 currentRangeTitle={currentRangeTitle}
@@ -396,15 +405,23 @@ const Calendar = () => {
                 onDatesSet={handleDatesSet}
                 events={sortedEvents}
                 renderEventContent={renderEventContent}
+                initialView={isMobile ? "listWeek" : isTablet ? "timeGridWeek" : "dayGridMonth"}
+                headerToolbar={
+                  isMobile
+                    ? { left: "prev,next", center: "title", right: "listWeek,timeGridDay" }
+                    : undefined
+                }
               />
 
-              <CalendarSidebar
-                calendarCounts={calendarCounts}
-                activeEvent={activeEvent}
-                onSelectEvent={setActiveEvent}
-                onEditEvent={handleEditEvent}
-                upcomingEvents={upcomingEvents}
-              />
+              {!isMobile && (
+                <CalendarSidebar
+                  calendarCounts={calendarCounts}
+                  activeEvent={activeEvent}
+                  onSelectEvent={setActiveEvent}
+                  onEditEvent={handleEditEvent}
+                  upcomingEvents={upcomingEvents}
+                />
+              )}
             </div>
           </div>
         </div>

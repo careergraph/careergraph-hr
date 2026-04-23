@@ -14,6 +14,7 @@ interface ColumnProps {
   title: string;
   candidates: Candidate[];
   onViewDetails?: (candidate: Candidate) => void;
+  isMobileView?: boolean;
 }
 
 // Column màu sắc riêng, icon riêng cho từng trạng thái
@@ -93,6 +94,7 @@ export const Column = ({
   title,
   candidates,
   onViewDetails,
+  isMobileView = false,
 }: ColumnProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: id,
@@ -100,17 +102,21 @@ export const Column = ({
   const style = COLUMN_STYLES[id] ?? COLUMN_STYLES.apply;
 
   return (
-    <div className="relative flex min-w-[280px] flex-1 flex-col">
+    <div className={`relative flex flex-col ${
+      isMobileView
+        ? 'w-full'
+        : 'min-w-[220px] flex-1 md:min-w-[250px] lg:min-w-[280px]'
+    }`}>
       {/* Hiệu ứng gradient đầu cột. */}
       <div
         className={`absolute inset-x-6 top-0 z-10 h-1 rounded-full bg-gradient-to-r ${style.accent} opacity-40`}
       />
       <div
-        className={`relative flex h-full flex-col rounded-3xl border ${style.border} bg-card shadow-md ring-1 ring-black/5 dark:bg-slate-900/60`}
+        className={`relative flex h-full flex-col rounded-2xl border md:rounded-3xl ${style.border} bg-card shadow-md ring-1 ring-black/5 dark:bg-slate-900/60`}
         style={{ width: "100%" }}
       >
-        <div className={`pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-3xl bg-gradient-to-br ${style.accent} opacity-20`} />
-        <div className="relative flex items-center justify-between rounded-t-3xl px-5 pb-4 pt-5">
+        <div className={`pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-2xl md:rounded-t-3xl bg-gradient-to-br ${style.accent} opacity-20`} />
+        <div className="relative flex items-center justify-between rounded-t-2xl md:rounded-t-3xl px-3 pb-3 pt-3.5 md:px-5 md:pb-4 md:pt-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/80 shadow-sm">
               {style.icon}
@@ -131,7 +137,7 @@ export const Column = ({
 
         <div
           ref={setNodeRef}
-          className={`custom-scrollbar relative space-y-3 rounded-b-3xl px-3 pb-4 pt-2 transition ${
+          className={`custom-scrollbar relative space-y-2 md:space-y-3 rounded-b-2xl md:rounded-b-3xl px-2 pb-3 pt-1.5 md:px-3 md:pb-4 md:pt-2 transition ${
             isOver ? "bg-primary/5 ring-2 ring-primary/30" : "bg-background dark:bg-slate-900/40"
           }`}
         >

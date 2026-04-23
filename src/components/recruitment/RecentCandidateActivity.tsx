@@ -7,6 +7,7 @@ import {
 } from "../custom/table";
 import Badge from "../custom/badge/Badge";
 import { CalenderIcon, UserCircleIcon } from "@/icons";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { DashboardRecentActivity } from "@/features/dashboard/types/dashboard.types";
 
 type RecentCandidateActivityProps = {
@@ -78,10 +79,24 @@ export default function RecentCandidateActivity({
   }
 
   return (
+    <RecentCandidateActivityInner data={data} dateRangeLabel={dateRangeLabel} />
+  );
+}
+
+function RecentCandidateActivityInner({
+  data,
+  dateRangeLabel,
+}: {
+  data: DashboardRecentActivity[];
+  dateRangeLabel: string;
+}) {
+  const isMobile = useMediaQuery("(max-width: 767px)");
+
+  return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-4 pb-4 pt-5 dark:border-gray-800 dark:bg-white/3 sm:px-6">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+          <h3 className="text-base font-semibold text-gray-800 dark:text-white/90 md:text-lg">
             Cập nhật pipeline mới nhất
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -94,7 +109,54 @@ export default function RecentCandidateActivity({
         </div>
       </div>
 
-      <div className="max-w-full overflow-x-auto">
+      {isMobile ? (
+        <div className="space-y-3">
+          {data.map((activity) => (
+            <div
+              key={`${activity.applicationId}-${activity.updatedAt}`}
+              className="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800"
+            >
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                  {activity.candidateAvatar ? (
+                    <img
+                      src={activity.candidateAvatar}
+                      className="h-full w-full object-cover"
+                      alt={activity.candidateName}
+                    />
+                  ) : (
+                    <UserCircleIcon className="size-10 text-gray-300 dark:text-gray-600" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="truncate text-sm font-semibold text-gray-800 dark:text-white/90">
+                      {activity.candidateName}
+                    </p>
+                    <Badge
+                      size="sm"
+                      color={badgeColorMap[activity.statusTag] ?? "info"}
+                    >
+                      {statusLabelMap[activity.statusTag] ?? "Interview"}
+                    </Badge>
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">
+                    {activity.jobTitle}
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                    <span>{activity.stage}</span>
+                    <span>Bởi {activity.updatedBy}</span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+                    {formatUpdatedAt(activity.updatedAt)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="max-w-full overflow-x-auto">
         <Table>
           <TableHeader className="border-y border-gray-100 dark:border-gray-800">
             <TableRow>
@@ -177,7 +239,8 @@ export default function RecentCandidateActivity({
             ))}
           </TableBody>
         </Table>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

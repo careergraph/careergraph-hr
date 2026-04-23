@@ -33,7 +33,7 @@ const LayoutContent: React.FC = () => {
         <div
           className={`${isMessagesRoute
             ? "h-[calc(100dvh-4.75rem)] min-h-0 w-full overflow-hidden"
-            : "mx-auto w-full max-w-(--breakpoint-2xl) overflow-x-auto p-4 md:p-6"} ${isMobile ? "pb-[var(--bottom-nav-height)]" : ""}`}
+            : "mx-auto w-full max-w-(--breakpoint-2xl) overflow-x-hidden p-4 md:p-6"} ${isMobile ? "pb-[var(--bottom-nav-height)]" : ""}`}
         >
           <Outlet />
         </div>

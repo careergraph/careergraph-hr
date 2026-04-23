@@ -15,7 +15,7 @@ export default function UserProfiles() {
         description="HR - CareerGraph"
       />
       <PageBreadcrumb pageTitle="Profile" />
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
           {/* Các thẻ thông tin thành phần của hồ sơ. */}
           <UserMetaCard />
           <UserInfoCard />

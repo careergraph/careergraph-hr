@@ -160,7 +160,10 @@ export function InboxSidebar({
         className
       )}
     >
-      <div className="border-b border-gray-200 px-3 py-3 dark:border-gray-800 sm:px-4">
+      <div className="border-b border-gray-200 px-3 py-3 dark:border-gray-800 md:px-4">
+        <h2 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white/90 md:hidden">
+          Tin nhắn
+        </h2>
         <div className="mb-3 flex items-center justify-between gap-2">
           <div>
             <div className="inline-flex items-center gap-2">

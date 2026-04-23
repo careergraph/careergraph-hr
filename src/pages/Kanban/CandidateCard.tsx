@@ -89,11 +89,11 @@ export function CandidateCard({
         // nó hoàn toàn không trong suốt để người dùng thấy rõ thẻ đang
         // kéo — do đó đổi nền thành solid (bg-white / dark:bg-slate-900)
         // để tránh hiệu ứng mờ phía sau.
-        className={`relative mb-3 flex w-full cursor-pointer items-start gap-4 overflow-hidden rounded-2xl border border-slate-200 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+        className={`relative mb-3 flex w-full cursor-pointer items-start gap-3 overflow-hidden rounded-2xl border border-slate-200 shadow-sm transition-colors active:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:active:bg-gray-800/50 ${
           isDragPreview
             ? "bg-white dark:bg-slate-900"
             : "bg-card"
-        } ${compact ? "p-4" : "p-5"}`}
+        } ${compact ? "p-3 md:p-4" : "p-3 md:p-4 lg:p-5"}`}
         onClick={() => onViewDetails?.(candidate)}
         tabIndex={0}
         role="button"
@@ -107,7 +107,7 @@ export function CandidateCard({
             className={`absolute inset-0 bg-gradient-to-br ${priority.indicator} opacity-10`}
           />
         )}
-        <div className="relative flex w-full items-start gap-4">
+        <div className="relative flex w-full items-start gap-3 md:gap-4">
           <div className="flex flex-col items-center gap-3">
             <button
               {...attributes}
@@ -119,7 +119,7 @@ export function CandidateCard({
             >
               <GripVertical className="h-4 w-4" />
             </button>
-            <Avatar className="h-16 w-16 border border-slate-200 bg-muted">
+            <Avatar className="h-12 w-12 border border-slate-200 bg-muted md:h-14 md:w-14 lg:h-16 lg:w-16">
               {candidate.avatar ? (
                 <AvatarImage src={candidate.avatar} alt={candidate.name} />
               ) : null}

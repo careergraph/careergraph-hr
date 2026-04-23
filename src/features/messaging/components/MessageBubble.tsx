@@ -110,13 +110,13 @@ export function MessageBubble({
 
       <div
         className={cn(
-          "group flex min-w-0 max-w-[85%] flex-col space-y-1 sm:max-w-[82%]",
+          "group flex min-w-0 max-w-[90%] flex-col space-y-1 sm:max-w-[85%] md:max-w-[75%] lg:max-w-[70%]",
           isOwn ? "items-end text-right" : "items-start text-left"
         )}
       >
         <div
           className={cn(
-            "relative inline-flex w-fit min-w-0 max-w-full rounded-2xl px-3.5 py-2.5 text-sm shadow-sm",
+            "relative inline-flex w-fit min-w-0 max-w-full rounded-2xl px-3 py-2 text-sm shadow-sm md:px-3.5 md:py-2.5",
             isOwn
               ? "bg-brand-500 text-white"
               : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"

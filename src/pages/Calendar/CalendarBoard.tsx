@@ -3,6 +3,7 @@ import { RefObject } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
+import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
 import {
   DateSelectArg,
@@ -29,6 +30,8 @@ interface CalendarBoardProps {
   onDatesSet: (arg: DatesSetArg) => void;
   events: EventInput[];
   renderEventContent: (eventInfo: EventContentArg) => React.JSX.Element;
+  initialView?: string;
+  headerToolbar?: Record<string, string> | false;
 }
 
 const VIEW_LABELS: Record<string, string> = {
@@ -48,6 +51,8 @@ export const CalendarBoard = ({
   onDatesSet,
   events,
   renderEventContent,
+  initialView,
+  headerToolbar,
 }: CalendarBoardProps) => {
   const activeViewLabel = VIEW_LABELS[activeView] ?? "Lịch phỏng vấn";
 
@@ -134,9 +139,9 @@ export const CalendarBoard = ({
       <div className="mt-6 overflow-hidden rounded-3xl border border-border/60 bg-background/50">
         <FullCalendar
           ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
-          headerToolbar={false}
+          plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+          initialView={initialView ?? "dayGridMonth"}
+          headerToolbar={headerToolbar ?? false}
           height="auto"
           events={events}
           eventOrder={((a: EventApi, b: EventApi) => {

@@ -27,22 +27,22 @@ export default function Candidates() {
     <>
       <PageMeta title="HR - CareerGraph" description="HR - CareerGraph" />
 
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-4 flex items-center gap-2 md:mb-6 md:gap-3">
         {jobId && (
           <button
             onClick={() => navigate(-1)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </button>
         )}
-        <div>
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-            {jobId && jobTitle ? `Ứng viên — ${jobTitle}` : "Ứng viên"}
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-semibold text-gray-800 dark:text-white/90 md:text-xl">
+            Ứng viên
           </h2>
           {jobId && jobTitle && (
-            <p className="text-sm text-muted-foreground">
-              Quản lý ứng viên theo từng giai đoạn tuyển dụng
+            <p className="truncate text-sm text-muted-foreground">
+              {jobTitle}
             </p>
           )}
         </div>

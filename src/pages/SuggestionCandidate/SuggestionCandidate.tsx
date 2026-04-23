@@ -145,7 +145,7 @@ const SuggestionCandidate = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background px-6 py-6">
+    <div className="min-h-screen bg-background px-4 py-4 md:px-6 md:py-6">
       {/* Thiết lập metadata và breadcrumb cho trang gợi ý ứng viên. */}
       <PageMeta title="HR - CareerGraph" description="HR - CareerGraph" />
       <PageBreadcrumb pageTitle="Tìm ứng viên" />

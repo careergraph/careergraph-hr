@@ -6,6 +6,7 @@ import {
   DragOverlay,
   closestCorners,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragStartEvent,
@@ -24,6 +25,7 @@ import { toast } from "sonner";
 import { Status as CandidateStatusType } from "@/types/candidate";
 import ScheduleInterviewKanbanModal from "./ScheduleInterviewKanbanModal";
 import { useAuthStore } from "@/stores/authStore";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 // KanbanBoard tổ chức danh sách ứng viên theo trạng thái và hỗ trợ kéo thả.
 
@@ -324,10 +326,19 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
   };
 
   // Sensor config cho drag & drop
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  const [activeStageId, setActiveStageId] = useState<CandidateStatus | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 10, // Kéo tối thiểu 10px mới bắt đầu drag
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
       },
     })
   );
@@ -713,9 +724,9 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-slate-50 via-white to-slate-100/60 p-6">
+    <div className="bg-gradient-to-br from-slate-50 via-white to-slate-100/60 p-3 md:p-6">
       {/* Vùng bảng Kanban với từng cột trạng thái và overlay kéo thả. */}
-      <div className="mx-auto max-w-[1640px] space-y-6">
+      <div className="mx-auto max-w-[1640px] space-y-4 md:space-y-6">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -723,17 +734,62 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex min-h-[calc(100vh-260px)] items-start gap-5 overflow-x-auto pb-4">
-            {visibleColumns.map((column) => (
-              <Column
-                key={column.id}
-                id={column.id}
-                title={column.title}
-                candidates={getCandidatesByStatus(column.id)}
-                onViewDetails={handleViewDetails}
-              />
-            ))}
-          </div>
+          {isMobile ? (
+            <div className="flex flex-col gap-3">
+              {/* Stage selector tabs */}
+              <div className="sticky top-0 z-10 -mx-3 bg-white/95 px-3 pb-3 pt-1 backdrop-blur dark:bg-gray-900/95">
+                <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
+                  {visibleColumns.map((column) => {
+                    const isActive = (activeStageId ?? visibleColumns[0]?.id) === column.id;
+                    return (
+                      <button
+                        key={column.id}
+                        onClick={() => setActiveStageId(column.id)}
+                        className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                          isActive
+                            ? "bg-brand-500 text-white"
+                            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                        }`}
+                      >
+                        {column.title}
+                        <span className="ml-1.5 text-xs opacity-75">
+                          {getCandidatesByStatus(column.id).length}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Single column content */}
+              {(() => {
+                const currentStageId = activeStageId ?? visibleColumns[0]?.id;
+                const currentColumn = visibleColumns.find((c) => c.id === currentStageId);
+                if (!currentColumn) return null;
+                return (
+                  <Column
+                    id={currentColumn.id}
+                    title={currentColumn.title}
+                    candidates={getCandidatesByStatus(currentColumn.id)}
+                    onViewDetails={handleViewDetails}
+                    isMobileView
+                  />
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="flex min-h-[calc(100vh-260px)] items-start gap-3 overflow-x-auto pb-4 md:gap-5">
+              {visibleColumns.map((column) => (
+                <Column
+                  key={column.id}
+                  id={column.id}
+                  title={column.title}
+                  candidates={getCandidatesByStatus(column.id)}
+                  onViewDetails={handleViewDetails}
+                />
+              ))}
+            </div>
+          )}
           <DragOverlay>
             {activeCandidate ? (
               <div className="z-[1000] opacity-100">

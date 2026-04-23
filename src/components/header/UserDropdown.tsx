@@ -53,7 +53,7 @@ export default function UserDropdown() {
           <img src={avatarUrl} alt={fullName} className="h-full w-full object-cover" />
         </span>
 
-        <span className="mr-1 block font-medium text-theme-sm truncate max-w-[120px] md:max-w-[180px]">{fullName}</span>
+        <span className="hidden mr-1  lg:block font-medium text-theme-sm truncate max-w-[120px] md:max-w-[180px]">{fullName}</span>
         <svg
           className={`stroke-gray-500 transition-transform duration-200 dark:stroke-gray-400 ${
             isOpen ? "rotate-180" : ""

@@ -315,13 +315,15 @@ export default function InterviewList() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-            <TabsList>
-              {STATUS_TABS.map((tab) => (
-                <TabsTrigger key={tab.value} value={tab.value}>
-                  {tab.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+            <div className="no-scrollbar -mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+              <TabsList className="inline-flex w-max gap-1 md:w-auto md:gap-2">
+                {STATUS_TABS.map((tab) => (
+                  <TabsTrigger key={tab.value} value={tab.value} className="shrink-0 whitespace-nowrap px-3 py-2 text-sm md:px-4">
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
           </Tabs>
         </div>
 
@@ -345,7 +347,7 @@ export default function InterviewList() {
                   <span className="text-xs text-gray-500 dark:text-gray-400">{groupedOnlineRooms.length} phòng</span>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                   {groupedOnlineRooms.map((room) => {
                     const startDate = new Date(room.scheduledAt);
                     const endDate = new Date(room.endAt);
@@ -479,7 +481,7 @@ export default function InterviewList() {
                   <span className="text-xs text-gray-500 dark:text-gray-400">{standaloneInterviews.length} lịch</span>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
                   {standaloneInterviews.map((interview) => (
                     <InterviewCard
                       key={interview.id}

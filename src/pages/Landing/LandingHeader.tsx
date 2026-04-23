@@ -9,7 +9,8 @@ const navItems = [
   { label: "Quy trình", id: "workflow" },
   { label: "Giải pháp", id: "solutions" },
   { label: "Khách hàng", id: "testimonials" },
-  { label: "Giá", id: "pricing" },
+  // TODO: Thêm lại phần giá khi có thông tin cụ thể về sản phẩm và gói dịch vụ.
+  // { label: "Giá", id: "pricing" },
 ];
 
 type LandingHeaderProps = {
@@ -90,11 +91,11 @@ export function LandingHeader({
           className="h-10 w-10"
           loading="lazy"
         />
-        <span className="text-2xl font-semibold bg-gradient-to-r from-[#4f46e5] via-[#7c3aed] to-[#ec4899] bg-clip-text text-transparent">
+        <span className="hidden lg:block text-2xl font-semibold bg-gradient-to-r from-[#4f46e5] via-[#7c3aed] to-[#ec4899] bg-clip-text text-transparent">
           CareerGraph
         </span>
       </div>
-      <nav className="hidden flex-1 items-center justify-center gap-4 md:flex">
+      <nav className="hidden flex-1 items-center justify-center gap-2 lg:flex">
         {navItems.map((item) => (
           <a
             key={item.id}
@@ -104,7 +105,7 @@ export function LandingHeader({
               onNavigate(item.id);
             }}
             className={cn(
-              "group relative inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition-all duration-300 ease-out whitespace-nowrap",
+              "group relative inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm font-semibold transition-all duration-300 ease-out whitespace-nowrap",
               activeSection === item.id
                 ? "text-slate-900"
                 : "text-slate-600 hover:text-slate-900"
@@ -123,7 +124,7 @@ export function LandingHeader({
       </nav>
       {authenticated ? (
         <div className="flex items-center gap-4">
-          <div className="hidden text-sm font-medium text-slate-700 sm:block whitespace-nowrap">
+          <div className="hidden text-sm font-medium text-slate-700 xl:block whitespace-nowrap">
             Xin chào, {userName}
           </div>
           <Link

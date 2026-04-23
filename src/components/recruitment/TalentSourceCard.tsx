@@ -54,7 +54,7 @@ export default function TalentSourceCard() {
   const closeDropdown = () => setIsOpen(false);
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/3 sm:p-6">
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/3 md:p-5 lg:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
@@ -97,26 +97,26 @@ export default function TalentSourceCard() {
         </div>
       </div>
 
-      <div className="mt-6 space-y-5">
+      <div className="mt-4 space-y-4 md:mt-6 md:space-y-5">
         {SOURCES.map((source) => (
           <div key={source.id} className="space-y-3">
             {/* Header mỗi nguồn thể hiện nhanh số lượng và xu hướng */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 md:text-sm">
                   {source.label}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {source.value}
                 </p>
               </div>
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-white/10 dark:text-gray-300">
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-white/10 dark:text-gray-300 md:px-3 md:py-1">
                 {source.percentage}%
               </span>
             </div>
 
             {/* Thanh tỷ lệ mô tả đóng góp của từng nguồn */}
-            <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+            <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10 md:h-2">
               <div className={`absolute left-0 top-0 h-full ${source.accentClass} ${source.widthClass}`} />
             </div>
 

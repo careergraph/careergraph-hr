@@ -244,7 +244,9 @@ export default function LandingPage() {
         <SolutionsSection solutions={solutionModules} />
         <IntegrationsSection integrations={integrations} />
         <TestimonialsSection testimonials={testimonials} />
-        <PricingSection plans={pricingPlans} />
+        
+        {/* TODO: Thêm lại phần giá khi có thông tin cụ thể về sản phẩm và gói dịch vụ. */}
+        {/* <PricingSection plans={pricingPlans} /> */}
         <CallToActionSection />
       </main>
       <LandingFooter />

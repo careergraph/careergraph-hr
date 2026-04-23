@@ -121,10 +121,10 @@ export default function FunnelConversionChart({
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-6 pt-5 dark:border-gray-800 dark:bg-white/3 sm:px-6 sm:pt-6">
+    <div className="rounded-2xl border border-gray-200 bg-white px-4 pb-5 pt-4 dark:border-gray-800 dark:bg-white/3 md:px-5 md:pb-6 md:pt-5 lg:px-6 lg:pt-6">
       <div className="mb-6 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+          <h3 className="text-base font-semibold text-gray-800 dark:text-white/90 md:text-lg">
             Chuyển đổi pipeline tuyển dụng
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -133,8 +133,8 @@ export default function FunnelConversionChart({
         </div>
       </div>
 
-      <div className="custom-scrollbar -ml-5 overflow-x-auto xl:ml-0">
-        <div className="min-w-250 xl:min-w-full">
+      <div className="custom-scrollbar -ml-3 overflow-x-auto md:-ml-5 xl:ml-0">
+        <div className="min-w-[400px] md:min-w-[500px] xl:min-w-full">
           <Chart options={options} series={series} type="area" height={320} />
         </div>
       </div>

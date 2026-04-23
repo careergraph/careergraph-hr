@@ -387,7 +387,7 @@ export default function Home() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-12">
-        <div className="col-span-12 space-y-6 lg:col-span-7">
+        <div className="col-span-12 space-y-4 md:space-y-6 lg:col-span-7">
           {/* KPI chính giúp đánh giá sức khỏe pipeline tuyển dụng */}
           {!error && <RecruitmentKpiCards
             data={data?.kpi}

@@ -143,10 +143,10 @@ export default function PipelineVelocityChart({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-white/3 sm:px-6 sm:pt-6">
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-4 pt-4 dark:border-gray-800 dark:bg-white/3 md:px-5 md:pt-5 lg:px-6 lg:pt-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+          <h3 className="text-base font-semibold text-gray-800 dark:text-white/90 md:text-lg">
             Tốc độ pipeline theo tháng
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -180,8 +180,8 @@ export default function PipelineVelocityChart({
       </div>
 
       {/* Biểu đồ cột hiển thị tốc độ pipeline theo tháng */}
-      <div className="custom-scrollbar -ml-5 mt-4 overflow-x-auto xl:ml-0">
-        <div className="-ml-1 min-w-162.5 pl-2 xl:min-w-full">
+      <div className="custom-scrollbar -ml-3 mt-4 overflow-x-auto md:-ml-5 xl:ml-0">
+        <div className="-ml-1 min-w-[350px] pl-2 md:min-w-[450px] xl:min-w-full">
           <Chart options={options} series={series} type="bar" height={220} />
         </div>
       </div>

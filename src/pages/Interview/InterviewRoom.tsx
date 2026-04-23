@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { toast } from "sonner";
 import {
   Video,
@@ -91,6 +92,7 @@ export default function InterviewRoom() {
   const navigate = useNavigate();
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -1301,10 +1303,64 @@ export default function InterviewRoom() {
       </div>
 
       {/* Video grid */}
-      <div className="flex-1 min-h-0 p-3 md:p-4">
-        <div className="flex h-full min-h-0 gap-4">
+      <div className="flex-1 min-h-0 p-2 md:p-4">
+        <div className="relative flex h-full min-h-0 gap-4">
           <div className="min-h-0 min-w-0 flex-1">
-            <div className="grid h-full min-h-0 grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+            {isMobile ? (
+              /* Mobile: stacked layout — remote full + local PiP */
+              <div className="relative h-full">
+                {/* Remote video — full area */}
+                <div className="absolute inset-0 overflow-hidden rounded-2xl bg-gray-800">
+                  {remoteStream ? (
+                    <video
+                      ref={remoteVideoRef}
+                      autoPlay
+                      playsInline
+                      className="h-full w-full bg-black object-contain"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <div className="text-center">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-700 text-2xl font-bold text-white mb-3">
+                          ?
+                        </div>
+                        <p className="text-sm text-gray-400">Đang chờ ứng viên...</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="absolute bottom-3 left-3 flex items-center gap-2">
+                    <Badge className="bg-gray-900/70 text-white text-xs">Ứng viên</Badge>
+                    {remotePeerId && peerMediaStates[remotePeerId] && (
+                      <>
+                        {!peerMediaStates[remotePeerId].mic && (
+                          <MicOff className="h-3.5 w-3.5 text-red-400" />
+                        )}
+                        {!peerMediaStates[remotePeerId].camera && (
+                          <VideoOff className="h-3.5 w-3.5 text-red-400" />
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                {/* Local PiP — top-right corner 80×112px */}
+                <div className="absolute right-2 top-2 z-10 h-28 w-20 overflow-hidden rounded-xl border-2 border-gray-700 bg-gray-800 shadow-lg">
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="h-full w-full bg-black object-cover"
+                  />
+                  {!cameraOn && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+                      <span className="text-xs font-bold text-white">HR</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Tablet/Desktop: side-by-side grid */
+              <div className="grid h-full min-h-0 grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
               {/* Local video */}
               <div className="relative min-h-55 overflow-hidden rounded-2xl bg-gray-800">
             <video
@@ -1401,6 +1457,7 @@ export default function InterviewRoom() {
             )}
               </div>
             </div>
+            )}
           </div>
 
           {/* Candidate management sidebar */}
@@ -1502,7 +1559,7 @@ export default function InterviewRoom() {
       )}
 
       {/* Bottom controls */}
-      <div className="flex flex-wrap items-center justify-center gap-3 border-t border-gray-800 px-4 py-4">
+      <div className="flex flex-wrap items-center justify-center gap-3 border-t border-gray-800 px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <Button
           size="icon"
           variant={cameraOn ? "outline" : "destructive"}
@@ -1510,6 +1567,7 @@ export default function InterviewRoom() {
           onClick={toggleCamera}
           disabled={!localStream || localStream.getVideoTracks().length === 0}
           title={!localStream || localStream.getVideoTracks().length === 0 ? "Không có camera" : undefined}
+          aria-label={cameraOn ? "Tắt camera" : "Bật camera"}
         >
           {cameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
         </Button>
@@ -1520,14 +1578,16 @@ export default function InterviewRoom() {
           onClick={toggleMic}
           disabled={!localStream || localStream.getAudioTracks().length === 0}
           title={!localStream || localStream.getAudioTracks().length === 0 ? "Không có microphone" : undefined}
+          aria-label={micOn ? "Tắt mic" : "Bật mic"}
         >
           {micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
         </Button>
         <Button
           size="icon"
           variant={screenSharing ? "destructive" : "outline"}
-          className={screenSharing ? "h-12 w-12 rounded-full" : "h-12 w-12 rounded-full border-gray-600 text-white hover:bg-gray-800"}
+          className={`hidden md:inline-flex ${screenSharing ? "h-12 w-12 rounded-full" : "h-12 w-12 rounded-full border-gray-600 text-white hover:bg-gray-800"}`}
           onClick={toggleScreenShare}
+          aria-label={screenSharing ? "Dừng chia sẻ màn hình" : "Chia sẻ màn hình"}
         >
           {screenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
         </Button>
@@ -1538,6 +1598,7 @@ export default function InterviewRoom() {
           className={recording ? "h-12 w-12 rounded-full" : "h-12 w-12 rounded-full border-gray-600 text-white hover:bg-gray-800"}
           onClick={toggleRecording}
           title={recording ? "Dừng ghi hình" : "Ghi hình"}
+          aria-label={recording ? "Dừng ghi hình" : "Ghi hình"}
         >
           {recording ? <Square className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
         </Button>
@@ -1546,6 +1607,7 @@ export default function InterviewRoom() {
           className="h-12 w-12 rounded-full bg-red-600 hover:bg-red-700"
           onClick={() => setShowEndConfirm(true)}
           title="Kết thúc phỏng vấn"
+          aria-label="Kết thúc phỏng vấn"
         >
           <PhoneOff className="h-5 w-5" />
         </Button>

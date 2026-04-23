@@ -9,6 +9,7 @@ import { Modal } from "@/components/custom/modal";
 import Button from "@/components/custom/button/Button";
 import { exportHiringTargetPdf } from "@/features/dashboard/utils/reportExport";
 import { toast } from "sonner";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 type HiringTargetProgressProps = {
   data?: DashboardHiringTargetProgress | null;
@@ -37,6 +38,9 @@ export default function HiringTargetProgress({
 }: HiringTargetProgressProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 767px)");
+
+  const chartHeight = isMobile ? 260 : 330;
 
   const completionPercent = data?.completionPercent ?? 0;
   const changePercent = data?.changePercent ?? 0;
@@ -47,7 +51,7 @@ export default function HiringTargetProgress({
     chart: {
       fontFamily: "Outfit, sans-serif",
       type: "radialBar",
-      height: 330,
+      height: chartHeight,
       toolbar: { show: false },
     },
     plotOptions: {
@@ -119,10 +123,10 @@ export default function HiringTargetProgress({
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/3">
-      <div className="rounded-2xl bg-white px-5 pb-10 pt-5 shadow-default dark:bg-gray-900 sm:px-6 sm:pt-6">
+      <div className="rounded-2xl bg-white px-4 pb-5 pt-4 shadow-default dark:bg-gray-900 md:px-5 md:pb-10 md:pt-5 lg:px-6 lg:pt-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+            <h3 className="text-base font-semibold text-gray-800 dark:text-white/90 md:text-lg">
               Tiến độ tuyển dụng theo tháng
             </h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -169,7 +173,7 @@ export default function HiringTargetProgress({
               options={options}
               series={series}
               type="radialBar"
-              height={330}
+              height={chartHeight}
             />
           </div>
 
