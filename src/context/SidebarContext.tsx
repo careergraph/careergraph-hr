@@ -4,6 +4,9 @@ type SidebarContextType = {
   isExpanded: boolean;
   isMobileOpen: boolean;
   isHovered: boolean;
+  isMobile: boolean;
+  isTablet: boolean;
+  isDesktop: boolean;
   activeItem: string | null;
   openSubmenu: string | null;
   toggleSidebar: () => void;
@@ -30,17 +33,24 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [activeItem, setActiveItem] = useState<string | null>(null);
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
 
+  const isDesktop = !isMobile && !isTablet;
+
   useEffect(() => {
     const handleResize = () => {
-      const mobile = window.innerWidth < 768;
+      const w = window.innerWidth;
+      const mobile = w < 768;
+      const tablet = w >= 768 && w < 1024;
+
       setIsMobile(mobile);
-      if (!mobile) {
-        setIsMobileOpen(false);
-      }
+      setIsTablet(tablet);
+
+      if (!mobile) setIsMobileOpen(false);
+      if (tablet) setIsExpanded(false);
     };
 
     handleResize();
@@ -69,6 +79,9 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
         isExpanded: isMobile ? false : isExpanded,
         isMobileOpen,
         isHovered,
+        isMobile,
+        isTablet,
+        isDesktop,
         activeItem,
         openSubmenu,
         toggleSidebar,
