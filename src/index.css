@@ -845,6 +845,15 @@ textarea:disabled {
   }
 }
 
+/* ── Bottom Sheet Slide-Up Animation ── */
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slide-up 300ms ease-out;
+}
+
 /* ── Flatpickr Mobile Responsive ── */
 @media (max-width: 767px) {
   .flatpickr-calendar {

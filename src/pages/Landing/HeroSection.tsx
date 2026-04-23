@@ -10,7 +10,7 @@ type HeroSectionProps = {
 
 export function HeroSection({ stats }: HeroSectionProps) {
   return (
-    <section id="hero" className="grid gap-12 md:grid-cols-[1.05fr_0.95fr] md:items-center">
+    <section id="hero" className="grid gap-12 md:grid-cols-[1.05fr_0.95fr] md:items-center mt-2">
       {/* Cột trái: nội dung giới thiệu và lời kêu gọi hành động. */}
       <ScrollReveal direction="left" className="space-y-8">
         <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#4f46e5]/15 via-[#7c3aed]/15 to-[#ec4899]/20 px-4 py-1.5 text-sm font-semibold text-primary">

@@ -215,7 +215,14 @@ export default function LandingPage() {
 
     const target = document.getElementById(sectionId);
     if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      const headerOffset = 125; // chiều cao header (px)
+      const elementPosition = target.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth",
+      });
     }
   };
 

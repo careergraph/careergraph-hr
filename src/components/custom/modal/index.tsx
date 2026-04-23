@@ -1,4 +1,5 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   isOpen: boolean;
@@ -18,6 +19,14 @@ export const Modal: React.FC<ModalProps> = ({
   isFullscreen = false,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -47,13 +56,73 @@ export const Modal: React.FC<ModalProps> = ({
     };
   }, [isOpen]);
 
+  // Drag-to-dismiss for mobile bottom sheet
+  const dragStartY = useRef<number | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    dragStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (dragStartY.current === null || !sheetRef.current) return;
+    const deltaY = e.touches[0].clientY - dragStartY.current;
+    if (deltaY > 0) {
+      sheetRef.current.style.transform = `translateY(${deltaY}px)`;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (dragStartY.current === null || !sheetRef.current) return;
+      const deltaY = e.changedTouches[0].clientY - dragStartY.current;
+      if (deltaY > 100) {
+        onClose();
+      } else {
+        sheetRef.current.style.transform = "";
+      }
+      dragStartY.current = null;
+    },
+    [onClose]
+  );
+
   if (!isOpen) return null;
 
+  // Mobile bottom sheet (not for fullscreen modals)
+  if (isMobile && !isFullscreen) {
+    return createPortal(
+      <>
+        <div
+          className="fixed inset-0 z-[99999] bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+        />
+        <div
+          ref={sheetRef}
+          className="fixed inset-x-0 bottom-0 z-[99999] max-h-[90dvh] overflow-y-auto rounded-t-2xl bg-white shadow-2xl dark:bg-gray-900 animate-slide-up"
+          onClick={(e) => e.stopPropagation()}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* Drag handle */}
+          <div className="sticky top-0 z-10 flex justify-center bg-inherit pt-3 pb-2">
+            <div className="h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-600" />
+          </div>
+          <div className="px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            {children}
+          </div>
+        </div>
+      </>,
+      document.body
+    );
+  }
+
+  // Desktop: center modal via createPortal
   const contentClasses = isFullscreen
     ? "w-full h-full"
     : "relative w-full rounded-3xl bg-white  dark:bg-gray-900";
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 flex items-center justify-center overflow-y-auto modal z-99999">
       {!isFullscreen && (
         <div
@@ -91,6 +160,7 @@ export const Modal: React.FC<ModalProps> = ({
         )}
         <div>{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
