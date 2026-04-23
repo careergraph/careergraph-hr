@@ -61,12 +61,21 @@ const normalizeNavigatePathForHr = (
     return rawPath;
   }
 
+  const applicationId = toDataString(data, "applicationId");
+
   if (rawPath.startsWith("/jobs/") && rawPath.endsWith("/applications")) {
     const jobId = rawPath.split("/")[2] || toDataString(data, "jobId");
-    return jobId ? `/kanbans/${jobId}` : "/kanbans";
+    if (!jobId) return "/kanbans";
+    const base = `/kanbans/${jobId}`;
+    return applicationId ? `${base}?applicationId=${applicationId}` : base;
   }
 
   if (rawPath.startsWith("/applications/")) {
+    const jobId = toDataString(data, "jobId");
+    if (jobId) {
+      const base = `/kanbans/${jobId}`;
+      return applicationId ? `${base}?applicationId=${applicationId}` : base;
+    }
     return "/kanbans";
   }
 
@@ -90,13 +99,22 @@ const getNavigatePath = (notification: NotificationItem): string | null => {
 
   const threadId = toDataString(data, "threadId");
   const jobId = toDataString(data, "jobId");
+  const applicationId = toDataString(data, "applicationId");
 
   switch (notification.type) {
     case "NEW_MESSAGE":
       return threadId ? `/messages?thread=${threadId}` : "/messages";
     case "NEW_APPLICATION":
     case "APPLICATION_AI_SCREENING":
-      return jobId ? `/kanbans/${jobId}` : "/kanbans";
+    case "APPLICATION_STATUS_CHANGED":
+    case "APPLICATION_VIEWED":
+    case "APPLICATION_SHORTLISTED":
+    case "APPLICATION_INTERVIEW_SCHEDULED":
+    case "APPLICATION_REJECTED": {
+      if (!jobId) return "/kanbans";
+      const base = `/kanbans/${jobId}`;
+      return applicationId ? `${base}?applicationId=${applicationId}` : base;
+    }
     default:
       return null;
   }

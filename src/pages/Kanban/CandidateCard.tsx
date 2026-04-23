@@ -15,6 +15,7 @@ export interface CandidateCardProps {
   compact?: boolean;
   className?: string;
   isDragPreview?: boolean;
+  highlighted?: boolean;
 }
 
 export function CandidateCard({
@@ -23,6 +24,7 @@ export function CandidateCard({
   compact = false,
   className,
   isDragPreview = false,
+  highlighted = false,
 }: CandidateCardProps) {
   // `useSortable` provides `isDragging` which tells us whether this
   // particular card instance is currently being dragged. We use that to
@@ -79,6 +81,7 @@ export function CandidateCard({
     <div
       ref={setNodeRef}
       style={style}
+      data-application-id={candidate.id}
       className={`w-full transition ${
         isDragging && !isDragPreview ? "invisible" : ""
       } ${className ?? ""}`}
@@ -89,11 +92,17 @@ export function CandidateCard({
         // nó hoàn toàn không trong suốt để người dùng thấy rõ thẻ đang
         // kéo — do đó đổi nền thành solid (bg-white / dark:bg-slate-900)
         // để tránh hiệu ứng mờ phía sau.
-        className={`relative mb-3 flex w-full cursor-pointer items-start gap-3 overflow-hidden rounded-2xl border border-slate-200 shadow-sm transition-colors active:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:active:bg-gray-800/50 ${
+        className={`relative mb-3 flex w-full cursor-pointer items-start gap-3 overflow-hidden rounded-2xl border shadow-sm transition-all active:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:active:bg-gray-800/50 ${
+          highlighted
+            ? "border-brand-400 ring-2 ring-brand-400/50 bg-brand-50 dark:border-brand-500 dark:ring-brand-500/30 dark:bg-brand-500/10"
+            : "border-slate-200"
+        } ${
           isDragPreview
             ? "bg-white dark:bg-slate-900"
-            : "bg-card"
-        } ${compact ? "p-3 md:p-4" : "p-3 md:p-4 lg:p-5"}`}
+            : highlighted
+              ? ""
+              : "bg-card"
+        } transition-colors duration-700 ${compact ? "p-3 md:p-4" : "p-3 md:p-4 lg:p-5"}`}
         onClick={() => onViewDetails?.(candidate)}
         tabIndex={0}
         role="button"

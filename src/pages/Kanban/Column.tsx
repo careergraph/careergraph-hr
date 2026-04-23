@@ -15,6 +15,7 @@ interface ColumnProps {
   candidates: Candidate[];
   onViewDetails?: (candidate: Candidate) => void;
   isMobileView?: boolean;
+  highlightedApplicationId?: string | null;
 }
 
 // Column màu sắc riêng, icon riêng cho từng trạng thái
@@ -95,6 +96,7 @@ export const Column = ({
   candidates,
   onViewDetails,
   isMobileView = false,
+  highlightedApplicationId,
 }: ColumnProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: id,
@@ -154,6 +156,7 @@ export const Column = ({
                   onViewDetails={onViewDetails}
                   compact
                   className="w-full"
+                  highlighted={candidate.id === highlightedApplicationId}
                 />
               ))}
             </SortableContext>

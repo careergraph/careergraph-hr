@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Candidate, Status as CandidateStatus } from "@/types/candidate";
 import { CandidateDetail } from "./CandidateDetail";
 import {
@@ -37,6 +38,10 @@ interface KanbanBoardProps {
 export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
   const company = useAuthStore((state) => state.company);
   const showOffboardedColumn = Boolean(company?.enableOffboardedStage);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const applicationIdParam = searchParams.get("applicationId");
+  const [highlightedApplicationId, setHighlightedApplicationId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filterByJob = useCallback(
     (items: Candidate[]) =>
@@ -319,6 +324,50 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
 
     return () => controller.abort();
   }, [jobId]);
+
+  // Highlight + scroll to targeted applicationId from URL params
+  useEffect(() => {
+    if (!applicationIdParam || candidates.length === 0) {
+      return;
+    }
+
+    const matched = candidates.find((c) => c.id === applicationIdParam);
+    if (!matched) {
+      return;
+    }
+
+    setHighlightedApplicationId(applicationIdParam);
+
+    // On mobile, switch to the correct stage/column tab
+    setActiveStageId(matched.status);
+
+    // Scroll the card into view after DOM renders
+    requestAnimationFrame(() => {
+      const el = document.querySelector(
+        `[data-application-id="${applicationIdParam}"]`
+      );
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+
+    // Auto-remove highlight and clean URL after 4s
+    highlightTimerRef.current = setTimeout(() => {
+      setHighlightedApplicationId(null);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("applicationId");
+        return next;
+      }, { replace: true });
+    }, 4000);
+
+    return () => {
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, [applicationIdParam, candidates, setSearchParams]);
+
   // Xử lý khi click vào candidate để xem chi tiết
   const handleViewDetails = (candidate: Candidate) => {
     setActiveCandidate(candidate);
@@ -773,6 +822,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
                     candidates={getCandidatesByStatus(currentColumn.id)}
                     onViewDetails={handleViewDetails}
                     isMobileView
+                    highlightedApplicationId={highlightedApplicationId}
                   />
                 );
               })()}
@@ -786,6 +836,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
                   title={column.title}
                   candidates={getCandidatesByStatus(column.id)}
                   onViewDetails={handleViewDetails}
+                  highlightedApplicationId={highlightedApplicationId}
                 />
               ))}
             </div>
