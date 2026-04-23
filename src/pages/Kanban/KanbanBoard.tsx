@@ -500,19 +500,20 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     const activeId = active.id;
     const overId = over.id;
 
-    if (activeId === overId) {
-      setDragSourceStatus(null);
-      return;
-    }
-
     const activeCandidateData = candidates.find((c) => c.id === activeId);
     if (!activeCandidateData) {
       setDragSourceStatus(null);
       return;
     }
 
+    const containerId = over.data?.current?.sortable?.containerId;
     const overColumn = columns.find((column) => column.id === overId);
     const overCandidate = candidates.find((c) => c.id === overId);
+    const inferredTargetStatus =
+      typeof containerId === "string" &&
+      columns.some((column) => column.id === containerId)
+        ? (containerId as CandidateStatus)
+        : null;
 
     let targetStatus: CandidateStatus | null = null;
     let targetCandidateId: string | undefined;
@@ -521,7 +522,22 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
       targetStatus = overColumn.id;
     } else if (overCandidate) {
       targetStatus = overCandidate.status;
-      targetCandidateId = overCandidate.id;
+      if (overCandidate.id !== activeCandidateData.id) {
+        targetCandidateId = overCandidate.id;
+      }
+    } else if (inferredTargetStatus) {
+      targetStatus = inferredTargetStatus;
+    }
+
+    // In some drop scenarios `over.id` can be the dragged item itself while
+    // the optimistic `handleDragOver` state already moved it into another
+    // column. Preserve that target so the confirm dialog is still shown.
+    if (
+      !targetStatus &&
+      dragSourceStatus &&
+      activeCandidateData.status !== dragSourceStatus
+    ) {
+      targetStatus = activeCandidateData.status;
     }
 
     if (!targetStatus) {

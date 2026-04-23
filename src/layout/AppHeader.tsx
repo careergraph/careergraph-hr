@@ -21,13 +21,6 @@ const AppHeader: React.FC = () => {
 
   const displayName = company?.ceoName ?? "HR";
   const companyName = company?.name ?? "Doanh nghiệp của bạn";
-  const primaryAddress = company?.addresses?.[0];
-  const companyLocation = primaryAddress?.city
-    ? `${primaryAddress.city}${
-        primaryAddress.country ? `, ${primaryAddress.country}` : ""
-      }`
-    : primaryAddress?.country ?? undefined;
-
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -118,12 +111,6 @@ const AppHeader: React.FC = () => {
               <span className="font-semibold text-gray-900 dark:text-gray-100 truncate max-w-[180px] md:max-w-none">
                 {companyName}
               </span>
-              {/* Location: hidden on mobile and tablet */}
-              {companyLocation && !isMobile && !isTablet && (
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                  {companyLocation}
-                </span>
-              )}
             </div>
           </div>
         </div>

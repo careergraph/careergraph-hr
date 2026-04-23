@@ -233,7 +233,16 @@ export default function ScheduleInterviewKanbanModal({
     const input = dateInputRef.current as (HTMLInputElement & {
       showPicker?: () => void;
     }) | null;
-    input?.showPicker?.();
+
+    if (!input || typeof input.showPicker !== "function") {
+      return;
+    }
+
+    try {
+      input.showPicker();
+    } catch {
+      // Ignore browser gesture restrictions; native picker still opens on manual interaction.
+    }
   };
 
   const handleCopyLink = () => {
@@ -403,7 +412,6 @@ export default function ScheduleInterviewKanbanModal({
                       type="date"
                       value={date}
                       onClick={openDatePicker}
-                      onFocus={openDatePicker}
                       onChange={(e) => {
                         setDate(e.target.value);
                         setFieldErrors((prev) => ({ ...prev, date: "" }));
