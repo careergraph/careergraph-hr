@@ -271,7 +271,7 @@ export default function Home() {
                   onChange={(event) =>
                     setDateRange((prev) => ({ ...prev, from: event.target.value }))
                   }
-                  className="w-full rounded-l-lg bg-transparent px-3 py-2 text-sm text-gray-700 outline-none dark:text-gray-200"
+                  className="w-full rounded-l-lg bg-transparent px-3 py-2 text-sm text-gray-700 outline-none dark:text-gray-200 focus:!shadow-none focus:!ring-0"
                 />
                 <button
                   type="button"
@@ -308,7 +308,7 @@ export default function Home() {
                   onChange={(event) =>
                     setDateRange((prev) => ({ ...prev, to: event.target.value }))
                   }
-                  className="w-full rounded-l-lg bg-transparent px-3 py-2 text-sm text-gray-700 outline-none dark:text-gray-200"
+                  className="w-full rounded-l-lg bg-transparent px-3 py-2 text-sm text-gray-700 outline-none dark:text-gray-200 focus:!shadow-none focus:!ring-0"
                 />
                 <button
                   type="button"

@@ -9,6 +9,33 @@ import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import companyService from "@/services/companyService";
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const getPrimaryContactValue = (
+  contacts:
+    | Array<{
+        type?: string;
+        value?: string;
+        isPrimary?: boolean;
+      }>
+    | undefined,
+  contactType: "PHONE" | "EMAIL"
+) => {
+  if (!contacts?.length) {
+    return "";
+  }
+
+  const exactPrimary = contacts.find(
+    (contact) => contact.type === contactType && contact.isPrimary
+  );
+
+  if (exactPrimary?.value) {
+    return exactPrimary.value;
+  }
+
+  return contacts.find((contact) => contact.type === contactType)?.value ?? "";
+};
+
 export default function UserInfoCard() {
   const { user, company, setCompany, updateUser } = useAuthStore();
   const { isOpen, openModal, closeModal } = useModal();
@@ -17,7 +44,15 @@ export default function UserInfoCard() {
     companyName: company?.name ?? "",
     ceoName: company?.ceoName ?? "",
     email: user?.email ?? "",
-    phoneNumber: company?.contacts?.find((contact) => contact.type === "PHONE")?.value ?? user?.phoneNumber ?? "",
+    recruitingEmail:
+      getPrimaryContactValue(company?.contacts, "EMAIL") ||
+      company?.email ||
+      user?.email ||
+      "",
+    phoneNumber:
+      getPrimaryContactValue(company?.contacts, "PHONE") ||
+      user?.phoneNumber ||
+      "",
     website: company?.website ?? "",
     size: company?.size ?? "",
     foundedYear: String(company?.foundedYear ?? ""),
@@ -30,7 +65,15 @@ export default function UserInfoCard() {
       companyName: company?.name ?? "",
       ceoName: company?.ceoName ?? "",
       email: user?.email ?? "",
-      phoneNumber: company?.contacts?.find((contact) => contact.type === "PHONE")?.value ?? user?.phoneNumber ?? "",
+      recruitingEmail:
+        getPrimaryContactValue(company?.contacts, "EMAIL") ||
+        company?.email ||
+        user?.email ||
+        "",
+      phoneNumber:
+        getPrimaryContactValue(company?.contacts, "PHONE") ||
+        user?.phoneNumber ||
+        "",
       website: company?.website ?? "",
       size: company?.size ?? "",
       foundedYear: String(company?.foundedYear ?? ""),
@@ -40,6 +83,7 @@ export default function UserInfoCard() {
   }, [
     company?.name,
     company?.ceoName,
+    company?.email,
     company?.contacts,
     company?.website,
     company?.size,
@@ -65,6 +109,13 @@ export default function UserInfoCard() {
     }
 
     try {
+      const trimmedRecruitingEmail = formValues.recruitingEmail.trim();
+      if (trimmedRecruitingEmail && !EMAIL_PATTERN.test(trimmedRecruitingEmail)) {
+        toast.error("Email liên hệ tuyển dụng chưa đúng định dạng");
+        return;
+      }
+
+      const trimmedPhone = formValues.phoneNumber.trim();
       const parsedFoundedYear = Number(formValues.foundedYear);
       const parsedNoOfMembers = Number(formValues.noOfMembers);
 
@@ -76,21 +127,47 @@ export default function UserInfoCard() {
         description: formValues.description.trim(),
         yearFounded: Number.isFinite(parsedFoundedYear) && parsedFoundedYear > 0 ? parsedFoundedYear : null,
         noOfMembers: Number.isFinite(parsedNoOfMembers) && parsedNoOfMembers >= 0 ? parsedNoOfMembers : null,
-        contact: {
-          type: "PHONE",
-          value: formValues.phoneNumber.trim(),
-          isPrimary: true,
-        },
+        ...(trimmedPhone
+          ? {
+              contact: {
+                type: "PHONE",
+                value: trimmedPhone,
+                isPrimary: true,
+              },
+            }
+          : {}),
       });
 
-      if (updated) {
-        setCompany(updated);
-        const [firstName = "", ...rest] = (updated.ceoName ?? "").trim().split(/\s+/);
+      let finalCompany = updated;
+      if (trimmedRecruitingEmail) {
+        const existingRecruitingEmail = getPrimaryContactValue(
+          updated?.contacts ?? company?.contacts,
+          "EMAIL"
+        );
+
+        if (trimmedRecruitingEmail !== existingRecruitingEmail) {
+          const updatedWithEmail = await companyService.updateMyCompanyProfile({
+            contact: {
+              type: "EMAIL",
+              value: trimmedRecruitingEmail,
+              isPrimary: true,
+            },
+          });
+
+          if (updatedWithEmail) {
+            finalCompany = updatedWithEmail;
+          }
+        }
+      }
+
+      if (finalCompany) {
+        setCompany(finalCompany);
+        const [firstName = "", ...rest] = (finalCompany.ceoName ?? "").trim().split(/\s+/);
         updateUser({
           firstName,
           lastName: rest.join(" "),
-          phoneNumber: formValues.phoneNumber.trim(),
-          email: updated.email ?? user?.email,
+          phoneNumber: trimmedPhone,
+          email: finalCompany.email ?? user?.email,
         });
       }
 
@@ -111,8 +188,9 @@ export default function UserInfoCard() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
             <InfoRow label="Tên công ty" value={company?.name ?? "Chưa cập nhật"} />
             <InfoRow label="CEO" value={company?.ceoName ?? "Chưa cập nhật"} />
-            <InfoRow label="Email" value={company?.email ?? user?.email ?? "-"} />
-            <InfoRow label="Số điện thoại" value={company?.contacts?.find((contact) => contact.type === "PHONE")?.value ?? user?.phoneNumber ?? "Chưa cập nhật"} />
+            <InfoRow label="Email tài khoản" value={company?.email ?? user?.email ?? "-"} />
+            <InfoRow label="Email liên hệ tuyển dụng" value={getPrimaryContactValue(company?.contacts, "EMAIL") || company?.email || "Chưa cập nhật"} />
+            <InfoRow label="Số điện thoại" value={getPrimaryContactValue(company?.contacts, "PHONE") || user?.phoneNumber || "Chưa cập nhật"} />
             <InfoRow label="Website" value={company?.website ?? "Chưa cập nhật"} />
             <InfoRow label="Quy mô" value={company?.size ?? "Chưa cập nhật"} />
             <InfoRow label="Năm thành lập" value={company?.foundedYear ? String(company.foundedYear) : "Chưa cập nhật"} />
@@ -155,8 +233,17 @@ export default function UserInfoCard() {
                   <Input type="text" value={formValues.ceoName} onChange={handleChange("ceoName")} />
                 </div>
                 <div className="col-span-2 lg:col-span-1">
-                  <Label>Email</Label>
+                  <Label>Email tài khoản đăng nhập</Label>
                   <Input type="email" value={formValues.email} onChange={handleChange("email")} disabled />
+                </div>
+                <div className="col-span-2 lg:col-span-1">
+                  <Label>Email liên hệ tuyển dụng</Label>
+                  <Input
+                    type="email"
+                    value={formValues.recruitingEmail}
+                    onChange={handleChange("recruitingEmail")}
+                    placeholder="Ví dụ: hr@company.com"
+                  />
                 </div>
                 <div className="col-span-2 lg:col-span-1">
                   <Label>Số điện thoại</Label>

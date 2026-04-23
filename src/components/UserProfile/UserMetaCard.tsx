@@ -165,12 +165,12 @@ export default function UserMetaCard() {
               <span>{position}</span>
               <span className="hidden h-3.5 w-px bg-gray-200 dark:bg-gray-700 xl:block" aria-hidden="true" />
               <span>{companyName}</span>
-              {location && (
+              {/* {location && (
                 <>
                   <span className="hidden h-3.5 w-px bg-gray-200 dark:bg-gray-700 xl:block" aria-hidden="true" />
                   <span>{location}</span>
                 </>
-              )}
+              )} */}
             </div>
             {(user?.email || company?.email) && (
               <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{user?.email ?? company?.email}</p>

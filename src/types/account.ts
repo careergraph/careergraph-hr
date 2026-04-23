@@ -16,6 +16,7 @@ export interface CompanyContact {
   type?: string;
   value?: string;
   label?: string;
+  isPrimary?: boolean;
 }
 
 export interface CompanyProfile {

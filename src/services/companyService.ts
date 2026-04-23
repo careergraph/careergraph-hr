@@ -63,6 +63,7 @@ const mapContact = (raw: Record<string, unknown>): CompanyContact => ({
       : undefined,
   value: typeof raw.value === "string" ? raw.value : undefined,
   label: typeof raw.label === "string" ? raw.label : undefined,
+  isPrimary: typeof raw.isPrimary === "boolean" ? raw.isPrimary : undefined,
 });
 
 const mapCompany = (raw: Record<string, unknown>): CompanyProfile => {
