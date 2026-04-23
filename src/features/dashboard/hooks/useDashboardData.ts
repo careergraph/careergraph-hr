@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AxiosError } from "axios";
 import dashboardApi from "@/features/dashboard/api/dashboardApi";
 import type {
   DashboardDateRange,
@@ -10,6 +11,45 @@ interface UseDashboardDataResult {
   loading: boolean;
   error: string | null;
 }
+
+const getDashboardErrorMessage = (err: unknown): string => {
+  if (err instanceof AxiosError) {
+    if (!err.response) {
+      return "Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng hoặc thử lại sau.";
+    }
+
+    const status = err.response.status;
+    const responseData = err.response.data as
+      | { message?: string; error?: string }
+      | undefined;
+    const backendMessage =
+      responseData?.message?.trim() || responseData?.error?.trim();
+
+    if (status === 400 || status === 422) {
+      return backendMessage || "Bộ lọc ngày chưa hợp lệ. Vui lòng kiểm tra lại.";
+    }
+
+    if (status === 401) {
+      return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+    }
+
+    if (status === 403) {
+      return "Bạn chưa có quyền xem dashboard tuyển dụng.";
+    }
+
+    if (status >= 500) {
+      return "Hệ thống đang bận hoặc gặp sự cố. Vui lòng thử lại sau ít phút.";
+    }
+
+    return backendMessage || "Không thể tải dữ liệu dashboard.";
+  }
+
+  if (err instanceof Error && err.message.trim()) {
+    return err.message;
+  }
+
+  return "Không thể tải dữ liệu dashboard.";
+};
 
 export function useDashboardData(dateRange: DashboardDateRange, refreshTick = 0): UseDashboardDataResult {
   const [data, setData] = useState<DashboardSummaryDto | null>(null);
@@ -37,9 +77,7 @@ export function useDashboardData(dateRange: DashboardDateRange, refreshTick = 0)
       })
       .catch((err: unknown) => {
         if (isCancelled) return;
-        const message =
-          err instanceof Error ? err.message : "Không thể tải dữ liệu dashboard.";
-        setError(message);
+        setError(getDashboardErrorMessage(err));
         setData(null);
       })
       .finally(() => {
