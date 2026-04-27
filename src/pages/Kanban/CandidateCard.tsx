@@ -121,7 +121,7 @@ export function CandidateCard({
             <button
               {...attributes}
               {...listeners}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-background text-slate-400"
+              className="flex h-8 w-8 touch-none items-center justify-center rounded-full border border-slate-200 bg-background text-slate-400"
               onClick={(event) => event.stopPropagation()}
               type="button"
               aria-label="Kéo thả ứng viên"

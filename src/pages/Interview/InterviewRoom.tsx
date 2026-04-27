@@ -1343,7 +1343,7 @@ export default function InterviewRoom() {
                   </div>
                 </div>
                 {/* Local PiP — top-right corner 80×112px */}
-                <div className="absolute right-2 top-2 z-10 h-28 w-20 overflow-hidden rounded-xl border-2 border-gray-700 bg-gray-800 shadow-lg">
+                <div className="absolute right-3 top-3 z-10 h-28 w-20 overflow-hidden rounded-xl border-2 border-gray-700 bg-gray-800 shadow-lg">
                   <video
                     ref={localVideoRef}
                     autoPlay
@@ -1559,7 +1559,7 @@ export default function InterviewRoom() {
       )}
 
       {/* Bottom controls */}
-      <div className="flex flex-wrap items-center justify-center gap-3 border-t border-gray-800 px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <div className="flex flex-wrap items-center justify-center gap-3 border-t border-gray-800 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <Button
           size="icon"
           variant={cameraOn ? "outline" : "destructive"}

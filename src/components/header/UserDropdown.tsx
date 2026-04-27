@@ -80,7 +80,9 @@ export default function UserDropdown() {
         className="absolute right-0 mt-4.25 flex w-[calc(100vw-2rem)] max-w-65 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
       >
         <div>
-          <span className="block text-theme-sm font-medium text-gray-700 dark:text-gray-200">{fullName}</span>
+          <span className="block max-w-[180px] truncate text-theme-sm font-medium text-gray-700 dark:text-gray-200">
+            {fullName}
+          </span>
           <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">{email}</span>
           <span className="mt-1 block text-[11px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
             {title}

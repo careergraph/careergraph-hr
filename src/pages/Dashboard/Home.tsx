@@ -254,7 +254,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid w-full gap-3 lg:w-auto lg:grid-cols-[minmax(190px,1fr)_auto_minmax(190px,1fr)] lg:items-start">
+          <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-[minmax(190px,1fr)_auto_minmax(190px,1fr)] lg:items-start">
             <div>
               <div
                 className={`flex items-center rounded-lg border bg-white pr-2 focus-within:border-brand-500 dark:bg-gray-900 ${
@@ -273,7 +273,7 @@ export default function Home() {
                   onChange={(event) =>
                     setDateRange((prev) => ({ ...prev, from: event.target.value }))
                   }
-                  className="w-full rounded-l-lg bg-transparent px-3 py-2 text-sm text-gray-700 outline-none dark:text-gray-200 focus:!shadow-none focus:!ring-0"
+                  className="w-full rounded-l-lg bg-transparent px-3 py-2 text-base text-gray-700 outline-none dark:text-gray-200 focus:!shadow-none focus:!ring-0 md:text-sm"
                 />
                 <button
                   type="button"
@@ -310,7 +310,7 @@ export default function Home() {
                   onChange={(event) =>
                     setDateRange((prev) => ({ ...prev, to: event.target.value }))
                   }
-                  className="w-full rounded-l-lg bg-transparent px-3 py-2 text-sm text-gray-700 outline-none dark:text-gray-200 focus:!shadow-none focus:!ring-0"
+                  className="w-full rounded-l-lg bg-transparent px-3 py-2 text-base text-gray-700 outline-none dark:text-gray-200 focus:!shadow-none focus:!ring-0 md:text-sm"
                 />
                 <button
                   type="button"

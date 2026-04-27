@@ -70,7 +70,15 @@ const navItems: NavItem[] = [
 const othersItems: NavItem[] = [];
 
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered, isMobile, isTablet } = useSidebar();
+  const {
+    isExpanded,
+    isMobileOpen,
+    isHovered,
+    setIsHovered,
+    isMobile,
+    isTablet,
+    toggleMobileSidebar,
+  } = useSidebar();
   const location = useLocation();
   const { totalUnread } = useThreads({ autoLoad: true, archived: false });
 
@@ -286,7 +294,10 @@ const AppSidebar: React.FC = () => {
       {isMobileOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-          onClick={() => setIsHovered(false)}
+          onClick={() => {
+            toggleMobileSidebar();
+            setIsHovered(false);
+          }}
         />
       )}
       <aside

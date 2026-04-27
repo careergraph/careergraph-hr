@@ -75,7 +75,7 @@ const CandidateHorizontalList = ({
           type="button"
           onClick={handlePrevious}
           disabled={currentPage === 0}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-600 shadow-sm transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-blue-900/60 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-900/80"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-600 shadow-sm transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-blue-900/60 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-900/80"
           aria-label="Xem ứng viên trước"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -194,7 +194,7 @@ const CandidateHorizontalList = ({
           type="button"
           onClick={handleNext}
           disabled={currentPage >= totalPages - 1}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-600 shadow-sm transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-blue-900/60 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-900/80"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-600 shadow-sm transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-blue-900/60 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-900/80"
           aria-label="Xem ứng viên tiếp theo"
         >
           <ChevronRight className="h-4 w-4" />

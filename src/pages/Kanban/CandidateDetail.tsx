@@ -179,7 +179,7 @@ export function CandidateDetail({
       {candidate ? (
         <SheetContent
           side="right"
-          className="w-full border-l border-slate-200/50 bg-white p-0 sm:max-w-[90vw] lg:max-w-[70vw] xl:max-w-[65rem]"
+          className="h-[100dvh] w-full border-l border-slate-200/50 bg-white p-0 sm:h-full sm:max-w-[90vw] lg:max-w-[70vw] xl:max-w-[65rem]"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Chi tiết ứng viên {candidate.name}</SheetTitle>
@@ -187,12 +187,12 @@ export function CandidateDetail({
               Bảng thông tin chi tiết và các tab liên quan của ứng viên trong kanban.
             </SheetDescription>
           </SheetHeader>
-          <div className="flex h-full flex-col overflow-hidden">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden">
             {/* Phần đầu hiển thị thông tin tổng quan ứng viên. */}
-            <div className="border-b border-slate-100 bg-white px-6 py-6 sm:px-8">
-              <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="border-b border-slate-100 bg-white px-4 py-4 sm:px-8 sm:py-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
                 <div className="flex items-start gap-3">
-                  <Avatar className="h-16 w-16 border border-slate-200 bg-slate-50">
+                  <Avatar className="h-12 w-12 border border-slate-200 bg-slate-50 sm:h-16 sm:w-16">
                     {candidate.avatar ? (
                       <AvatarImage
                         src={candidate.avatar}
@@ -205,14 +205,14 @@ export function CandidateDetail({
                   </Avatar>
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-xl font-semibold leading-tight text-slate-900">
+                      <h2 className="text-lg font-semibold leading-tight text-slate-900 sm:text-xl">
                         {candidate.name}
                       </h2>
                       <Badge className="bg-slate-900/5 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
                         {candidate.ticketId}
                       </Badge>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 sm:gap-3 sm:text-sm">
                       <span className="inline-flex items-center gap-2">
                         {/* Tabs cung cấp các chế độ xem chi tiết. */}
                         <Briefcase className="h-4 w-4 text-slate-400" />
@@ -223,15 +223,10 @@ export function CandidateDetail({
                         {candidate.location.city}, {candidate.location.province}
                       </span>
                     </div>
-                    {candidate.description ? (
-                      <p className="max-w-2xl text-xs leading-relaxed text-slate-500 sm:text-sm">
-                        {candidate.description}
-                      </p>
-                    ) : null}
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-r from-[#4f46e5]/15 via-[#7c3aed]/15 to-[#ec4899]/20 px-3 py-1 text-sm font-medium text-primary rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="w-full rounded-xl border border-slate-200 bg-white bg-gradient-to-r from-[#4f46e5]/15 via-[#7c3aed]/15 to-[#ec4899]/20 p-4 text-sm font-medium text-primary shadow-sm sm:w-auto">
                   <p className="text-lg font-semibold capitalize text-slate-800">
                     {candidate.status}
                   </p>
@@ -261,11 +256,11 @@ export function CandidateDetail({
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-4 flex gap-3 overflow-x-auto pb-1 sm:mt-5 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3">
                 {highlightCards.map((item) => (
                   <div
                     key={item.label}
-                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                    className="flex min-w-[220px] items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:min-w-0"
                   >
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-xl ${item.accent}`}
@@ -285,16 +280,16 @@ export function CandidateDetail({
               </div>
             </div>
 
-            <div className="flex-1 overflow-hidden bg-white">
+            <div className="flex-1 min-h-0 overflow-hidden bg-white">
               <Tabs
                 defaultValue="overview"
-                className="flex h-full flex-col"
+                className="flex h-full min-h-0 flex-col"
                 onValueChange={(val) => {
                   // load data for the selected tab
                   loadTab(val);
                 }}
               >
-                <TabsList className="sticky top-0 z-10 flex w-full flex-wrap justify-start gap-2 rounded-none border-b border-slate-100 bg-white/95 px-5 py-3 sm:px-8">
+                <TabsList className="sticky top-0 z-10 flex w-full flex-nowrap justify-start gap-2 overflow-x-auto rounded-none border-b border-slate-100 bg-white/95 px-4 py-3 sm:px-8">
                   <TabsTrigger value="overview">Thông tin chi tiết</TabsTrigger>
                   <TabsTrigger value="experience">Kinh nghiệm</TabsTrigger>
                   <TabsTrigger value="cv">CV</TabsTrigger>
@@ -305,7 +300,7 @@ export function CandidateDetail({
 
                 <TabsContent
                   value="overview"
-                  className="flex-1 overflow-hidden"
+                  className="flex-1 min-h-0 overflow-hidden"
                 >
                   <OverviewTab
                     candidate={candidate}
@@ -317,7 +312,7 @@ export function CandidateDetail({
 
                 <TabsContent
                   value="experience"
-                  className="flex-1 overflow-hidden"
+                  className="flex-1 min-h-0 overflow-hidden"
                 >
                   <ExperienceTab
                     candidate={candidate}
@@ -327,7 +322,7 @@ export function CandidateDetail({
                   />
                 </TabsContent>
 
-                <TabsContent value="cv" className="flex-1 overflow-hidden">
+                <TabsContent value="cv" className="flex-1 min-h-0 overflow-hidden">
                   <CvTab
                     resumeData={resumeData}
                     loading={loading?.cv}
@@ -337,7 +332,7 @@ export function CandidateDetail({
 
                 <TabsContent
                   value="interview-review"
-                  className="flex-1 overflow-hidden"
+                  className="flex-1 min-h-0 overflow-hidden"
                 >
                   <InterviewReviewTab
                     interviews={interviewReviews}
@@ -348,12 +343,12 @@ export function CandidateDetail({
 
                 <TabsContent
                   value="messages"
-                  className="flex-1 overflow-hidden"
+                  className="flex-1 min-h-0 overflow-hidden"
                 >
                   <MessagesTab candidate={candidate} />
                 </TabsContent>
 
-                <TabsContent value="email" className="flex-1 overflow-hidden">
+                <TabsContent value="email" className="flex-1 min-h-0 overflow-hidden">
                   <EmailTab
                     candidate={candidate}
                     emailsData={emailsData}

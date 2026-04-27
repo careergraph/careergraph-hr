@@ -400,6 +400,48 @@ layer(base);
   @apply bg-white opacity-50 dark:bg-gray-900;
 }
 
+/* ── Responsive Typography ── */
+@layer base {
+  h1 {
+    font-size: clamp(1.25rem, 4vw, 1.875rem);
+  }
+  h2 {
+    font-size: clamp(1.125rem, 3vw, 1.5rem);
+  }
+  h3 {
+    font-size: clamp(1rem, 2.5vw, 1.25rem);
+  }
+}
+
+/* ── Touch Target Minimum ── */
+@layer utilities {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ── Safe Area for Bottom Nav ── */
+@layer base {
+  :root {
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --bottom-nav-height: calc(3.5rem + var(--safe-area-bottom));
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 300ms ease-out;
+}
+
 .stocks-slider-outer .swiper-button-next svg,
 .stocks-slider-outer .swiper-button-prev svg {
   @apply !h-auto !w-auto;

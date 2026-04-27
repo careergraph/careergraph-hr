@@ -47,7 +47,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
     <div className="relative flex">
       {/* Dropdown position: Start */}
       {selectPosition === "start" && (
-        <div className="absolute">
+        <div className="absolute left-0 top-0 bottom-0 flex items-center">
           <select
             value={selectedCountry}
             onChange={handleCountryChange}
@@ -97,7 +97,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
 
       {/* Dropdown position: End */}
       {selectPosition === "end" && (
-        <div className="absolute right-0">
+        <div className="absolute right-0 top-0 bottom-0 flex items-center">
           <select
             value={selectedCountry}
             onChange={handleCountryChange}
