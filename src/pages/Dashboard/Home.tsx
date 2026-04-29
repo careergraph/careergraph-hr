@@ -9,6 +9,7 @@ import FunnelConversionChart from "@/components/recruitment/FunnelConversionChar
 import RecentCandidateActivity from "@/components/recruitment/RecentCandidateActivity";
 import { useDashboardData } from "@/features/dashboard/hooks/useDashboardData";
 import { toast } from "sonner";
+import { formatDateTimeYMDHM } from "@/lib/dateUtils";
 
 const toInputDate = (date: Date): string => {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000);
@@ -226,7 +227,7 @@ export default function Home() {
     const copied = await copyToClipboard(report);
     if (copied) {
       setLastCopiedReport(report);
-      setLastCopiedAt(new Date().toLocaleString("vi-VN"));
+      setLastCopiedAt(formatDateTimeYMDHM(new Date()));
       toast.success("Đã sao chép báo cáo 24h, sẵn sàng gửi cho stakeholder");
     } else {
       toast.error("Không thể sao chép báo cáo vào clipboard");

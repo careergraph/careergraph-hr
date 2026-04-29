@@ -2,6 +2,7 @@ import type { Interview, InterviewFeedback, InterviewRecording } from "@/types/i
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, Star, Video, MapPin, UserCheck, CircleAlert, Link as LinkIcon, PlayCircle } from "lucide-react";
+import { formatDateTimeYMDHM } from "@/lib/dateUtils";
 
 interface InterviewReviewTabProps {
   interviews: Interview[];
@@ -136,7 +137,7 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <p className="inline-flex items-center gap-1 text-xs text-slate-500">
                 <CalendarDays className="h-3.5 w-3.5" />
-                {new Date(interview.scheduledAt).toLocaleString("vi-VN")}
+                {formatDateTimeYMDHM(interview.scheduledAt)}
               </p>
 
               <p className="inline-flex items-center gap-1 text-xs text-slate-500">

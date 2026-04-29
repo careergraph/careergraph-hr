@@ -11,6 +11,7 @@ import { Job } from "@/types/job";
 import { Status } from "@/enums/commonEnum";
 import { EmploymentType } from "@/enums/workEnum";
 import { KeyboardEvent } from "react";
+import { formatDateYMD } from "@/lib/dateUtils";
 
 // JobCard hiển thị thông tin tóm tắt của một job kèm các chỉ số tương tác.
 
@@ -153,9 +154,7 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
           {job.city}
         </span>
         <span>
-          {job.postedDate instanceof Date
-            ? job.postedDate.toLocaleDateString("vi-VN")
-            : job.postedDate}
+          {formatDateYMD(job.postedDate)}
         </span>
       </div>
 

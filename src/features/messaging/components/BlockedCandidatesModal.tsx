@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import messagingApi from "@/features/messaging/api/messagingApi";
 import type { BlockedUserDto } from "@/features/messaging/types/messaging.types";
 import { toast } from "sonner";
+import { formatDateTimeYMDHM } from "@/lib/dateUtils";
 
 interface BlockedCandidatesModalProps {
   open: boolean;
@@ -38,7 +39,7 @@ const formatBlockedAt = (value: string): string => {
     return "Không rõ thời gian";
   }
 
-  return parsed.toLocaleString("vi-VN");
+  return formatDateTimeYMDHM(parsed);
 };
 
 export function BlockedCandidatesModal({ open, onClose, onUpdated }: BlockedCandidatesModalProps) {

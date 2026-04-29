@@ -17,6 +17,7 @@ import type { CreateInterviewRequest, Interview, InterviewType } from "@/types/i
 import { extractApiErrorMessage } from "@/lib/error-utils";
 import { toast } from "sonner";
 import { Video, Copy, ExternalLink, CheckCircle2, Users } from "lucide-react";
+import { formatDateTimeYMDHM } from "@/lib/dateUtils";
 
 interface UnscheduledApp {
   applicationId: string;
@@ -275,8 +276,7 @@ export default function ScheduleInterviewKanbanModal({
                     Đã lên lịch phỏng vấn thành công!
                   </p>
                   <p className="text-sm text-green-700">
-                    {displayName} -{" "}
-                    {new Date(scheduledResult.scheduledAt).toLocaleString("vi-VN")}
+                    {displayName} - {formatDateTimeYMDHM(scheduledResult.scheduledAt)}
                   </p>
                 </div>
               </div>

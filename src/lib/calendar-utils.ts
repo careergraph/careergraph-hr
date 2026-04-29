@@ -1,3 +1,5 @@
+import { formatDateYMD } from "@/lib/dateUtils";
+
 export const CALENDAR_LEVELS = ["Danger", "Success", "Primary", "Warning"] as const;
 
 export type CalendarLevel = (typeof CALENDAR_LEVELS)[number];
@@ -122,18 +124,11 @@ export const formatEventDateRange = (
   const endDate = toDate(end);
   if (!startDate) return "Chưa xác định";
 
-  const formatter = new Intl.DateTimeFormat("vi-VN", {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-
   if (!endDate || startDate.toDateString() === endDate.toDateString()) {
-    return formatter.format(startDate);
+    return formatDateYMD(startDate);
   }
 
-  return `${formatter.format(startDate)} - ${formatter.format(endDate)}`;
+  return `${formatDateYMD(startDate)} - ${formatDateYMD(endDate)}`;
 };
 
 export const formatRelativeDay = (date: Date | null): string => {

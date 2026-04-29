@@ -24,6 +24,7 @@ import {
   Copy,
 } from "lucide-react";
 import { toast } from "sonner";
+import { formatDateYMD, formatTimeHM } from "@/lib/dateUtils";
 
 const STATUS_STYLES: Record<string, string> = {
   SCHEDULED: "bg-blue-100 text-blue-700",
@@ -208,18 +209,13 @@ export default function InterviewDetail() {
             <CardContent className="space-y-3 text-sm">
               <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                 <Calendar className="h-4 w-4" />
-                {scheduledDate.toLocaleDateString("vi-VN", {
-                  weekday: "long",
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                })}
+                {formatDateYMD(scheduledDate)}
               </div>
               <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                 <Clock className="h-4 w-4" />
-                {scheduledDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                {formatTimeHM(scheduledDate)}
                 {" – "}
-                {endDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                {formatTimeHM(endDate)}
                 {" "}({iv.durationMinutes} phút)
               </div>
               <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
@@ -405,12 +401,7 @@ export default function InterviewDetail() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-100">
                           <Calendar className="h-4 w-4" />
-                          {new Date(p.proposedDate).toLocaleDateString("vi-VN", {
-                            weekday: "long",
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })}
+                          {formatDateYMD(p.proposedDate)}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                           <Clock className="h-4 w-4" />

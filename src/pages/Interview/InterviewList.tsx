@@ -12,6 +12,7 @@ import { interviewService } from "@/services/interviewService";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, ExternalLink, Users } from "lucide-react";
+import { formatDateYMD, formatTimeHM } from "@/lib/dateUtils";
 
 const STATUS_TABS: { value: string; label: string }[] = [
   { value: "", label: "Tất cả" },
@@ -370,13 +371,13 @@ export default function InterviewList() {
                         <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3.5 w-3.5" />
-                            {startDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                            {formatDateYMD(startDate)}
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="h-3.5 w-3.5" />
-                            {startDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                            {formatTimeHM(startDate)}
                             {" - "}
-                            {endDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                            {formatTimeHM(endDate)}
                           </span>
                           <span className="flex items-center gap-1">
                             <Users className="h-3.5 w-3.5" />

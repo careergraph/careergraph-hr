@@ -38,6 +38,7 @@ import { useAuthStore } from "@/stores/authStore";
 import type { Interview } from "@/types/interview";
 import FeedbackModal from "./FeedbackModal";
 import RecordingAssignModal from "./RecordingAssignModal";
+import { formatDateTimeYMDHM, formatDateYMD } from "@/lib/dateUtils";
 
 const FINAL_INTERVIEW_STATUSES = new Set(["COMPLETED", "CANCELLED", "NO_SHOW"]);
 const ROOM_OPEN_STATUSES = new Set(["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"]);
@@ -981,7 +982,7 @@ export default function InterviewRoom() {
   }
 
   if (isRoomEnded && interview) {
-    const interviewDate = new Date(interview.scheduledAt).toLocaleDateString("vi-VN");
+    const interviewDate = formatDateYMD(interview.scheduledAt);
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950">
@@ -1026,7 +1027,7 @@ export default function InterviewRoom() {
             <p className="mt-1 text-xs text-gray-500 font-mono">{roomCode}</p>
             {interview && (
               <p className="mt-2 text-sm text-gray-400">
-                {interview.jobTitle} — {new Date(interview.scheduledAt).toLocaleString("vi-VN")}
+                {interview.jobTitle} — {formatDateTimeYMDHM(interview.scheduledAt)}
               </p>
             )}
             {candidateActionItems.length > 0 && (

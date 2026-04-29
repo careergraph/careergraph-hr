@@ -9,6 +9,7 @@ import Badge from "../custom/badge/Badge";
 import { CalenderIcon, UserCircleIcon } from "@/icons";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { DashboardRecentActivity } from "@/features/dashboard/types/dashboard.types";
+import { formatDateTimeYMDHM } from "@/lib/dateUtils";
 
 type RecentCandidateActivityProps = {
   data?: DashboardRecentActivity[] | null;
@@ -37,13 +38,7 @@ const formatUpdatedAt = (value: string): string => {
     return "Không xác định";
   }
 
-  return parsed.toLocaleString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTimeYMDHM(parsed);
 };
 
 /**
