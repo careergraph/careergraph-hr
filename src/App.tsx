@@ -14,6 +14,7 @@ import { ScrollToTop } from "@/components/common/ScrollToTop";
 import Home from "@/pages/Dashboard/Home";
 import EmployeesTable from "@/pages/Employees/EmployeesTable";
 import Candidates from "@/pages/Kanban/Candidates";
+import PipelineSettings from "@/pages/Kanban/PipelineSettings";
 import JobsGrid from "@/pages/Job/JobsGrid";
 import AddJob from "@/pages/Job/AddJob";
 import { Toaster } from "sonner";
@@ -48,6 +49,7 @@ const AppRoutes = () => (
             <Route path="/interview/room/:roomCode" element={<InterviewRoom />} />
             <Route path="/kanbans" element={<Candidates />} />
             <Route path="/kanbans/:jobId" element={<Candidates />} />
+            <Route path="/kanbans/pipeline" element={<PipelineSettings />} />
             <Route path="/jobs" element={<JobsGrid />} />
             <Route path="/jobs/new" element={<AddJob />} />
             <Route path="/employees" element={<EmployeesTable />} />

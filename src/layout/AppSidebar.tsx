@@ -61,6 +61,11 @@ const navItems: NavItem[] = [
     path: "/jobs",
   },
   {
+    icon: <HorizontaLDots />,
+    name: "Pipeline",
+    path: "/kanbans/pipeline",
+  },
+  {
     icon: <VideoIcon />,
     name: "Phỏng vấn",
     path: "/interviews",

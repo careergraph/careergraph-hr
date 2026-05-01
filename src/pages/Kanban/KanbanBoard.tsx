@@ -19,14 +19,22 @@ import { Column } from "./Column";
 import { CandidateCard } from "./CandidateCard";
 import { Button } from "@/components/ui/button";
 
-import { initialCandidates, columns } from "@/data/candidateData";
+import { initialCandidates } from "@/data/candidateData";
 import { applicationService } from "@/services/applicationService";
+import { companyPipelineService } from "@/services/companyPipelineService";
 import { interviewService } from "@/services/interviewService";
 import { toast } from "sonner";
 import { Status as CandidateStatusType } from "@/types/candidate";
 import ScheduleInterviewKanbanModal from "./ScheduleInterviewKanbanModal";
-import { useAuthStore } from "@/stores/authStore";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import {
+  DEFAULT_COMPANY_STAGES,
+  STAGE_TO_STATUS,
+  STATUS_TO_STAGE,
+  buildColumnsFromStages,
+  normalizeStageConfig,
+  type CompanyRecruitmentStage,
+} from "@/lib/recruitmentPipeline";
 
 // KanbanBoard tổ chức danh sách ứng viên theo trạng thái và hỗ trợ kéo thả.
 
@@ -36,12 +44,13 @@ interface KanbanBoardProps {
 
 // Component quản lý toàn bộ Kanban board tuyển dụng
 export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
-  const company = useAuthStore((state) => state.company);
-  const showOffboardedColumn = Boolean(company?.enableOffboardedStage);
   const [searchParams, setSearchParams] = useSearchParams();
   const applicationIdParam = searchParams.get("applicationId");
   const [highlightedApplicationId, setHighlightedApplicationId] = useState<string | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pipelineStages, setPipelineStages] = useState<CompanyRecruitmentStage[]>(
+    DEFAULT_COMPANY_STAGES
+  );
 
   const filterByJob = useCallback(
     (items: Candidate[]) =>
@@ -75,6 +84,10 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
   const didConfirmRef = useRef(false);
   // State for interview scheduling modal (shown when moving to "interview" column)
   const [showInterviewModal, setShowInterviewModal] = useState(false);
+  const pipelineColumns = useMemo(
+    () => buildColumnsFromStages(pipelineStages),
+    [pipelineStages]
+  );
 
   useEffect(() => {
     setCandidates(filterByJob(initialCandidates));
@@ -82,6 +95,27 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     setMoveRequest(null);
     dragSnapshotRef.current = null;
   }, [filterByJob]);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const stages = await companyPipelineService.fetchMyRecruitmentStages();
+        if (isMounted) {
+          setPipelineStages(normalizeStageConfig(stages));
+        }
+      } catch (err) {
+        if (isMounted) {
+          setPipelineStages(normalizeStageConfig(DEFAULT_COMPANY_STAGES));
+        }
+        console.error("Error loading recruitment pipeline:", err);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [jobId]);
 
   // If a jobId is supplied we should load real applications from the API
   // instead of the local `initialCandidates` fixture. We keep the mapping
@@ -113,22 +147,15 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
         // stage is missing it will currently fall back to `apply` (which
         // caused the bug where SCREENING appeared under "Ứng tuyển").
         const stageToStatus: Record<string, CandidateStatusType> = {
-          APPLIED: "apply",
+          ...STAGE_TO_STATUS,
           SUBMITTED: "apply",
-          SCREENING: "screening",
-          HR_CONTACTED: "contacted",
           SCHEDULED: "screening",
           INTERVIEW_SCHEDULED: "interview",
           PENDING_RESCHEDULE: "interview",
           INVITED: "interview",
-          INTERVIEW: "interview",
-          INTERVIEW_COMPLETED: "interviewed",
-          TRIAL: "trial",
-          OFFER_EXTENDED: "offer",
           OFFER_ACCEPTED: "offer",
-          HIRED: "hired",
-          OFFBOARDED: "offboarded",
-          REJECTED: "rejected",
+          OFFER_DECLINED: "offer",
+          WITHDRAWN: "rejected",
         } as const;
 
         const normalizeString = (v: unknown, fallback = "") =>
@@ -414,7 +441,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
 
     if (activeId === overId) return;
 
-    const overColumn = columns.find((column) => column.id === overId);
+    const overColumn = pipelineColumns.find((column) => column.id === overId);
     const containerId = over.data?.current?.sortable?.containerId;
 
     setCandidates((prev) => {
@@ -507,11 +534,11 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     }
 
     const containerId = over.data?.current?.sortable?.containerId;
-    const overColumn = columns.find((column) => column.id === overId);
+    const overColumn = pipelineColumns.find((column) => column.id === overId);
     const overCandidate = candidates.find((c) => c.id === overId);
     const inferredTargetStatus =
       typeof containerId === "string" &&
-      columns.some((column) => column.id === containerId)
+      pipelineColumns.some((column) => column.id === containerId)
         ? (containerId as CandidateStatus)
         : null;
 
@@ -558,8 +585,8 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     // status. This prevents reversing progress once a candidate has
     // advanced.
     if (dragSourceStatus) {
-      const sourceIndex = columns.findIndex((c) => c.id === dragSourceStatus);
-      const targetIndex = columns.findIndex((c) => c.id === targetStatus);
+      const sourceIndex = pipelineColumns.findIndex((c) => c.id === dragSourceStatus);
+      const targetIndex = pipelineColumns.findIndex((c) => c.id === targetStatus);
       if (sourceIndex > -1 && targetIndex > -1 && targetIndex < sourceIndex) {
         // Revert to the snapshot so the UI doesn't allow the left-ward move.
         if (dragSnapshotRef.current) {
@@ -649,25 +676,18 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
   const targetColumnTitle = useMemo(() => {
     if (!moveRequest) return "";
     return (
-      columns.find((col) => col.id === moveRequest.targetStatus)?.title ??
+      pipelineColumns.find((col) => col.id === moveRequest.targetStatus)?.title ??
       moveRequest.targetStatus
     );
-  }, [moveRequest]);
-
-  const visibleColumns = useMemo(() => {
-    if (showOffboardedColumn) {
-      return columns;
-    }
-    return columns.filter((column) => column.id !== "offboarded");
-  }, [showOffboardedColumn]);
+  }, [moveRequest, pipelineColumns]);
 
   useEffect(() => {
     if (!isMobile) return;
-    if (!visibleColumns.length) return;
-    if (!activeStageId || !visibleColumns.some((col) => col.id === activeStageId)) {
-      setActiveStageId(visibleColumns[0].id);
+    if (!pipelineColumns.length) return;
+    if (!activeStageId || !pipelineColumns.some((col) => col.id === activeStageId)) {
+      setActiveStageId(pipelineColumns[0].id);
     }
-  }, [activeStageId, isMobile, visibleColumns]);
+  }, [activeStageId, isMobile, pipelineColumns]);
 
   // Confirm move: call backend first and only move the candidate in UI when
   // the API responds with a successful HTTP status (2xx). If the API fails
@@ -692,20 +712,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     }
 
     // Map local status -> backend stage string
-    const statusToStage: Record<CandidateStatus, string> = {
-      apply: "APPLIED",
-      screening: "SCREENING",
-      contacted: "HR_CONTACTED",
-      interview: "INTERVIEW",
-      interviewed: "INTERVIEW_COMPLETED",
-      trial: "TRIAL",
-      offer: "OFFER_EXTENDED",
-      hired: "HIRED",
-      offboarded: "OFFBOARDED",
-      rejected: "REJECTED",
-    };
-
-    const stage = statusToStage[moveRequest.targetStatus] || "APPLIED";
+    const stage = STATUS_TO_STAGE[moveRequest.targetStatus] || "APPLIED";
 
     // Ensure note is not null (backend expects empty string rather than null)
     const note = (current.description ?? "") as string;
@@ -808,7 +815,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           onDragEnd={handleDragEnd}
         >
           <div className="flex min-h-[calc(100vh-220px)] items-start gap-4 overflow-x-auto pb-4 custom-scrollbar md:gap-5 px-1 snap-x snap-mandatory md:snap-none">
-            {visibleColumns.map((column) => (
+            {pipelineColumns.map((column) => (
               <div key={column.id} className="snap-start shrink-0">
                 <Column
                   id={column.id}
