@@ -1,7 +1,7 @@
 import api from "@/config/axiosConfig";
 import { Status } from "@/enums/commonEnum";
 import { EmploymentType, JobCategory } from "@/enums/workEnum";
-import { Job, ApplicationRequirements } from "@/types/job";
+import { Job } from "@/types/job";
 
 type JobPayload = {
   title?: string;
@@ -26,7 +26,6 @@ type JobPayload = {
   salaryRange?: string;
   contactEmail?: string;
   contactPhone?: string;
-  applicationRequirements?: Job["applicationRequirements"];
   promotionType?: string;
   status?: string;
   numberOfPositions?: number;
@@ -46,6 +45,18 @@ type JobSearchPayload = {
 type JobRecruitmentPayload = {
   jobId: string;
   coverLetter: boolean;
+};
+
+type EnumOption = {
+  code: string;
+  name: string;
+};
+
+type JobEnumMetadataResponse = {
+  experienceLevels?: EnumOption[];
+  employmentTypes?: EnumOption[];
+  educationTypes?: EnumOption[];
+  jobCategories?: EnumOption[];
 };
 
 const DEFAULT_QUERY = "";
@@ -91,19 +102,6 @@ const compactObject = <T extends Record<string, unknown>>(
     Object.entries(source).filter(([key, value]) => predicate(key, value))
   ) as Partial<T>;
 
-const sanitizeApplicationRequirements = (
-  requirements?: ApplicationRequirements
-) => {
-  if (!requirements) return undefined;
-
-  const coverLetter = Boolean(requirements.coverLetter);
-
-  return {
-    resume: true,
-    coverLetter,
-  } satisfies Pick<ApplicationRequirements, "resume" | "coverLetter">;
-};
-
 /**
  * Payload builders: map internal job structures into API-friendly bodies while
  * pruning undefined entries.
@@ -132,9 +130,7 @@ const mapJobToPayload = (job: Partial<Job>): JobPayload => {
     salaryRange: job.salaryRange,
     contactEmail: job.contactEmail,
     contactPhone: job.contactPhone,
-    applicationRequirements: sanitizeApplicationRequirements(
-      job.applicationRequirements
-    ),
+    // applicationRequirements is handled by /jobs/{id}/recruitment endpoint only.
     promotionType:
       job.promotionType === "paid"
         ? "PREMIUM"
@@ -349,6 +345,11 @@ const jobService = {
 
     const response = await api.get(`/jobs/company/${companyId}`);
     return unwrapResponse(response.data);
+  },
+
+  getJobEnums: async (): Promise<JobEnumMetadataResponse> => {
+    const response = await api.get("/jobs/enums");
+    return unwrapResponse(response.data) as JobEnumMetadataResponse;
   },
 };
 

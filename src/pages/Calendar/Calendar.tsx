@@ -129,7 +129,7 @@ const Calendar = () => {
       .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
       .map((interview) => {
         const completedRounds = completedRoundsByApplication.get(interview.applicationId) ?? 0;
-        const currentRound = completedRounds + 1;
+        const currentRound = interview.roundNumber ?? (completedRounds + 1);
         if (interview.interviewStatus === "COMPLETED") {
           completedRoundsByApplication.set(interview.applicationId, completedRounds + 1);
         }

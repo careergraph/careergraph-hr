@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, ExternalLink, Users } from "lucide-react";
 import { formatDateYMD, formatTimeHM } from "@/lib/dateUtils";
+import { canCompleteByStatus } from "./interviewCompletionRules";
 
 const STATUS_TABS: { value: string; label: string }[] = [
   { value: "", label: "Tất cả" },
@@ -70,6 +71,12 @@ export default function InterviewList() {
 
   const handleComplete = useCallback(
     async (id: string) => {
+      const target = interviews.find((interview) => interview.id === id);
+      if (target && !canCompleteByStatus(target.interviewStatus)) {
+        toast.warning("Chỉ có thể hoàn thành phỏng vấn đã xác nhận hoặc đang diễn ra");
+        return;
+      }
+
       try {
         await completeInterview(id);
         toast.success("Đã hoàn thành phỏng vấn");
@@ -77,7 +84,7 @@ export default function InterviewList() {
         toast.error("Không thể hoàn thành phỏng vấn");
       }
     },
-    [completeInterview]
+    [completeInterview, interviews]
   );
 
   const handleAcceptProposal = useCallback(

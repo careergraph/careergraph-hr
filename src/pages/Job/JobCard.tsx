@@ -9,7 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Job } from "@/types/job";
 import { Status } from "@/enums/commonEnum";
-import { EmploymentType } from "@/enums/workEnum";
+import { EmploymentType, JOB_CATEGORY_OPTIONS, JobCategory } from "@/enums/workEnum";
 import { KeyboardEvent } from "react";
 import { formatDateYMD } from "@/lib/dateUtils";
 
@@ -88,6 +88,11 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
     [Status.CLOSED]: "Đã đóng",
   };
 
+  const jobCategoryLabel =
+    JOB_CATEGORY_OPTIONS.find((option) => option.value === job.jobCategory)?.label ??
+    (job.jobCategory as JobCategory | undefined) ??
+    "";
+
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     // Cho phép mở job bằng phím Enter hoặc Space để đảm bảo accessibility.
     if (!onSelectJob) return;
@@ -139,7 +144,7 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
             {job.title}
           </h3>
           <p className="text-sm text-muted-foreground dark:text-slate-300 mt-1">
-            {job.department}
+            {jobCategoryLabel}
           </p>
         </div>
         <Badge className={`ml-3 rounded-full px-2 py-1 text-sm ${statusColor}`}>

@@ -139,7 +139,7 @@ export const ApplicationRequirementsStep = ({
               className="px-4 py-2"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Đang lưu..." : "Tiếp tục"}
+              {isSubmitting ? "Đang đăng..." : "Hoàn tất đăng tuyển"}
             </Button>
           </div>
         </div>

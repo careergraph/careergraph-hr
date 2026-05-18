@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, Star, Video, MapPin, UserCheck, CircleAlert, Link as LinkIcon, PlayCircle } from "lucide-react";
 import { formatDateTimeYMDHM } from "@/lib/dateUtils";
+import { getFeedbackRecommendationLabel } from "@/pages/Interview/feedbackRecommendationOptions";
 
 interface InterviewReviewTabProps {
   interviews: Interview[];
@@ -25,13 +26,6 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   CANCELLED: { label: "Đã hủy", cls: "bg-rose-50 text-rose-700 border-rose-200" },
   NO_SHOW: { label: "Vắng mặt", cls: "bg-orange-50 text-orange-700 border-orange-200" },
   PENDING_RESCHEDULE: { label: "Chờ đổi lịch", cls: "bg-purple-50 text-purple-700 border-purple-200" },
-};
-
-const RECOMMENDATION_LABELS: Record<string, string> = {
-  NEXT_ROUND: "Mời phỏng vấn giai đoạn tiếp theo",
-  EXTEND_OFFER: "Gửi offer",
-  REJECT: "Từ chối",
-  HOLD: "Giữ nguyên giai đoạn hiện tại",
 };
 
 const RECORDING_STATUS_LABELS: Record<string, string> = {
@@ -208,7 +202,7 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
                 {latestFeedback.recommendation && (
                   <p className="inline-flex items-center gap-1 text-xs font-medium text-slate-600">
                     <UserCheck className="h-3.5 w-3.5" />
-                    Khuyến nghị: {RECOMMENDATION_LABELS[latestFeedback.recommendation] ?? latestFeedback.recommendation}
+                    Khuyến nghị: {getFeedbackRecommendationLabel(latestFeedback.recommendation)}
                   </p>
                 )}
               </div>

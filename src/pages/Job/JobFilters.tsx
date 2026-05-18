@@ -19,6 +19,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useJobEnums } from "@/hooks/useJobEnums";
 
 // JobFilters cung cấp thanh tìm kiếm và các bộ lọc nâng cao cho danh sách việc làm.
 
@@ -54,26 +55,6 @@ const statusLabels: Record<Status, string> = {
   [Status.CLOSED]: "Đã đóng",
 };
 
-const employmentTypeLabels: Record<EmploymentType, string> = {
-  [EmploymentType.FULL_TIME]: "Toàn thời gian",
-  [EmploymentType.PART_TIME]: "Bán thời gian",
-  [EmploymentType.CONTRACT]: "Hợp đồng",
-  [EmploymentType.INTERNSHIP]: "Thực tập",
-  [EmploymentType.FREELANCE]: "Tự do",
-  [EmploymentType.TEMPORARY]: "Thời vụ",
-};
-
-const jobCategoryLabels: Record<JobCategory, string> = {
-  [JobCategory.ENGINEER]: "Kỹ thuật",
-  [JobCategory.BUSINESS]: "Kinh doanh",
-  [JobCategory.ART_MUSIC]: "Nghệ thuật & Âm nhạc",
-  [JobCategory.ADMINISTRATION]: "Hành chính",
-  [JobCategory.SALES]: "Bán hàng",
-  [JobCategory.EDUCATION]: "Giáo dục",
-  [JobCategory.CUSTOMER_SERVICE]: "Chăm sóc khách hàng",
-  [JobCategory.MANUFACTURING]: "Sản xuất",
-};
-
 const toggleValue = <T extends string>(
   values: T[],
   value: T,
@@ -106,6 +87,7 @@ const JobFiltersComponent = ({
   searchTerm,
   onSearchChange,
 }: JobFiltersProps) => {
+  const { employmentTypes, jobCategories, labelMaps } = useJobEnums();
   const navigate = useNavigate();
   const handleAddJob = useCallback(() => {
     // Điều hướng sang trang tạo job mới.
@@ -175,8 +157,8 @@ const JobFiltersComponent = ({
     {
       key: "employmentTypes",
       title: "Hình thức làm việc",
-      options: Object.values(EmploymentType) as string[],
-      labels: employmentTypeLabels as Record<string, string>,
+      options: employmentTypes.length > 0 ? employmentTypes.map((item) => item.value) : (Object.values(EmploymentType) as string[]),
+      labels: labelMaps.employment as Record<string, string>,
       selected: value.employmentTypes as string[],
       onToggle: (nextValue, checked) =>
         handleEmploymentTypeChange(nextValue as EmploymentType, checked),
@@ -184,8 +166,8 @@ const JobFiltersComponent = ({
     {
       key: "categories",
       title: "Nhóm công việc",
-      options: Object.values(JobCategory) as string[],
-      labels: jobCategoryLabels as Record<string, string>,
+      options: jobCategories.length > 0 ? jobCategories.map((item) => item.value) : (Object.values(JobCategory) as string[]),
+      labels: labelMaps.category as Record<string, string>,
       selected: value.categories as string[],
       onToggle: (nextValue, checked) =>
         handleCategoryChange(nextValue as JobCategory, checked),
@@ -200,12 +182,12 @@ const JobFiltersComponent = ({
     })),
     ...value.employmentTypes.map((type) => ({
       id: `employment-${type}`,
-      label: employmentTypeLabels[type],
+      label: labelMaps.employment[type] ?? type,
       onRemove: () => handleEmploymentTypeChange(type, false),
     })),
     ...value.categories.map((category) => ({
       id: `category-${category}`,
-      label: jobCategoryLabels[category],
+      label: labelMaps.category[category] ?? category,
       onRemove: () => handleCategoryChange(category, false),
     })),
   ];
@@ -414,3 +396,6 @@ const JobFilters = memo(JobFiltersComponent);
 
 export default JobFilters;
 /* eslint-enable react-refresh/only-export-components */
+
+
+

@@ -82,7 +82,6 @@ export const useInterviewStore = create<InterviewState>()((set) => ({
       }));
       return newInterview;
     } catch (err: unknown) {
-      console.log("asasasasas")
       const message = err instanceof Error ? err.message : "Failed to create interview";
       set({ error: message, isLoading: false });
       throw err;

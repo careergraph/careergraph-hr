@@ -48,14 +48,14 @@ const statusMap: Record<string, Status> = {
 const jobCategoryMap: Record<string, JobCategory> = {
   ENGINEER: JobCategory.ENGINEER,
   ENGINEERING: JobCategory.ENGINEER,
-  TECHNOLOGY: JobCategory.ENGINEER,
-  SOFTWARE_ENGINEERING: JobCategory.ENGINEER,
-  SOFTWARE: JobCategory.ENGINEER,
+  TECHNOLOGY: JobCategory.TECHNOLOGY,
+  SOFTWARE_ENGINEERING: JobCategory.TECHNOLOGY,
+  SOFTWARE: JobCategory.TECHNOLOGY,
   BUSINESS: JobCategory.BUSINESS,
   BUSINESS_OPERATIONS: JobCategory.BUSINESS,
   ART_MUSIC: JobCategory.ART_MUSIC,
   ART_AND_MUSIC: JobCategory.ART_MUSIC,
-  DESIGN: JobCategory.ART_MUSIC,
+  DESIGN: JobCategory.DESIGN,
   ADMINISTRATION: JobCategory.ADMINISTRATION,
   ADMIN: JobCategory.ADMINISTRATION,
   SALES: JobCategory.SALES,
@@ -364,6 +364,13 @@ export default function JobsGrid() {
     [navigate]
   );
 
+  const handleEditDraft = useCallback(
+    (jobId: string) => {
+      navigate(`/jobs/new?draftId=${encodeURIComponent(jobId)}`);
+    },
+    [navigate]
+  );
+
   const handleFilterChange = useCallback(
     (nextFilters: JobFilterState) => {
       // Cập nhật bộ lọc khi người dùng thay đổi các checkbox.
@@ -459,11 +466,19 @@ export default function JobsGrid() {
             ) : hasJobs ? (
               <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {jobs.map((job) => (
-                  <JobCard
-                    key={job.id}
-                    job={job}
-                    onSelectJob={() => handleSelectJob(job.id)}
-                  />
+                  <div key={job.id} className="space-y-2">
+                    <JobCard job={job} onSelectJob={() => handleSelectJob(job.id)} />
+                    {job.status === Status.DRAFT && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => handleEditDraft(job.id)}
+                      >
+                        Chỉnh sửa bản nháp
+                      </Button>
+                    )}
+                  </div>
                 ))}
               </div>
             ) : (

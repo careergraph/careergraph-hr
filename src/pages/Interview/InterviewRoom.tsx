@@ -39,6 +39,10 @@ import type { Interview } from "@/types/interview";
 import FeedbackModal from "./FeedbackModal";
 import RecordingAssignModal from "./RecordingAssignModal";
 import { formatDateTimeYMDHM, formatDateYMD } from "@/lib/dateUtils";
+import {
+  canCompleteInterview,
+  getInterviewCompletionBlockReason,
+} from "./interviewCompletionRules";
 
 const FINAL_INTERVIEW_STATUSES = new Set(["COMPLETED", "CANCELLED", "NO_SHOW"]);
 const ROOM_OPEN_STATUSES = new Set(["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"]);
@@ -321,6 +325,12 @@ export default function InterviewRoom() {
         return;
       }
 
+      const blockReason = getInterviewCompletionBlockReason(targetInterview, roomParticipants);
+      if (blockReason) {
+        toast.error(blockReason);
+        return;
+      }
+
       if (targetInterview.interviewStatus === "COMPLETED") {
         toast.info("Ứng viên này đã được hoàn thành phỏng vấn");
         return;
@@ -353,7 +363,7 @@ export default function InterviewRoom() {
 
       toast.success(`Đã hoàn thành phỏng vấn ứng viên ${targetInterview.candidateName}`);
     },
-    [roomCode, interview?.id, joinedCandidateApplicationIds]
+    [roomCode, interview?.id, joinedCandidateApplicationIds, roomParticipants]
   );
 
   const candidateActionItems = roomInterviews
@@ -391,7 +401,7 @@ export default function InterviewRoom() {
   };
 
   // ── Media device detection & initialization ──────────
-  // Distinguishes "no device" (allow join) from "permission denied / busy" (block join).
+  // Media failures should not block the admission socket; fall back to no-camera/no-mic mode.
   const [hasCamera, setHasCamera] = useState<boolean | null>(null);
   const [hasMic, setHasMic] = useState<boolean | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -402,7 +412,11 @@ export default function InterviewRoom() {
     if (!navigator.mediaDevices?.getUserMedia) {
       toast.error("Trình duyệt không hỗ trợ truy cập thiết bị media");
       setMediaError("unsupported");
-      return "error";
+      setCameraOn(false);
+      setMicOn(false);
+      setHasCamera(false);
+      setHasMic(false);
+      return "no-devices";
     }
 
     // Step 1: Detect which device types are available
@@ -471,17 +485,25 @@ export default function InterviewRoom() {
       const deviceBusy = blockingErrors.filter((e) => e.name === "NotReadableError" || e.name === "AbortError");
 
       if (permissionDenied.length > 0 && !videoStream && !audioStream) {
-        const msg = "Bạn đã chặn quyền truy cập camera/microphone.\nHãy mở Cài đặt trình duyệt → Quyền riêng tư → Cho phép camera/microphone cho trang này, sau đó tải lại trang.";
-        toast.error(msg, { duration: 8000 });
+        const msg = "Bạn đã chặn quyền truy cập camera/microphone. Phòng vẫn sẽ mở ở chế độ không camera/mic.";
+        toast.warning(msg, { duration: 8000 });
         setMediaError("permission-denied");
-        return "error";
+        setCameraOn(false);
+        setMicOn(false);
+        setHasCamera(false);
+        setHasMic(false);
+        return "no-devices";
       }
 
       if (deviceBusy.length > 0 && !videoStream && !audioStream) {
-        const msg = "Thiết bị camera/microphone đang được sử dụng bởi ứng dụng khác.\nHãy đóng ứng dụng đó và thử lại.";
-        toast.error(msg, { duration: 8000 });
+        const msg = "Thiết bị camera/microphone đang bận. Phòng vẫn sẽ mở ở chế độ không camera/mic.";
+        toast.warning(msg, { duration: 8000 });
         setMediaError("device-busy");
-        return "error";
+        setCameraOn(false);
+        setMicOn(false);
+        setHasCamera(false);
+        setHasMic(false);
+        return "no-devices";
       }
 
       // Build stream from what we got
@@ -1076,9 +1098,9 @@ export default function InterviewRoom() {
           {mediaError && (
             <div className="mx-auto max-w-md rounded-xl bg-red-900/30 border border-red-800/50 px-4 py-3 text-center">
               <p className="text-sm text-red-300">
-                {mediaError === "permission-denied" && "Quyền camera/microphone bị chặn. Hãy cho phép trong cài đặt trình duyệt rồi tải lại trang."}
-                {mediaError === "device-busy" && "Thiết bị đang bị ứng dụng khác chiếm dụng. Hãy đóng ứng dụng đó và thử lại."}
-                {mediaError === "unsupported" && "Trình duyệt không hỗ trợ truy cập thiết bị media."}
+                {mediaError === "permission-denied" && "Quyền camera/microphone bị chặn. Bạn vẫn có thể vào phòng ở chế độ không camera/mic."}
+                {mediaError === "device-busy" && "Thiết bị đang bị ứng dụng khác chiếm dụng. Bạn vẫn có thể vào phòng ở chế độ không camera/mic."}
+                {mediaError === "unsupported" && "Trình duyệt không hỗ trợ truy cập thiết bị media. Bạn vẫn có thể vào phòng ở chế độ xem."}
               </p>
             </div>
           )}
@@ -1125,7 +1147,6 @@ export default function InterviewRoom() {
             <Button
               onClick={handleJoin}
               className="bg-green-600 hover:bg-green-700 px-8"
-              disabled={!!mediaError}
             >
               {noDevices ? "Tham gia (chế độ xem)" : "Tham gia phỏng vấn"}
             </Button>
@@ -1476,6 +1497,8 @@ export default function InterviewRoom() {
                 const completed = iv.interviewStatus === "COMPLETED";
                 const alreadyReviewed = Array.isArray(iv.feedback) && iv.feedback.length > 0;
                 const canReview = hasJoined && completed && !alreadyReviewed;
+                const canComplete = canCompleteInterview(iv, roomParticipants);
+                const completeBlockReason = getInterviewCompletionBlockReason(iv, roomParticipants);
                 return (
                   <div key={iv.id} className="rounded-xl border border-gray-800 bg-gray-900/80 p-3">
                     <div className="flex items-start justify-between gap-2">
@@ -1501,7 +1524,8 @@ export default function InterviewRoom() {
                         size="sm"
                         variant="outline"
                         className="h-8 border-gray-600 text-gray-200 hover:bg-gray-800"
-                        disabled={completed || !hasJoined}
+                        disabled={completed || !canComplete}
+                        title={completed ? undefined : completeBlockReason || undefined}
                         onClick={() => {
                           handleCompleteCandidateInterview(iv).catch(() => {
                             toast.error("Không thể hoàn thành phỏng vấn ứng viên này");

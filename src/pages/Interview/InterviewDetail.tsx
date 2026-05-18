@@ -25,6 +25,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDateYMD, formatTimeHM } from "@/lib/dateUtils";
+import {
+  canCompleteByStatus,
+  canCompleteInterview,
+  getInterviewCompletionBlockReason,
+  type RoomParticipantLike,
+} from "./interviewCompletionRules";
+import { getFeedbackRecommendationLabel } from "./feedbackRecommendationOptions";
 
 const STATUS_STYLES: Record<string, string> = {
   SCHEDULED: "bg-blue-100 text-blue-700",
@@ -44,13 +51,6 @@ const STATUS_LABELS: Record<string, string> = {
   COMPLETED: "Hoàn thành",
   CANCELLED: "Đã hủy",
   NO_SHOW: "Vắng mặt",
-};
-
-const FEEDBACK_RECOMMENDATION_LABELS: Record<string, string> = {
-  NEXT_ROUND: "Mời phỏng vấn giai đoạn tiếp theo",
-  EXTEND_OFFER: "Gửi offer",
-  REJECT: "Từ chối",
-  HOLD: "Giữ nguyên giai đoạn hiện tại",
 };
 
 const RECORDING_STATUS_LABELS: Record<string, string> = {
@@ -74,6 +74,8 @@ export default function InterviewDetail() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [proposals, setProposals] = useState<InterviewTimeProposal[]>([]);
   const [recordings, setRecordings] = useState<InterviewRecording[]>([]);
+  const [roomParticipants, setRoomParticipants] = useState<RoomParticipantLike[]>([]);
+  const [loadingRoomParticipants, setLoadingRoomParticipants] = useState(false);
   const [processingProposal, setProcessingProposal] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,6 +109,35 @@ export default function InterviewDetail() {
       .catch(() => setRecordings([]));
   }, [selectedInterview?.id]);
 
+  useEffect(() => {
+    if (selectedInterview?.type !== "ONLINE" || !selectedInterview.meetingLink) {
+      setRoomParticipants([]);
+      setLoadingRoomParticipants(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingRoomParticipants(true);
+
+    interviewService
+      .fetchRoomParticipants(selectedInterview.meetingLink)
+      .then((resp) => {
+        if (cancelled) return;
+        const items = Array.isArray(resp?.data) ? resp.data : Array.isArray(resp) ? resp : [];
+        setRoomParticipants(items);
+      })
+      .catch(() => {
+        if (!cancelled) setRoomParticipants([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingRoomParticipants(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedInterview?.type, selectedInterview?.meetingLink]);
+
   if (isLoading || !selectedInterview) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -118,7 +149,7 @@ export default function InterviewDetail() {
   const iv = selectedInterview;
   const scheduledDate = new Date(iv.scheduledAt);
   const endDate = new Date(iv.endAt);
-  const isActive = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE"].includes(iv.interviewStatus);
+  const canCancelFromDetail = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"].includes(iv.interviewStatus);
   const roomLink = iv.meetingLink ? `${window.location.origin}/interview/room/${iv.meetingLink}` : "";
   const isCompleted = iv.interviewStatus === "COMPLETED";
   const hasFeedback = Array.isArray(iv.feedback) && iv.feedback.length > 0;
@@ -126,6 +157,11 @@ export default function InterviewDetail() {
   const canOpenRoomFromDetail =
     ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(iv.interviewStatus) && !isPastEndTime;
   const showRoomActionFromDetail = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(iv.interviewStatus);
+  const completeBlockReason = getInterviewCompletionBlockReason(iv, roomParticipants);
+  const canCompleteFromDetail =
+    canCompleteInterview(iv, roomParticipants) &&
+    (iv.type !== "ONLINE" || !loadingRoomParticipants);
+  const shouldShowCompleteAction = canCompleteByStatus(iv.interviewStatus);
 
   const handleCancel = async () => {
     try {
@@ -138,6 +174,11 @@ export default function InterviewDetail() {
   };
 
   const handleComplete = async () => {
+    if (!canCompleteFromDetail) {
+      toast.warning(completeBlockReason || "Chưa đủ điều kiện hoàn thành phỏng vấn");
+      return;
+    }
+
     try {
       await completeInterview(iv.id);
       toast.success("Đã hoàn thành phỏng vấn");
@@ -301,7 +342,7 @@ export default function InterviewDetail() {
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                         {fb.reviewerName}
                       </span>
-                      <Badge variant="outline">{FEEDBACK_RECOMMENDATION_LABELS[fb.recommendation] ?? fb.recommendation}</Badge>
+                      <Badge variant="outline">{getFeedbackRecommendationLabel(fb.recommendation)}</Badge>
                     </div>
                     <div className="flex gap-4 text-xs text-gray-500 mb-2">
                       <span>Tổng: {fb.overallRating}/5</span>
@@ -458,7 +499,7 @@ export default function InterviewDetail() {
 
         {/* Actions */}
         <div className="flex gap-3">
-          {iv.type === "ONLINE" && iv.meetingLink && isActive && (
+          {iv.type === "ONLINE" && iv.meetingLink && showRoomActionFromDetail && (
             <Button
               className="bg-blue-600 hover:bg-blue-700"
               onClick={() => {
@@ -471,12 +512,22 @@ export default function InterviewDetail() {
               {canOpenRoomFromDetail ? "Tham gia phỏng vấn" : "Đã quá giờ phỏng vấn"}
             </Button>
           )}
-          {isActive && (
+          {(canCancelFromDetail || shouldShowCompleteAction) && (
             <>
-              <Button onClick={handleComplete}>Hoàn thành</Button>
-              <Button variant="destructive" onClick={handleCancel}>
-                Hủy phỏng vấn
-              </Button>
+              {shouldShowCompleteAction && (
+                <Button
+                  onClick={handleComplete}
+                  disabled={!canCompleteFromDetail}
+                  title={!canCompleteFromDetail ? completeBlockReason : undefined}
+                >
+                  Hoàn thành
+                </Button>
+              )}
+              {canCancelFromDetail && (
+                <Button variant="destructive" onClick={handleCancel}>
+                  Hủy phỏng vấn
+                </Button>
+              )}
             </>
           )}
           {isCompleted && !hasFeedback && (

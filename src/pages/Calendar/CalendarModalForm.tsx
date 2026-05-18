@@ -26,8 +26,16 @@ import {
 import { CalendarClock, Video, Briefcase, Users } from "lucide-react";
 import { jobService } from "@/services/jobService";
 import { interviewService } from "@/services/interviewService";
+import { companyPipelineService } from "@/services/companyPipelineService";
 import { useInterviewStore } from "@/stores/interviewStore";
 import { extractApiErrorMessage } from "@/lib/error-utils";
+import {
+  DEFAULT_COMPANY_STAGES,
+  DEFAULT_STAGE_ORDER,
+  normalizeStageConfig,
+  type ApplicationStageCode,
+  type CompanyRecruitmentStage,
+} from "@/lib/recruitmentPipeline";
 import { toast } from "sonner";
 
 interface UnscheduledApp {
@@ -38,6 +46,13 @@ interface UnscheduledApp {
   jobTitle: string;
   currentStage: string;
   appliedDate: string;
+  maxRound?: number;
+  nextRound?: number;
+  maxCompletedRound?: number;
+  hasFeedback?: boolean;
+  hasParticipatedInterview?: boolean;
+  hasActiveInterview?: boolean;
+  activeInterviewCount?: number;
 }
 
 interface JobOption {
@@ -98,6 +113,11 @@ export const CalendarModalForm = ({
   const [unscheduledApps, setUnscheduledApps] = useState<UnscheduledApp[]>([]);
   const [selectedAppId, setSelectedAppId] = useState("");
   const [interviewType, setInterviewType] = useState<InterviewType>("ONLINE");
+  const [selectedRound, setSelectedRound] = useState<number>(1);
+  const [availableRounds, setAvailableRounds] = useState<number[]>([1]);
+  const [pipelineStages, setPipelineStages] = useState<CompanyRecruitmentStage[]>(
+    DEFAULT_COMPANY_STAGES
+  );
   const [startTime, setStartTime] = useState("09:00");
   const [duration, setDuration] = useState<number>(60);
   const [loadingJobs, setLoadingJobs] = useState(false);
@@ -112,6 +132,45 @@ export const CalendarModalForm = ({
   const locationFieldRef = useRef<HTMLDivElement>(null);
   const startDateInputRef = useRef<HTMLInputElement>(null);
   const endDateInputRef = useRef<HTMLInputElement>(null);
+
+  const stageOrderMap = useMemo(() => {
+    const normalized = normalizeStageConfig(
+      pipelineStages.length > 0 ? pipelineStages : DEFAULT_COMPANY_STAGES
+    );
+    const map = new Map<ApplicationStageCode, number>();
+    normalized.forEach((stage) => {
+      map.set(stage.stage, stage.displayOrder);
+    });
+    return map;
+  }, [pipelineStages]);
+
+  const interviewStageOrder = useMemo(() => {
+    const fallbackIndex = DEFAULT_STAGE_ORDER.indexOf("INTERVIEW");
+    const fallbackOrder = fallbackIndex >= 0 ? fallbackIndex + 1 : 0;
+    return stageOrderMap.get("INTERVIEW") ?? fallbackOrder;
+  }, [stageOrderMap]);
+
+  const isStageEligible = useCallback(
+    (stage?: string) => {
+      if (!stage) return false;
+      const order = stageOrderMap.get(stage as ApplicationStageCode);
+      if (typeof order !== "number") return false;
+      if (interviewStageOrder <= 0) {
+        return order === interviewStageOrder;
+      }
+      return order === interviewStageOrder || order === interviewStageOrder - 1;
+    },
+    [interviewStageOrder, stageOrderMap]
+  );
+
+  const isAppEligible = useCallback(
+    (app: UnscheduledApp) => {
+      const hasActiveInterview =
+        app.hasActiveInterview || (app.activeInterviewCount ?? 0) > 0;
+      return isStageEligible(app.currentStage) && !hasActiveInterview;
+    },
+    [isStageEligible]
+  );
 
   // Fetch jobs when modal opens in create mode
   useEffect(() => {
@@ -136,23 +195,61 @@ export const CalendarModalForm = ({
       .finally(() => setLoadingJobs(false));
   }, [isOpen, isCreateMode]);
 
+  useEffect(() => {
+    if (!isOpen || !isCreateMode) return;
+    companyPipelineService
+      .fetchMyRecruitmentStages()
+      .then((stages) => {
+        setPipelineStages(stages.length > 0 ? stages : DEFAULT_COMPANY_STAGES);
+      })
+      .catch(() => {
+        setPipelineStages(DEFAULT_COMPANY_STAGES);
+      });
+  }, [isOpen, isCreateMode]);
+
   // Fetch unscheduled candidates when job changes
   useEffect(() => {
     if (!selectedJobId) {
       setUnscheduledApps([]);
       setSelectedAppId("");
+      setAvailableRounds([1]);
+      setSelectedRound(1);
       setFieldErrors((prev) => ({ ...prev, selectedJobId: "" }));
       return;
     }
+    setSelectedAppId("");
     setLoadingApps(true);
     interviewService
-      .fetchUnscheduledByJob(selectedJobId)
+      .fetchUnscheduledByJob(selectedJobId, selectedRound)
       .then((resp) => {
-        setUnscheduledApps(resp?.data ?? []);
+        const payload = (resp?.data ?? {}) as {
+          applications?: UnscheduledApp[];
+          availableRounds?: number[];
+        };
+        const apps = Array.isArray(payload.applications) ? payload.applications : [];
+        const roundsRaw = Array.isArray(payload.availableRounds) ? payload.availableRounds : [1];
+        const rounds = roundsRaw
+          .map((item) => Number(item))
+          .filter((item) => Number.isFinite(item) && item >= 1)
+          .sort((a, b) => a - b);
+        const normalizedRounds = rounds.length > 0 ? rounds : [1];
+        setAvailableRounds(normalizedRounds);
+        if (!normalizedRounds.includes(selectedRound)) {
+          setSelectedRound(normalizedRounds[0]);
+          return;
+        }
+        const eligibleApps = apps.filter(isAppEligible);
+        setUnscheduledApps(eligibleApps);
+        if (eligibleApps.length > 0) {
+          setSelectedAppId(eligibleApps[0].applicationId);
+        }
       })
-      .catch(() => setUnscheduledApps([]))
+      .catch(() => {
+        setUnscheduledApps([]);
+        setAvailableRounds([1]);
+      })
       .finally(() => setLoadingApps(false));
-  }, [selectedJobId]);
+  }, [selectedJobId, selectedRound]);
 
   // Reset internal state when modal closes
   useEffect(() => {
@@ -162,6 +259,8 @@ export const CalendarModalForm = ({
       setInterviewType("ONLINE");
       setStartTime("09:00");
       setDuration(60);
+      setSelectedRound(1);
+      setAvailableRounds([1]);
       setUnscheduledApps([]);
       setFieldErrors({});
       setFormError("");
@@ -180,7 +279,6 @@ export const CalendarModalForm = ({
   const selectedApp = unscheduledApps.find(
     (a) => a.applicationId === selectedAppId
   );
-
   const scrollToFirstError = (errors: Record<string, string>) => {
     if (errors.selectedJobId) {
       jobFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -214,6 +312,9 @@ export const CalendarModalForm = ({
     if (!selectedAppId) {
       nextErrors.selectedAppId = "Vui lòng chọn ứng viên.";
     }
+    if (!selectedRound || selectedRound < 1) {
+      nextErrors.selectedRound = "Vui lòng chọn vòng phỏng vấn.";
+    }
     if (!eventStartDate) {
       nextErrors.eventStartDate = "Vui lòng chọn ngày phỏng vấn.";
     }
@@ -245,6 +346,7 @@ export const CalendarModalForm = ({
         notes: eventNotes || undefined,
         confirmOverwrite,
         notifyCandidate: true,
+        roundNumber: selectedRound,
       };
 
       await createInterview(request);
@@ -538,46 +640,77 @@ export const CalendarModalForm = ({
                 {/* Candidate selector (appears after job is selected) */}
                 {selectedJobId && (
                   <div ref={appFieldRef} className="space-y-2">
-                    <Label className="flex items-center gap-1.5">
-                      <Users className="h-4 w-4" />
-                      Chọn ứng viên
-                    </Label>
-                    {loadingApps ? (
-                      <div className="rounded-lg border p-3 text-center text-sm text-muted-foreground">
-                        Đang tải danh sách ứng viên...
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2 col-span-1 ">
+                        <Label className="text-slate-700">Vòng đánh giá</Label>
+                        <Select
+                          value={String(selectedRound)}
+                          onValueChange={(value) => {
+                            setSelectedRound(Number(value));
+                            setSelectedAppId("");
+                            setFieldErrors((prev) => ({ ...prev, selectedRound: "", selectedAppId: "" }));
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Chọn vòng phỏng vấn" />
+                          </SelectTrigger>
+                          <SelectContent className="border border-slate-200 bg-white text-slate-900">
+                            {availableRounds.map((round) => (
+                              <SelectItem key={round} value={String(round)}>
+                                Vòng {round}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {fieldErrors.selectedRound ? (
+                          <p className="text-xs text-rose-600">{fieldErrors.selectedRound}</p>
+                        ) : null}
                       </div>
-                    ) : unscheduledApps.length === 0 ? (
-                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
-                        Tất cả ứng viên của job này đã được lên lịch phỏng vấn
+                      <div className="space-y-2 col-span-2">
+                        <Label className="flex items-center gap-1.5">
+                          <Users className="h-4 w-4" />
+                          Chọn ứng viên
+                        </Label>
+                        {loadingApps ? (
+                          <div className="rounded-lg border p-3 text-center text-sm text-muted-foreground">
+                            Đang tải danh sách ứng viên...
+                          </div>
+                        ) : unscheduledApps.length === 0 ? (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
+                            Tất cả ứng viên của job này đã được lên lịch phỏng vấn
+                          </div>
+                        ) : (
+                          <Select
+                            value={selectedAppId}
+                            onValueChange={(value) => {
+                              setSelectedAppId(value);
+                              const next = unscheduledApps.find((item) => item.applicationId === value)?.nextRound ?? 1;
+                              setSelectedRound(next);
+                              setFieldErrors((prev) => ({ ...prev, selectedAppId: "" }));
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Chọn ứng viên chưa lên lịch..." />
+                            </SelectTrigger>
+                            <SelectContent className="border border-slate-200 bg-white text-slate-900">
+                              {unscheduledApps.map((app) => (
+                                <SelectItem key={app.applicationId} value={app.applicationId}>
+                                  <div className="flex flex-col">
+                                    <span>{app.candidateName}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {app.candidateEmail}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {fieldErrors.selectedAppId ? (
+                          <p className="text-xs text-rose-600">{fieldErrors.selectedAppId}</p>
+                        ) : null}
                       </div>
-                    ) : (
-                      <Select
-                        value={selectedAppId}
-                        onValueChange={(value) => {
-                          setSelectedAppId(value);
-                          setFieldErrors((prev) => ({ ...prev, selectedAppId: "" }));
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Chọn ứng viên chưa lên lịch..." />
-                        </SelectTrigger>
-                        <SelectContent className="border border-slate-200 bg-white text-slate-900">
-                          {unscheduledApps.map((app) => (
-                            <SelectItem key={app.applicationId} value={app.applicationId}>
-                              <div className="flex flex-col">
-                                <span>{app.candidateName}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {app.candidateEmail}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    {fieldErrors.selectedAppId ? (
-                      <p className="text-xs text-rose-600">{fieldErrors.selectedAppId}</p>
-                    ) : null}
+                    </div>
                   </div>
                 )}
 
@@ -598,6 +731,11 @@ export const CalendarModalForm = ({
                         {selectedApp.jobTitle}
                       </p>
                     )}
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      <span className="font-medium">Vòng hiện có:</span>{" "}
+                      {selectedApp.maxRound ?? 0} | <span className="font-medium">Đề xuất vòng:</span>{" "}
+                      {selectedApp.nextRound ?? 1}
+                    </p>
                   </div>
                 )}
 

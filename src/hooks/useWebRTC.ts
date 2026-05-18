@@ -22,6 +22,7 @@ export interface JoinRequest {
   userId: string;
   email?: string;
   displayName?: string;
+  requestedAt?: string;
 }
 
 export type RoomStatus = "SCHEDULED" | "WAITING" | "ACTIVE" | "CLOSING" | "ENDED" | "EXPIRED";
@@ -246,9 +247,23 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
     // ── Admission control events (HR host) ─────────────
     socket.on("join-request", (req: JoinRequest) => {
       setJoinRequests((prev) => {
-        if (prev.some((r) => r.socketId === req.socketId)) return prev;
-        return [...prev, req];
+        const withoutSameUser = prev.filter((r) =>
+          req.userId ? r.userId !== req.userId : r.socketId !== req.socketId
+        );
+        if (withoutSameUser.some((r) => r.socketId === req.socketId)) return withoutSameUser;
+        return [...withoutSameUser, req];
       });
+    });
+
+    socket.on("join-requests", (requests: JoinRequest[]) => {
+      const uniqueByUser = new Map<string, JoinRequest>();
+
+      for (const req of Array.isArray(requests) ? requests : []) {
+        const key = req.userId || req.socketId;
+        uniqueByUser.set(key, req);
+      }
+
+      setJoinRequests(Array.from(uniqueByUser.values()));
     });
 
     socket.on("waiting-user-left", ({ socketId }: { socketId: string }) => {
@@ -262,6 +277,9 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
 
     socket.on("waiting-count", ({ count }: { count: number }) => {
       setWaitingCount(count);
+      if (count > 0) {
+        socket.emit("get-waiting-room");
+      }
     });
 
     // ── Peer media tracking ────────────────────────────

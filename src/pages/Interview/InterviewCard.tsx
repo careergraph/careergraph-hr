@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, Monitor, MoreVertical, ExternalLink } from "lucide-react";
+import { canCompleteByStatus } from "./interviewCompletionRules";
 
 interface InterviewCardProps {
   interview: Interview;
@@ -47,7 +48,8 @@ export default function InterviewCard({
   const scheduledDate = new Date(interview.scheduledAt);
   const endDate = new Date(interview.endAt);
   const hasTimeExpired = Number.isFinite(endDate.getTime()) && Date.now() > endDate.getTime();
-  const isActive = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"].includes(interview.interviewStatus);
+  const canCancel = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"].includes(interview.interviewStatus);
+  const canComplete = canCompleteByStatus(interview.interviewStatus);
   const isCompleted = interview.interviewStatus === "COMPLETED";
   const canAddFeedback = isCompleted && (!Array.isArray(interview.feedback) || interview.feedback.length === 0);
   const canJoinRoom = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(interview.interviewStatus) && !hasTimeExpired;
@@ -102,7 +104,7 @@ export default function InterviewCard({
           </p>
         </div>
 
-        {(isActive || isCompleted) && (
+        {(canCancel || canComplete || isCompleted) && (
           <div
             ref={actionMenuRef}
             className="relative"
@@ -125,30 +127,34 @@ export default function InterviewCard({
                 role="menu"
                 className="absolute right-0 top-9 z-30 min-w-[170px] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
               >
-                {isActive && (
+                {(canComplete || canCancel) && (
                   <>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="block w-full px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
-                      onClick={() => {
-                        setIsActionMenuOpen(false);
-                        onComplete?.(interview.id);
-                      }}
-                    >
-                      Hoàn thành
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="block w-full px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
-                      onClick={() => {
-                        setIsActionMenuOpen(false);
-                        onCancel?.(interview.id);
-                      }}
-                    >
-                      Hủy phỏng vấn
-                    </button>
+                    {canComplete && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="block w-full px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+                        onClick={() => {
+                          setIsActionMenuOpen(false);
+                          onComplete?.(interview.id);
+                        }}
+                      >
+                        Hoàn thành
+                      </button>
+                    )}
+                    {canCancel && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="block w-full px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                        onClick={() => {
+                          setIsActionMenuOpen(false);
+                          onCancel?.(interview.id);
+                        }}
+                      >
+                        Hủy phỏng vấn
+                      </button>
+                    )}
                   </>
                 )}
 

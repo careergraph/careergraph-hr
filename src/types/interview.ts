@@ -24,6 +24,7 @@ export type InterviewType = "ONLINE" | "OFFLINE";
 
 export type FeedbackRecommendation =
   | "NEXT_ROUND"
+  | "ADVANCE_NEXT_STAGE"
   | "EXTEND_OFFER"
   | "REJECT"
   | "HOLD";
@@ -90,6 +91,7 @@ export interface Interview {
   notes?: string;
   rescheduledFromId?: string;
   cancellationReason?: string;
+  roundNumber?: number;
   interviewers: InterviewParticipant[];
   feedback?: InterviewFeedback[];
   recordings?: InterviewRecording[];
@@ -109,6 +111,7 @@ export interface CreateInterviewRequest {
   notes?: string;
   confirmOverwrite?: boolean;
   notifyCandidate?: boolean;
+  roundNumber?: number;
 }
 
 export interface RescheduleInterviewRequest {
@@ -127,6 +130,6 @@ export interface InterviewFeedbackRequest {
   problemSolvingScore?: number;
   strengths?: string;
   weaknesses?: string;
-  recommendation: string;
+  recommendation: FeedbackRecommendation;
   notes?: string;
 }

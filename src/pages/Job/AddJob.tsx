@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { isAxiosError } from "axios";
 import { StepIndicator } from "../AddJobSteps/StepIndicator";
 import { JobDetailsStep } from "../AddJobSteps/JobDetailsStep";
 import { ApplicationRequirementsStep } from "../AddJobSteps/ApplicationRequirementsStep";
-import { PromoteStep } from "../AddJobSteps/PromoteStep";
 import { Job } from "@/types/job";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { jobService, type JobRecruitmentPayload } from "@/services/jobService";
 import { Status } from "@/enums/commonEnum";
@@ -14,6 +13,8 @@ import { Status } from "@/enums/commonEnum";
 
 const AddJob = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const draftId = searchParams.get("draftId") ?? "";
   // Theo dõi bước hiện tại của wizard.
   const [currentStep, setCurrentStep] = useState(1);
   // Lưu dữ liệu job tích lũy qua các bước.
@@ -24,8 +25,10 @@ const AddJob = () => {
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isSavingRequirements, setIsSavingRequirements] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(false);
 
-  const steps = ["Information", "Requirements", "Promote"];
+  // const steps = ["Information", "Requirements", "Promote"];
+  const steps = ["Information", "Requirements"];
 
   const handleJobDataUpdate = (data: Partial<Job>) => {
     // Gộp dữ liệu mới vào state job hiện tại.
@@ -66,6 +69,111 @@ const AddJob = () => {
     return "Không thể xử lý yêu cầu. Vui lòng thử lại.";
   };
 
+  const isUpdateNotImplementedError = (error: unknown) => {
+    const message = resolveErrorMessage(error).toLowerCase();
+    return message.includes("update job not implemented yet");
+  };
+
+  const normalizeEnumCode = (value?: string | null) => {
+    if (!value) return undefined;
+    return value
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[â€™'`]/g, "")
+      .replace(/[-\s]+/g, "_")
+      .toUpperCase();
+  };
+
+  const normalizeEducationCode = (value?: string | null) => {
+    const code = normalizeEnumCode(value);
+    if (!code) return undefined;
+    if (code === "ASSOCIATE_DEGREE") return "ASSOCIATE";
+    if (code === "BACHELORS_DEGREE") return "BACHELOR";
+    if (code === "MASTERS_DEGREE") return "MASTER";
+    if (code === "OTHER") return "NONE";
+    return code;
+  };
+
+  const normalizeNumber = (value: unknown) => {
+    if (value === null || value === undefined || value === "") return undefined;
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  };
+
+  useEffect(() => {
+    if (!draftId) return;
+
+    let mounted = true;
+
+    const loadDraft = async () => {
+      setIsLoadingDraft(true);
+      try {
+        const data = await jobService.getJobById(draftId);
+        if (!mounted || !data) return;
+
+        setJobData((prev) => ({
+          ...prev,
+          ...data,
+          id: data.id ?? draftId,
+          experienceLevel:
+            normalizeEnumCode((data as { experienceLevel?: string }).experienceLevel) ??
+            prev.experienceLevel,
+          employmentType:
+            normalizeEnumCode(
+              (data as { employmentType?: string }).employmentType ??
+                (data as { type?: string }).type
+            ) ??
+            prev.employmentType,
+          type:
+            normalizeEnumCode(
+              (data as { type?: string }).type ??
+                (data as { employmentType?: string }).employmentType
+            ) ??
+            prev.type,
+          jobCategory:
+            normalizeEnumCode((data as { jobCategory?: string }).jobCategory) ??
+            prev.jobCategory,
+          education:
+            normalizeEducationCode((data as { education?: string }).education) ??
+            prev.education,
+          minExperience:
+            normalizeNumber((data as { minExperience?: unknown }).minExperience) ??
+            prev.minExperience,
+          maxExperience:
+            normalizeNumber((data as { maxExperience?: unknown }).maxExperience) ??
+            prev.maxExperience,
+          specific: (data as { address?: string; specific?: string }).specific
+            ?? (data as { address?: string; specific?: string }).address
+            ?? prev.specific,
+          applicationRequirements: {
+            resume:
+              (data as { resume?: boolean }).resume ??
+              prev.applicationRequirements?.resume ??
+              true,
+            coverLetter:
+              (data as { coverLetter?: boolean }).coverLetter ??
+              prev.applicationRequirements?.coverLetter ??
+              true,
+          },
+        }));
+      } catch (error) {
+        const message = resolveErrorMessage(error);
+        toast.error(message);
+      } finally {
+        if (mounted) {
+          setIsLoadingDraft(false);
+        }
+      }
+    };
+
+    loadDraft();
+
+    return () => {
+      mounted = false;
+    };
+  }, [draftId]);
+
   const handleJobDetailsNext = async (payload: Partial<Job>) => {
     setIsSavingDraft(true);
     try {
@@ -95,6 +203,18 @@ const AddJob = () => {
       toast.success("Đã lưu bản nháp công việc.");
       setCurrentStep(2);
     } catch (error) {
+      if (jobData.id && isUpdateNotImplementedError(error)) {
+        // BE chưa hỗ trợ update draft: cho phép tiếp tục flow nếu người dùng chỉ muốn đi tiếp.
+        setJobData((prev) => ({
+          ...prev,
+          ...payload,
+          status: Status.DRAFT,
+        }));
+        toast.info("Bản nháp hiện chưa hỗ trợ cập nhật tại bước này. Đang chuyển sang bước tiếp theo.");
+        setCurrentStep(2);
+        return;
+      }
+
       const message = resolveErrorMessage(error);
       toast.error(message);
       throw error;
@@ -132,7 +252,10 @@ const AddJob = () => {
       }));
 
       toast.success("Đã lưu yêu cầu ứng tuyển.");
-      setCurrentStep(3);
+      await handlePublish({
+        ...payload,
+        promotionType: "free",
+      });
     } catch (error) {
       const message = resolveErrorMessage(error);
       toast.error(message);
@@ -189,7 +312,7 @@ const AddJob = () => {
               jobData={jobData}
               onUpdate={handleJobDataUpdate}
               onNext={handleJobDetailsNext}
-              isSubmitting={isSavingDraft}
+              isSubmitting={isSavingDraft || isLoadingDraft}
             />
           )}
           {currentStep === 2 && (
@@ -198,16 +321,7 @@ const AddJob = () => {
               onUpdate={handleJobDataUpdate}
               onNext={handleRequirementsNext}
               onBack={handleBack}
-              isSubmitting={isSavingRequirements}
-            />
-          )}
-          {currentStep === 3 && (
-            <PromoteStep
-              jobData={jobData}
-              onUpdate={handleJobDataUpdate}
-              onSubmit={handlePublish}
-              onBack={handleBack}
-              isSubmitting={isPublishing}
+              isSubmitting={isSavingRequirements || isPublishing}
             />
           )}
         </div>

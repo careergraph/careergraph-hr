@@ -7,6 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useInterviewStore } from "@/stores/interviewStore";
 import { toast } from "sonner";
 import { Check, ChevronDown, ClipboardCheck } from "lucide-react";
+import { companyPipelineService } from "@/services/companyPipelineService";
+import type { CompanyRecruitmentStage } from "@/lib/recruitmentPipeline";
+import type { FeedbackRecommendation } from "@/types/interview";
+import { buildFeedbackRecommendationOptions } from "./feedbackRecommendationOptions";
 
 interface FeedbackModalProps {
   open: boolean;
@@ -50,9 +54,10 @@ export default function FeedbackModal({
   const [problemSolvingScore, setProblemSolvingScore] = useState<number | undefined>();
   const [strengths, setStrengths] = useState("");
   const [weaknesses, setWeaknesses] = useState("");
-  const [recommendation, setRecommendation] = useState("NEXT_ROUND");
+  const [recommendation, setRecommendation] = useState<FeedbackRecommendation>("NEXT_ROUND");
   const [notes, setNotes] = useState("");
   const [formError, setFormError] = useState("");
+  const [pipelineStages, setPipelineStages] = useState<CompanyRecruitmentStage[]>([]);
   const errorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -69,6 +74,24 @@ export default function FeedbackModal({
     setSelectedInterviewId(interviewId);
   }, [open, candidateOptions, interviewId, initialInterviewId]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    let cancelled = false;
+    companyPipelineService
+      .fetchMyRecruitmentStages()
+      .then((stages) => {
+        if (!cancelled) setPipelineStages(stages);
+      })
+      .catch(() => {
+        if (!cancelled) setPipelineStages([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
   const selectedCandidateName = hasCandidateSelector
     ? candidateOptions?.find((opt) => opt.interviewId === selectedInterviewId)?.candidateName
     : candidateName;
@@ -76,6 +99,11 @@ export default function FeedbackModal({
   const targetInterviewId = hasCandidateSelector ? selectedInterviewId : interviewId;
 
   const canSubmit = targetInterviewId && targetInterviewId.trim().length > 0;
+  const recommendationOptions = useMemo(
+    () => buildFeedbackRecommendationOptions(pipelineStages),
+    [pipelineStages]
+  );
+  const selectedRecommendation = recommendationOptions.find((option) => option.value === recommendation);
 
   const resolveSubmitErrorMessage = (error: unknown): string => {
     if (
@@ -230,18 +258,16 @@ export default function FeedbackModal({
               <Label>Đề xuất</Label>
               <CustomSelect
                 value={recommendation}
-                onChange={setRecommendation}
+                onChange={(value) => setRecommendation(value as FeedbackRecommendation)}
                 searchable
                 searchPlaceholder="Tìm đề xuất..."
-                options={[
-                  { value: "NEXT_ROUND", label: "Mời phỏng vấn giai đoạn tiếp theo" },
-                  { value: "EXTEND_OFFER", label: "Gửi offer" },
-                  { value: "REJECT", label: "Từ chối" },
-                  { value: "HOLD", label: "Giữ nguyên giai đoạn hiện tại" },
-                ]}
+                options={recommendationOptions.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                }))}
               />
               <p className="text-xs text-muted-foreground">
-                "Mời phỏng vấn giai đoạn tiếp theo" dùng khi đã quyết định đi tiếp ngay; "Giữ nguyên giai đoạn hiện tại" dùng khi cần chờ thêm thông tin hoặc ý kiến phê duyệt.
+                {selectedRecommendation?.description}
               </p>
             </div>
 

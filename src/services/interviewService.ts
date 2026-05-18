@@ -86,8 +86,10 @@ const fetchInterviewsByApplication = async (applicationId: string) => {
   return response.data;
 };
 
-const fetchUnscheduledByJob = async (jobId: string) => {
-  const response = await api.get(`${BASE}/job/${jobId}/unscheduled`);
+const fetchUnscheduledByJob = async (jobId: string, round?: number) => {
+  const response = await api.get(`${BASE}/job/${jobId}/unscheduled`, {
+    params: typeof round === "number" ? { round } : undefined,
+  });
   return response.data;
 };
 

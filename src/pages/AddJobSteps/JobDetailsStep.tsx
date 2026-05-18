@@ -12,20 +12,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, X, Wand2 } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Job } from "@/types/job";
 import { type Touched, type ErrorType } from "@/types/job";
 import useLocation from "@/hooks/use-location";
 import { District, Province, Ward } from "@/types/location";
 import { SkillLookup } from "@/types/skill";
 import { lookup } from "@/api/skillApis";
+import { useJobEnums } from "@/hooks/useJobEnums";
 import {
   EmploymentType,
   Education,
   ExperienceLevel,
   JobCategory,
 } from "@/enums/workEnum";
-import { Sparkles } from "lucide-react";
 
 // JobDetailsStep thu thập thông tin cốt lõi, vị trí và kỹ năng cho job trong wizard tạo mới.
 
@@ -42,6 +42,17 @@ export const JobDetailsStep = ({
   onNext,
   isSubmitting = false,
 }: JobDetailsStepProps) => {
+  const normalizeEnumCode = (value?: string | null) => {
+    if (!value) return undefined;
+    return value
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[â€™'`]/g, "")
+      .replace(/[-\s]+/g, "_")
+      .toUpperCase();
+  };
+
   // State cho location
   const [selectedProvinceCode, setSelectedProvinceCode] = useState<
     string | undefined
@@ -67,6 +78,12 @@ export const JobDetailsStep = ({
   const [query, setQuery] = useState("");
   const [skills, setSkills] = useState<SkillLookup[]>([]);
   const [skillLoading, setSkillLoading] = useState(false);
+  const {
+    experienceLevels: experienceLevelOptions,
+    employmentTypes: employmentTypeOptions,
+    educationTypes: educationOptions,
+    jobCategories: jobCategoryOptions,
+  } = useJobEnums();
 
   // Gọi API tìm kỹ năng mỗi khi người dùng thay đổi từ khóa.
   useEffect(() => {
@@ -184,17 +201,32 @@ export const JobDetailsStep = ({
   // Validate form tạo job
   const validate = (): ErrorType => {
     const err: ErrorType = {};
+    const resolvedEmploymentType = jobData.employmentType ?? jobData.type;
+    const resolvedExperienceLevel = jobData.experienceLevel;
+    const resolvedJobCategory = jobData.jobCategory;
     // Các trường bắt buộc cần có giá trị; thiết lập thông báo lỗi tương ứng.
     if (!jobData.title || jobData.title.trim() === "") err.title = "Required";
     if (!jobData.description || jobData.description.trim() === "")
       err.description = "Required";
-    if (!jobData.minExperience) err.minExperience = "Required";
-    if (!jobData.maxExperience) err.maxExperience = "Required";
-    if (!jobData.experienceLevel) err.experienceLevel = "Required";
-    if (!jobData.employmentType) err.employmentType = "Required";
-    if (!jobData.jobCategory) err.jobCategory = "Required";
-    if (!jobData.state || !jobData.city || !jobData.district)
-      err.location = "Required";
+    if (jobData.minExperience === undefined || jobData.minExperience === null || Number.isNaN(Number(jobData.minExperience))) {
+      err.minExperience = "Required";
+    }
+    if (jobData.maxExperience === undefined || jobData.maxExperience === null || Number.isNaN(Number(jobData.maxExperience))) {
+      err.maxExperience = "Required";
+    }
+    if (!resolvedExperienceLevel || !normalizeEnumCode(String(resolvedExperienceLevel))) {
+      err.experienceLevel = "Required";
+    }
+    if (!resolvedEmploymentType || !normalizeEnumCode(String(resolvedEmploymentType))) {
+      err.employmentType = "Required";
+    }
+    if (!resolvedJobCategory || !normalizeEnumCode(String(resolvedJobCategory))) {
+      err.jobCategory = "Required";
+    }
+    // Location: state & city are required (district is optional per BE)
+    if (!jobData.state || !jobData.city) {
+      err.location = "State and City are required";
+    }
 
     if (jobData.minExperience && jobData.maxExperience) {
       const min = Number(jobData.minExperience);
@@ -217,7 +249,7 @@ export const JobDetailsStep = ({
       maxExperience: true,
       experienceLevel: true,
       jobCategory: true,
-      type: true,
+      employmentType: true,
       country: true,
     });
     setError(err);
@@ -265,7 +297,7 @@ export const JobDetailsStep = ({
       </div>
 
       {/* AI Generate Expand */}
-      <div className="w-full bg-gradient-to-r from-[#4f46e5]/10 via-[#7c3aed]/10 to-[#ec4899]/10 p-4 rounded-2xl border border-violet-300/20">
+      {/* <div className="w-full bg-gradient-to-r from-[#4f46e5]/10 via-[#7c3aed]/10 to-[#ec4899]/10 p-4 rounded-2xl border border-violet-300/20">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-[7]">
             <Sparkles className="size-5 text-primary animate-pulse" />
@@ -278,7 +310,7 @@ export const JobDetailsStep = ({
             Generate mô tả
           </button>
         </div>
-      </div>
+      </div> */}
 
       {/* Description */}
       <div>
@@ -455,9 +487,9 @@ export const JobDetailsStep = ({
               <SelectValue placeholder="Experience Level" />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
-              {Object.entries(ExperienceLevel).map(([key, value]) => (
-                <SelectItem key={key} value={value}>
-                  {value}
+              {experienceLevelOptions.map(({ value, label }) => (
+                <SelectItem key={value} value={value}>
+                  {label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -471,7 +503,7 @@ export const JobDetailsStep = ({
           className={cn(
             "text-sm font-semibold flex items-center gap-1",
             (touched.jobCategory && error.jobCategory) ||
-              (touched.type && error.type)
+              (touched.employmentType && error.employmentType)
               ? "text-red-600"
               : ""
           )}
@@ -492,9 +524,9 @@ export const JobDetailsStep = ({
               <SelectValue placeholder="Job Function" />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
-              {Object.entries(JobCategory).map(([key, value]) => (
-                <SelectItem key={key} value={value}>
-                  {value}
+              {jobCategoryOptions.map(({ value, label }) => (
+                <SelectItem key={value} value={value}>
+                  {label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -502,9 +534,9 @@ export const JobDetailsStep = ({
 
           {/* Employment Type */}
           <Select
-            value={jobData.employmentType || ""}
+            value={jobData.employmentType || jobData.type || ""}
             onValueChange={(value: EmploymentType) => {
-              onUpdate({ ...jobData, employmentType: value });
+              onUpdate({ ...jobData, employmentType: value, type: value });
               setTouched((t) => ({ ...t, employmentType: true }));
             }}
           >
@@ -512,9 +544,9 @@ export const JobDetailsStep = ({
               <SelectValue placeholder="Employment Type" />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
-              {Object.entries(EmploymentType).map(([key, value]) => (
-                <SelectItem key={key} value={value}>
-                  {value}
+              {employmentTypeOptions.map(({ value, label }) => (
+                <SelectItem key={value} value={value}>
+                  {label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -531,9 +563,9 @@ export const JobDetailsStep = ({
               <SelectValue placeholder="Education" />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
-              {Object.entries(Education).map(([key, value]) => (
-                <SelectItem key={key} value={value}>
-                  {value}
+              {educationOptions.map(({ value, label }) => (
+                <SelectItem key={value} value={value}>
+                  {label}
                 </SelectItem>
               ))}
             </SelectContent>

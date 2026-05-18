@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "@/components/custom/modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,16 @@ import {
 } from "@/components/ui/select";
 import { useInterviewStore } from "@/stores/interviewStore";
 import { interviewService } from "@/services/interviewService";
+import { companyPipelineService } from "@/services/companyPipelineService";
 import type { CreateInterviewRequest, Interview, InterviewType } from "@/types/interview";
 import { extractApiErrorMessage } from "@/lib/error-utils";
+import {
+  DEFAULT_COMPANY_STAGES,
+  DEFAULT_STAGE_ORDER,
+  normalizeStageConfig,
+  type ApplicationStageCode,
+  type CompanyRecruitmentStage,
+} from "@/lib/recruitmentPipeline";
 import { toast } from "sonner";
 import { Video, Copy, ExternalLink, CheckCircle2, Users } from "lucide-react";
 import { formatDateTimeYMDHM } from "@/lib/dateUtils";
@@ -27,6 +35,8 @@ interface UnscheduledApp {
   jobTitle: string;
   currentStage: string;
   appliedDate: string;
+  hasActiveInterview?: boolean;
+  activeInterviewCount?: number;
 }
 
 interface ScheduleInterviewKanbanModalProps {
@@ -51,6 +61,9 @@ export default function ScheduleInterviewKanbanModal({
 
   const [unscheduledApps, setUnscheduledApps] = useState<UnscheduledApp[]>([]);
   const [loadingApps, setLoadingApps] = useState(false);
+  const [pipelineStages, setPipelineStages] = useState<CompanyRecruitmentStage[]>(
+    DEFAULT_COMPANY_STAGES
+  );
   const [selectedAppId, setSelectedAppId] = useState(preselectedApplicationId || "");
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
@@ -67,6 +80,57 @@ export default function ScheduleInterviewKanbanModal({
   const locationInputRef = useRef<HTMLInputElement>(null);
   const todayStr = new Date().toISOString().split("T")[0];
 
+  const stageOrderMap = useMemo(() => {
+    const normalized = normalizeStageConfig(
+      pipelineStages.length > 0 ? pipelineStages : DEFAULT_COMPANY_STAGES
+    );
+    const map = new Map<ApplicationStageCode, number>();
+    normalized.forEach((stage) => {
+      map.set(stage.stage, stage.displayOrder);
+    });
+    return map;
+  }, [pipelineStages]);
+
+  const interviewStageOrder = useMemo(() => {
+    const fallbackIndex = DEFAULT_STAGE_ORDER.indexOf("INTERVIEW");
+    const fallbackOrder = fallbackIndex >= 0 ? fallbackIndex + 1 : 0;
+    return stageOrderMap.get("INTERVIEW") ?? fallbackOrder;
+  }, [stageOrderMap]);
+
+  const isStageEligible = useCallback(
+    (stage?: string) => {
+      if (!stage) return false;
+      const order = stageOrderMap.get(stage as ApplicationStageCode);
+      if (typeof order !== "number") return false;
+      if (interviewStageOrder <= 0) {
+        return order === interviewStageOrder;
+      }
+      return order === interviewStageOrder || order === interviewStageOrder - 1;
+    },
+    [interviewStageOrder, stageOrderMap]
+  );
+
+  const isAppEligible = useCallback(
+    (app: UnscheduledApp) => {
+      const hasActiveInterview =
+        app.hasActiveInterview || (app.activeInterviewCount ?? 0) > 0;
+      return isStageEligible(app.currentStage) && !hasActiveInterview;
+    },
+    [isStageEligible]
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    companyPipelineService
+      .fetchMyRecruitmentStages()
+      .then((stages) => {
+        setPipelineStages(stages.length > 0 ? stages : DEFAULT_COMPANY_STAGES);
+      })
+      .catch(() => {
+        setPipelineStages(DEFAULT_COMPANY_STAGES);
+      });
+  }, [open]);
+
   // Result state after scheduling
   const [scheduledResult, setScheduledResult] = useState<Interview | null>(null);
   const [copied, setCopied] = useState(false);
@@ -78,30 +142,33 @@ export default function ScheduleInterviewKanbanModal({
     interviewService
       .fetchUnscheduledByJob(jobId)
       .then((resp) => {
-        const apps: UnscheduledApp[] = resp?.data ?? [];
-        // If preselected candidate is not in unscheduled list, add a synthetic entry
-        // so the form still works for the dragged candidate
+        const raw = resp?.data;
+        const apps: UnscheduledApp[] = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw?.applications)
+            ? raw.applications
+            : [];
+        const eligibleApps = apps.filter(isAppEligible);
+        setUnscheduledApps(eligibleApps);
         if (
           preselectedApplicationId &&
-          !apps.find((a) => a.applicationId === preselectedApplicationId)
+          !eligibleApps.find((a) => a.applicationId === preselectedApplicationId)
         ) {
-          apps.unshift({
-            applicationId: preselectedApplicationId,
-            candidateId: "",
-            candidateName: preselectedCandidateName || "Ứng viên",
-            candidateEmail: "",
-            jobTitle: "",
-            currentStage: "",
-            appliedDate: "",
-          });
+          setFormError("Ứng viên không đủ điều kiện để lên lịch ở giai đoạn hiện tại.");
+          setSelectedAppId("");
         }
-        setUnscheduledApps(apps);
       })
       .catch(() => {
         setUnscheduledApps([]);
       })
       .finally(() => setLoadingApps(false));
-  }, [open, jobId, preselectedApplicationId, preselectedCandidateName]);
+  }, [
+    isAppEligible,
+    jobId,
+    open,
+    preselectedApplicationId,
+    preselectedCandidateName,
+  ]);
 
   // Pre-select the dragged candidate
   useEffect(() => {

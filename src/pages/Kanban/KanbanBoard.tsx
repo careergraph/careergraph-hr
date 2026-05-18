@@ -578,12 +578,9 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
       return;
     }
 
-    // PREVENT MOVING BACKWARDS:
-    // The Kanban columns have a left-to-right progression defined by
-    // `columns`. We enforce a rule: a candidate cannot be moved to a
-    // column to the left (an earlier stage) relative to its current
-    // status. This prevents reversing progress once a candidate has
-    // advanced.
+    // PREVENT INVALID MOVES:
+    // Candidates may only move to the next adjacent column (no skipping),
+    // and cannot move backwards.
     if (dragSourceStatus) {
       const sourceIndex = pipelineColumns.findIndex((c) => c.id === dragSourceStatus);
       const targetIndex = pipelineColumns.findIndex((c) => c.id === targetStatus);
@@ -595,6 +592,15 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
         }
         setDragSourceStatus(null);
         toast.warning("Thao tác không hợp lệ");
+        return;
+      }
+      if (sourceIndex > -1 && targetIndex > -1 && targetIndex > sourceIndex + 1) {
+        if (dragSnapshotRef.current) {
+          setCandidates(dragSnapshotRef.current);
+          dragSnapshotRef.current = null;
+        }
+        setDragSourceStatus(null);
+        toast.warning("Chỉ được chuyển sang cột kế tiếp.");
         return;
       }
     }
@@ -718,6 +724,26 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     const note = (current.description ?? "") as string;
 
     try {
+      if (moveRequest.targetStatus === "interviewed") {
+        const interviewResp = await interviewService.fetchInterviewsByApplication(current.id);
+        const interviews = Array.isArray(interviewResp?.data)
+          ? interviewResp.data
+          : Array.isArray(interviewResp)
+            ? interviewResp
+            : [];
+        const hasCompletedInterview = interviews.some(
+          (item: { interviewStatus?: string }) => item?.interviewStatus === "COMPLETED"
+        );
+        const hasFeedback = interviews.some(
+          (item: { feedback?: unknown[] }) => Array.isArray(item?.feedback) && item.feedback.length > 0
+        );
+        if (!hasCompletedInterview && !hasFeedback) {
+          toast.error("Ứng viên chưa tham gia hoặc chưa có đánh giá phỏng vấn, không thể chuyển trạng thái.");
+          setCandidates(prevCandidates);
+          return;
+        }
+      }
+
       // Persist change to backend first
       const resp = await applicationService.updateApplicationStage(current.id, {
         stage,

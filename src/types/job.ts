@@ -94,6 +94,7 @@ type Touched = {
   maxExperience?: boolean;
   experienceLevel?: boolean;
   jobCategory?: boolean;
+  employmentType?: boolean;
   type?: boolean;
   country?: boolean;
 };
