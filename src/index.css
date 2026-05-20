@@ -119,6 +119,8 @@ layer(base);
   --color-error-800: #912018;
   --color-error-900: #7a271a;
   --color-error-950: #55160c;
+  --color-destructive: var(--color-error-600);
+  --color-destructive-foreground: #ffffff;
 
   --color-warning-25: #fffcf5;
   --color-warning-50: #fffaeb;

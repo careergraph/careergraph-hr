@@ -51,6 +51,7 @@ export default function InterviewList() {
     candidateOptions?: Array<{ interviewId: string; candidateName: string }>;
   } | null>(null);
   const [roomParticipantsByCode, setRoomParticipantsByCode] = useState<Record<string, Array<{ applicationId?: string; joinedAt?: string }>>>({});
+  const [feedbackStatusByInterviewId, setFeedbackStatusByInterviewId] = useState<Record<string, boolean>>({});
   const [expandedCancelledByRoom, setExpandedCancelledByRoom] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -159,6 +160,20 @@ export default function InterviewList() {
     NO_SHOW: "Vắng mặt",
   };
 
+  const hasLocalFeedback = useCallback(
+    (interview: Interview) =>
+      Array.isArray(interview.feedback) && interview.feedback.length > 0,
+    []
+  );
+
+  const getKnownFeedbackStatus = useCallback(
+    (interview: Interview) => {
+      if (hasLocalFeedback(interview)) return true;
+      return feedbackStatusByInterviewId[interview.id];
+    },
+    [feedbackStatusByInterviewId, hasLocalFeedback]
+  );
+
   const groupedOnlineRooms = useMemo(() => {
     const toMs = (value?: string) => {
       if (!value) return 0;
@@ -230,7 +245,7 @@ export default function InterviewList() {
             (iv) =>
               iv.interviewStatus === "COMPLETED" &&
               joinedApplicationIds.has(iv.applicationId) &&
-              (!Array.isArray(iv.feedback) || iv.feedback.length === 0)
+              getKnownFeedbackStatus(iv) === false
           )
           .map((iv) => ({
             interviewId: iv.id,
@@ -262,7 +277,31 @@ export default function InterviewList() {
         };
       })
       .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
-  }, [interviews, roomParticipantsByCode]);
+  }, [getKnownFeedbackStatus, interviews, roomParticipantsByCode]);
+
+  const feedbackCheckInterviews = useMemo(() => {
+    const candidates: Interview[] = [];
+
+    for (const interview of interviews) {
+      if (interview.interviewStatus !== "COMPLETED") continue;
+      if (hasLocalFeedback(interview)) continue;
+      if (feedbackStatusByInterviewId[interview.id] !== undefined) continue;
+
+      if (interview.type === "ONLINE" && interview.meetingLink) {
+        const participants = roomParticipantsByCode[interview.meetingLink] ?? [];
+        const hasJoined = participants.some(
+          (participant) =>
+            Boolean(participant.joinedAt) &&
+            participant.applicationId === interview.applicationId
+        );
+        if (!hasJoined) continue;
+      }
+
+      candidates.push(interview);
+    }
+
+    return candidates;
+  }, [feedbackStatusByInterviewId, hasLocalFeedback, interviews, roomParticipantsByCode]);
 
   const groupedOnlineRoomCodes = useMemo(() => {
     return Array.from(
@@ -308,6 +347,84 @@ export default function InterviewList() {
       cancelled = true;
     };
   }, [groupedOnlineRoomCodes]);
+
+  useEffect(() => {
+    if (feedbackCheckInterviews.length === 0) return;
+
+    let cancelled = false;
+
+    Promise.all(
+      feedbackCheckInterviews.map(async (interview) => {
+        try {
+          const response = await interviewService.getFeedback(interview.id);
+          const feedbackItems = Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response)
+              ? response
+              : [];
+
+          return [interview.id, feedbackItems.length > 0] as const;
+        } catch {
+          return [interview.id, true] as const;
+        }
+      })
+    ).then((entries) => {
+      if (cancelled) return;
+      setFeedbackStatusByInterviewId((prev) => ({
+        ...prev,
+        ...Object.fromEntries(entries),
+      }));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [feedbackCheckInterviews]);
+
+  const openFeedbackForCandidates = useCallback(
+    async (candidates: Array<{ interviewId: string; candidateName: string }>) => {
+      const verified = (
+        await Promise.all(
+          candidates.map(async (candidate) => {
+            try {
+              const response = await interviewService.getFeedback(candidate.interviewId);
+              const feedbackItems = Array.isArray(response?.data)
+                ? response.data
+                : Array.isArray(response)
+                  ? response
+                  : [];
+
+              setFeedbackStatusByInterviewId((prev) => ({
+                ...prev,
+                [candidate.interviewId]: feedbackItems.length > 0,
+              }));
+
+              return feedbackItems.length === 0 ? candidate : null;
+            } catch {
+              setFeedbackStatusByInterviewId((prev) => ({
+                ...prev,
+                [candidate.interviewId]: true,
+              }));
+              return null;
+            }
+          })
+        )
+      ).filter((candidate): candidate is { interviewId: string; candidateName: string } => Boolean(candidate));
+
+      const firstCandidate = verified[0];
+      if (!firstCandidate) {
+        toast.info("Tất cả ứng viên đủ điều kiện trong phòng này đã được đánh giá.");
+        return;
+      }
+
+      setFeedbackInterview({
+        interviewId: firstCandidate.interviewId,
+        candidateName: firstCandidate.candidateName,
+        candidateOptions: verified,
+      });
+    },
+    []
+  );
 
   const standaloneInterviews = useMemo(
     () => interviews.filter((iv) => !(iv.type === "ONLINE" && !!iv.meetingLink)),
@@ -461,14 +578,7 @@ export default function InterviewList() {
                               variant="outline"
                               className="h-8"
                               onClick={async () => {
-                                const firstCandidate = room.feedbackCandidates[0];
-                                if (!firstCandidate) return;
-
-                                setFeedbackInterview({
-                                  interviewId: firstCandidate.interviewId,
-                                  candidateName: firstCandidate.candidateName,
-                                  candidateOptions: room.feedbackCandidates,
-                                });
+                                await openFeedbackForCandidates(room.feedbackCandidates);
                               }}
                             >
                               Đánh giá ứng viên

@@ -25,7 +25,7 @@ let sharedSocket: ChatSocket | null = null;
 let sharedToken: string | null = null;
 let activeConsumers = 0;
 let listenersAttached = false;
-const subscribedThreadIds = new Set<string>();
+const subscribedThreadIds = new Map<string, number>();
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -328,7 +328,7 @@ const emitLeaveThread = (threadId: string) => {
 };
 
 const rejoinSubscribedThreads = () => {
-  for (const threadId of subscribedThreadIds) {
+  for (const threadId of subscribedThreadIds.keys()) {
     emitJoinThread(threadId);
   }
 };
@@ -410,12 +410,20 @@ export const useChatSocket = (token: string | null): UseChatSocketResult => {
 
   const joinThread = useCallback((threadId: string) => {
     if (!threadId) return;
-    subscribedThreadIds.add(threadId);
+    const currentCount = subscribedThreadIds.get(threadId) ?? 0;
+    subscribedThreadIds.set(threadId, currentCount + 1);
+    if (currentCount > 0) return;
     emitJoinThread(threadId);
   }, []);
 
   const leaveThread = useCallback((threadId: string) => {
     if (!threadId) return;
+    const currentCount = subscribedThreadIds.get(threadId) ?? 0;
+    if (currentCount > 1) {
+      subscribedThreadIds.set(threadId, currentCount - 1);
+      return;
+    }
+
     subscribedThreadIds.delete(threadId);
     emitLeaveThread(threadId);
   }, []);

@@ -83,17 +83,36 @@
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  scrollbar-width: none;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+  padding-bottom: 10px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .job-ctx-selector::-webkit-scrollbar {
-  display: none;
+  height: 6px;
+}
+
+.job-ctx-selector::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.job-ctx-selector::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.job-ctx-selector::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .ctx-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  flex: 0 0 auto;
   max-width: 220px;
   border: 1px solid var(--color-border-tertiary, #d1d5db);
   border-radius: 999px;
@@ -130,18 +149,37 @@
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  scrollbar-width: none;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
   background: rgba(248, 250, 252, 0.6);
+  padding-bottom: 10px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .job-filter-bar::-webkit-scrollbar {
-  display: none;
+  height: 6px;
+}
+
+.job-filter-bar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.job-filter-bar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.job-filter-bar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .filter-tab {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  flex: 0 0 auto;
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;

@@ -77,6 +77,8 @@ export default function InterviewDetail() {
   const [roomParticipants, setRoomParticipants] = useState<RoomParticipantLike[]>([]);
   const [loadingRoomParticipants, setLoadingRoomParticipants] = useState(false);
   const [processingProposal, setProcessingProposal] = useState<string | null>(null);
+  const [actionSubmitting, setActionSubmitting] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffect(() => {
     if (id) fetchInterviewById(id);
@@ -164,27 +166,38 @@ export default function InterviewDetail() {
   const shouldShowCompleteAction = canCompleteByStatus(iv.interviewStatus);
 
   const handleCancel = async () => {
+    if (actionSubmitting) return;
+
+    setActionSubmitting(true);
     try {
       await cancelInterview(iv.id, "Hủy bởi HR");
       toast.success("Đã hủy phỏng vấn");
       if (id) fetchInterviewById(id);
     } catch {
       toast.error("Lỗi khi hủy phỏng vấn");
+    } finally {
+      setActionSubmitting(false);
+      setShowCancelConfirm(false);
     }
   };
 
   const handleComplete = async () => {
+    if (actionSubmitting) return;
+
     if (!canCompleteFromDetail) {
       toast.warning(completeBlockReason || "Chưa đủ điều kiện hoàn thành phỏng vấn");
       return;
     }
 
+    setActionSubmitting(true);
     try {
       await completeInterview(iv.id);
       toast.success("Đã hoàn thành phỏng vấn");
       if (id) fetchInterviewById(id);
     } catch {
       toast.error("Lỗi khi hoàn thành phỏng vấn");
+    } finally {
+      setActionSubmitting(false);
     }
   };
 
@@ -517,14 +530,18 @@ export default function InterviewDetail() {
               {shouldShowCompleteAction && (
                 <Button
                   onClick={handleComplete}
-                  disabled={!canCompleteFromDetail}
+                  disabled={actionSubmitting || !canCompleteFromDetail}
                   title={!canCompleteFromDetail ? completeBlockReason : undefined}
                 >
-                  Hoàn thành
+                  {actionSubmitting ? "Đang xử lý..." : "Hoàn thành"}
                 </Button>
               )}
               {canCancelFromDetail && (
-                <Button variant="destructive" onClick={handleCancel}>
+                <Button
+                  variant="destructive"
+                  disabled={actionSubmitting}
+                  onClick={() => setShowCancelConfirm(true)}
+                >
                   Hủy phỏng vấn
                 </Button>
               )}
@@ -548,6 +565,35 @@ export default function InterviewDetail() {
           interviewId={iv.id}
           candidateName={iv.candidateName}
         />
+      )}
+
+      {showCancelConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-900">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+              Xác nhận hủy phỏng vấn
+            </h3>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              Hành động này sẽ hủy lịch phỏng vấn của {iv.candidateName}. Bạn có chắc chắn muốn tiếp tục?
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                disabled={actionSubmitting}
+                onClick={() => setShowCancelConfirm(false)}
+              >
+                Giữ lịch
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={actionSubmitting}
+                onClick={handleCancel}
+              >
+                {actionSubmitting ? "Đang hủy..." : "Xác nhận hủy"}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

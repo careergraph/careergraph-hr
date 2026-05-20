@@ -8,6 +8,7 @@ import { useInterviewStore } from "@/stores/interviewStore";
 import { toast } from "sonner";
 import { Check, ChevronDown, ClipboardCheck } from "lucide-react";
 import { companyPipelineService } from "@/services/companyPipelineService";
+import { interviewService } from "@/services/interviewService";
 import type { CompanyRecruitmentStage } from "@/lib/recruitmentPipeline";
 import type { FeedbackRecommendation } from "@/types/interview";
 import { buildFeedbackRecommendationOptions } from "./feedbackRecommendationOptions";
@@ -38,8 +39,10 @@ export default function FeedbackModal({
   onSubmitted,
 }: FeedbackModalProps) {
   const { addFeedback, isLoading } = useInterviewStore();
+  const [eligibleCandidateOptions, setEligibleCandidateOptions] = useState(candidateOptions ?? []);
+  const [loadingEligibility, setLoadingEligibility] = useState(false);
 
-  const hasCandidateSelector = Array.isArray(candidateOptions) && candidateOptions.length > 0;
+  const hasCandidateSelector = eligibleCandidateOptions.length > 0;
   const [selectedInterviewId, setSelectedInterviewId] = useState(() => {
     if (candidateOptions && candidateOptions.length > 0) {
       return candidateOptions[0].interviewId;
@@ -60,19 +63,75 @@ export default function FeedbackModal({
   const [pipelineStages, setPipelineStages] = useState<CompanyRecruitmentStage[]>([]);
   const errorRef = useRef<HTMLDivElement | null>(null);
 
+  const feedbackExists = async (targetInterviewId: string) => {
+    const response = await interviewService.getFeedback(targetInterviewId);
+    const feedbackItems = Array.isArray(response?.data)
+      ? response.data
+      : Array.isArray(response)
+        ? response
+        : [];
+
+    return feedbackItems.length > 0;
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (!candidateOptions || candidateOptions.length === 0) {
+      setEligibleCandidateOptions([]);
+      setLoadingEligibility(false);
+      return;
+    }
+
+    let cancelled = false;
+    setEligibleCandidateOptions([]);
+    setLoadingEligibility(true);
+
+    Promise.all(
+      candidateOptions.map(async (option) => {
+        try {
+          return (await feedbackExists(option.interviewId)) ? null : option;
+        } catch {
+          return null;
+        }
+      })
+    )
+      .then((items) => {
+        if (cancelled) return;
+        const eligible = items.filter(
+          (item): item is { interviewId: string; candidateName: string } => Boolean(item)
+        );
+        setEligibleCandidateOptions(eligible);
+        if (eligible.length === 0) {
+          setFormError("Không còn ứng viên đủ điều kiện để đánh giá trong danh sách này.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingEligibility(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [candidateOptions, open]);
+
   useEffect(() => {
     if (!open) return;
     setFormError("");
-    if (initialInterviewId && candidateOptions?.some((opt) => opt.interviewId === initialInterviewId)) {
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (initialInterviewId && eligibleCandidateOptions.some((opt) => opt.interviewId === initialInterviewId)) {
       setSelectedInterviewId(initialInterviewId);
       return;
     }
-    if (candidateOptions && candidateOptions.length > 0) {
-      setSelectedInterviewId(candidateOptions[0].interviewId);
+    if (eligibleCandidateOptions.length > 0) {
+      setSelectedInterviewId(eligibleCandidateOptions[0].interviewId);
       return;
     }
     setSelectedInterviewId(interviewId);
-  }, [open, candidateOptions, interviewId, initialInterviewId]);
+  }, [open, eligibleCandidateOptions, interviewId, initialInterviewId]);
 
   useEffect(() => {
     if (!open) return;
@@ -93,12 +152,15 @@ export default function FeedbackModal({
   }, [open]);
 
   const selectedCandidateName = hasCandidateSelector
-    ? candidateOptions?.find((opt) => opt.interviewId === selectedInterviewId)?.candidateName
+    ? eligibleCandidateOptions.find((opt) => opt.interviewId === selectedInterviewId)?.candidateName
     : candidateName;
 
   const targetInterviewId = hasCandidateSelector ? selectedInterviewId : interviewId;
 
-  const canSubmit = targetInterviewId && targetInterviewId.trim().length > 0;
+  const canSubmit =
+    Boolean(targetInterviewId && targetInterviewId.trim().length > 0) &&
+    !loadingEligibility &&
+    (!candidateOptions?.length || eligibleCandidateOptions.length > 0);
   const recommendationOptions = useMemo(
     () => buildFeedbackRecommendationOptions(pipelineStages),
     [pipelineStages]
@@ -134,6 +196,15 @@ export default function FeedbackModal({
     setFormError("");
 
     try {
+      if (await feedbackExists(targetInterviewId)) {
+        setFormError("Ứng viên này đã được đánh giá. Vui lòng chọn ứng viên khác còn đủ điều kiện.");
+        setEligibleCandidateOptions((prev) =>
+          prev.filter((option) => option.interviewId !== targetInterviewId)
+        );
+        setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+        return;
+      }
+
       await addFeedback(targetInterviewId, {
         overallRating,
         technicalScore,
@@ -177,6 +248,12 @@ export default function FeedbackModal({
             </div>
           ) : null}
 
+          {loadingEligibility ? (
+            <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+              Đang kiểm tra ứng viên đủ điều kiện đánh giá...
+            </div>
+          ) : null}
+
           {hasCandidateSelector ? (
             <div className="space-y-2 mb-4">
               <Label>Chọn ứng viên</Label>
@@ -187,10 +264,10 @@ export default function FeedbackModal({
                 searchable
                 searchPlaceholder="Tìm ứng viên..."
                 options={
-                  candidateOptions?.map((opt) => ({
+                  eligibleCandidateOptions.map((opt) => ({
                     value: opt.interviewId,
                     label: opt.candidateName,
-                  })) ?? []
+                  }))
                 }
               />
             </div>
