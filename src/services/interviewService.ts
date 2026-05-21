@@ -12,10 +12,20 @@ const fetchInterviews = async (params?: {
   page?: number;
   size?: number;
   status?: string;
+  jobId?: string;
+  jobIds?: string[];
+  date?: string;
   signal?: AbortSignal;
 }) => {
   const response = await api.get(BASE, {
-    params: { page: params?.page, size: params?.size, status: params?.status },
+    params: {
+      page: params?.page,
+      size: params?.size,
+      status: params?.status,
+      jobId: params?.jobId,
+      jobIds: params?.jobIds?.length ? params.jobIds.join(",") : undefined,
+      date: params?.date,
+    },
     signal: params?.signal,
   });
   return response.data;

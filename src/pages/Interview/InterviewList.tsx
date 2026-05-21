@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router";
 import PageMeta from "@/components/common/PageMeta";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
@@ -9,11 +9,13 @@ import type { Interview, InterviewStatus } from "@/types/interview";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { interviewService } from "@/services/interviewService";
+import { jobService } from "@/services/jobService";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, ExternalLink, Users } from "lucide-react";
+import { Briefcase, Calendar, Clock, ExternalLink, RotateCcw, Users, X } from "lucide-react";
 import { formatDateYMD, formatTimeHM } from "@/lib/dateUtils";
 import { canCompleteByStatus } from "./interviewCompletionRules";
+import JobMultiSelectFilter, { type JobFilterOption } from "./JobMultiSelectFilter";
 
 const STATUS_TABS: { value: string; label: string }[] = [
   { value: "", label: "Tất cả" },
@@ -32,6 +34,15 @@ const STATUS_PRIORITY: Record<InterviewStatus, number> = {
   COMPLETED: 5,
   CANCELLED: 6,
   NO_SHOW: 7,
+};
+
+const INTERVIEW_PAGE_SIZE = 100;
+
+const getLocalDateInputValue = (value = new Date()) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 export default function InterviewList() {
@@ -53,10 +64,50 @@ export default function InterviewList() {
   const [roomParticipantsByCode, setRoomParticipantsByCode] = useState<Record<string, Array<{ applicationId?: string; joinedAt?: string }>>>({});
   const [feedbackStatusByInterviewId, setFeedbackStatusByInterviewId] = useState<Record<string, boolean>>({});
   const [expandedCancelledByRoom, setExpandedCancelledByRoom] = useState<Record<string, boolean>>({});
+  const [dateFilter, setDateFilter] = useState("");
+  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
+  const [jobOptions, setJobOptions] = useState<JobFilterOption[]>([]);
+  const dateFilterInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    fetchInterviews({ status: statusFilter || undefined });
-  }, [statusFilter, fetchInterviews]);
+    fetchInterviews({
+      status: statusFilter || undefined,
+      jobIds: selectedJobIds,
+      date: dateFilter || undefined,
+      size: INTERVIEW_PAGE_SIZE,
+    });
+  }, [dateFilter, fetchInterviews, selectedJobIds, statusFilter]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    jobService
+      .getAllJobs()
+      .then((data: unknown) => {
+        if (cancelled) return;
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray((data as { content?: unknown[] })?.content)
+            ? (data as { content: unknown[] }).content
+            : [];
+
+        const options = list
+          .map((item) => {
+            const source = item as Record<string, unknown>;
+            const id = typeof source.id === "string" ? source.id : "";
+            const title = typeof source.title === "string" ? source.title : "";
+            return { id, title };
+          })
+          .filter((item) => item.id && item.title);
+
+        setJobOptions(options);
+      })
+      .catch(() => setJobOptions([]));
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleCancel = useCallback(
     async (id: string) => {
@@ -106,12 +157,17 @@ export default function InterviewList() {
 
         await interviewService.acceptProposal(interviewId, pendingProposal.id);
         toast.success("Đã chấp nhận đề xuất lịch mới");
-        await fetchInterviews({ status: statusFilter || undefined });
+        await fetchInterviews({
+          status: statusFilter || undefined,
+          jobIds: selectedJobIds,
+          date: dateFilter || undefined,
+          size: INTERVIEW_PAGE_SIZE,
+        });
       } catch {
         toast.error("Không thể chấp nhận đề xuất");
       }
     },
-    [fetchInterviews, statusFilter]
+    [dateFilter, fetchInterviews, selectedJobIds, statusFilter]
   );
 
   const handleRejectProposal = useCallback(
@@ -132,12 +188,17 @@ export default function InterviewList() {
 
         await interviewService.rejectProposal(interviewId, pendingProposal.id);
         toast.success("Đã từ chối đề xuất lịch mới");
-        await fetchInterviews({ status: statusFilter || undefined });
+        await fetchInterviews({
+          status: statusFilter || undefined,
+          jobIds: selectedJobIds,
+          date: dateFilter || undefined,
+          size: INTERVIEW_PAGE_SIZE,
+        });
       } catch {
         toast.error("Không thể từ chối đề xuất");
       }
     },
-    [fetchInterviews, statusFilter]
+    [dateFilter, fetchInterviews, selectedJobIds, statusFilter]
   );
 
   const STATUS_STYLES: Record<string, string> = {
@@ -431,6 +492,44 @@ export default function InterviewList() {
     [interviews]
   );
 
+  const selectedJobs = useMemo(
+    () => jobOptions.filter((job) => selectedJobIds.includes(job.id)),
+    [jobOptions, selectedJobIds]
+  );
+  const hasAdvancedFilters = Boolean(dateFilter || selectedJobIds.length > 0);
+
+  const resetAdvancedFilters = () => {
+    setDateFilter("");
+    setSelectedJobIds([]);
+  };
+
+  const toggleJobFilter = (jobId: string) => {
+    setSelectedJobIds((current) =>
+      current.includes(jobId)
+        ? current.filter((item) => item !== jobId)
+        : [...current, jobId]
+    );
+  };
+
+  const openDateFilterPicker = () => {
+    const input = dateFilterInputRef.current as (HTMLInputElement & {
+      showPicker?: () => void;
+    }) | null;
+
+    if (!input) return;
+
+    if (typeof input.showPicker === "function") {
+      try {
+        input.showPicker();
+      } catch {
+        input.focus();
+      }
+      return;
+    }
+
+    input.focus();
+  };
+
   return (
     <>
       <PageMeta title="Phỏng vấn | CareerGraph HR" description="Quản lý lịch phỏng vấn" />
@@ -450,6 +549,177 @@ export default function InterviewList() {
               </TabsList>
             </div>
           </Tabs>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="grid gap-3 lg:grid-cols-[180px_minmax(220px,1fr)_auto] lg:items-end">
+            <div className="space-y-1.5">
+              <label htmlFor="interview-date-filter" className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                Ngày phỏng vấn
+              </label>
+              <div className="relative">
+              <input
+                id="interview-date-filter"
+                ref={dateFilterInputRef}
+                type="date"
+                value={dateFilter}
+                onClick={openDateFilterPicker}
+                onFocus={openDateFilterPicker}
+                onChange={(event) => setDateFilter(event.target.value)}
+                className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm text-gray-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+              />
+              <button
+                type="button"
+                aria-label="Chọn ngày phỏng vấn"
+                onClick={openDateFilterPicker}
+                className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+              >
+                <Calendar className="h-4 w-4" />
+              </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                Công việc
+              </label>
+              <JobMultiSelectFilter
+                jobs={jobOptions}
+                selectedIds={selectedJobIds}
+                onChange={setSelectedJobIds}
+              />
+              {/*
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 w-full justify-between border-gray-200 bg-white px-3 text-left font-normal text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Briefcase className="h-4 w-4 shrink-0 text-gray-400" />
+                      <span className="truncate">
+                        {selectedJobs.length === 0
+                          ? "Tất cả công việc"
+                          : selectedJobs.length === 1
+                            ? selectedJobs[0].title
+                            : `${selectedJobs.length} công việc đã chọn`}
+                      </span>
+                    </span>
+                    <ChevronsUpDown className="h-4 w-4 shrink-0 text-gray-400" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[min(520px,calc(100vw-2rem))] p-0">
+                  <div className="border-b border-gray-200 p-3 dark:border-gray-700">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                      <Input
+                        value={jobSearch}
+                        onChange={(event) => setJobSearch(event.target.value)}
+                        placeholder="Tìm công việc..."
+                        className="h-9 pl-9"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="max-h-72 overflow-y-auto p-2">
+                    {visibleJobOptions.length === 0 ? (
+                      <div className="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                        Không tìm thấy công việc phù hợp
+                      </div>
+                    ) : (
+                      visibleJobOptions.map((job) => {
+                        const checked = selectedJobIds.includes(job.id);
+                        return (
+                          <button
+                            key={job.id}
+                            type="button"
+                            onClick={() => toggleJobFilter(job.id)}
+                            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                                checked
+                                  ? "border-brand-600 bg-brand-600 text-white"
+                                  : "border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900"
+                              }`}
+                            >
+                              {checked && <Check className="h-3 w-3" />}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate">{job.title}</span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {selectedJobIds.length > 0 && (
+                    <div className="flex items-center justify-between border-t border-gray-200 px-3 py-2 dark:border-gray-700">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {selectedJobIds.length} công việc đang được lọc
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-xs"
+                        onClick={() => setSelectedJobIds([])}
+                      >
+                        Xóa lọc job
+                      </Button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+              */}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant={dateFilter === getLocalDateInputValue() ? "default" : "outline"}
+                className="h-10"
+                onClick={() => setDateFilter(getLocalDateInputValue())}
+              >
+                <Calendar className="mr-1.5 h-4 w-4" />
+                Hôm nay
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10"
+                onClick={resetAdvancedFilters}
+                disabled={!hasAdvancedFilters}
+              >
+                <RotateCcw className="mr-1.5 h-4 w-4" />
+                Xóa lọc
+              </Button>
+            </div>
+          </div>
+
+          {hasAdvancedFilters && (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              {dateFilter && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {dateFilter}
+                </span>
+              )}
+              {selectedJobs.map((job) => (
+                <button
+                  key={job.id}
+                  type="button"
+                  onClick={() => toggleJobFilter(job.id)}
+                  className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50"
+                >
+                  <Briefcase className="h-3.5 w-3.5" />
+                  <span className="max-w-[220px] truncate">{job.title}</span>
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Interview list */}
@@ -633,7 +903,12 @@ export default function InterviewList() {
           candidateName={feedbackInterview.candidateName}
           candidateOptions={feedbackInterview.candidateOptions}
           onSubmitted={async () => {
-            await fetchInterviews({ status: statusFilter || undefined });
+            await fetchInterviews({
+              status: statusFilter || undefined,
+              jobIds: selectedJobIds,
+              date: dateFilter || undefined,
+              size: INTERVIEW_PAGE_SIZE,
+            });
           }}
         />
       )}

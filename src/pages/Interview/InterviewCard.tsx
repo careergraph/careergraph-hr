@@ -115,7 +115,7 @@ export default function InterviewCard({
               size="sm"
               className="h-8 w-8 p-0"
               aria-haspopup="menu"
-              aria-expanded={isActionMenuOpen}
+              aria-expanded={isActionMenuOpen ? "true" : "false"}
               aria-label="Mở menu thao tác phỏng vấn"
               onClick={() => setIsActionMenuOpen((value) => !value)}
             >

@@ -14,7 +14,7 @@ interface InterviewState {
   isLoading: boolean;
   error: string | null;
 
-  fetchInterviews: (params?: { page?: number; size?: number; status?: string }) => Promise<void>;
+  fetchInterviews: (params?: { page?: number; size?: number; status?: string; jobId?: string; jobIds?: string[]; date?: string }) => Promise<void>;
   fetchCalendarEvents: (year?: number, month?: number) => Promise<void>;
   fetchInterviewById: (id: string) => Promise<void>;
   createInterview: (data: CreateInterviewRequest) => Promise<Interview>;

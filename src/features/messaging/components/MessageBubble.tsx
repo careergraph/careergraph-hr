@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ReadReceipt from "@/features/messaging/components/ReadReceipt";
 import useUnsendCountdown from "@/features/messaging/hooks/useUnsendCountdown";
 import type { Message, UserSummary } from "@/features/messaging/types/messaging.types";
-import { getJobColor } from "@/features/messaging/utils/jobColor";
+import { getJobColorClass } from "@/features/messaging/utils/jobColor";
 import { cn } from "@/lib/utils";
 
 interface MessageBubbleProps {
@@ -57,6 +57,27 @@ export function MessageBubble({
   const { canUnsend, secondsLeft, urgent } = useUnsendCountdown(message.createdAt);
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const actionMenuRef = useRef<HTMLDivElement | null>(null);
+  const actionMenuButton = isActionMenuOpen ? (
+    <button
+      type="button"
+      className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+      aria-label="Tùy chọn tin nhắn"
+      aria-expanded="true"
+      onClick={() => setIsActionMenuOpen((current) => !current)}
+    >
+      <MoreHorizontal className="h-3.5 w-3.5" />
+    </button>
+  ) : (
+    <button
+      type="button"
+      className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+      aria-label="Tùy chọn tin nhắn"
+      aria-expanded="false"
+      onClick={() => setIsActionMenuOpen((current) => !current)}
+    >
+      <MoreHorizontal className="h-3.5 w-3.5" />
+    </button>
+  );
 
   const sender = otherUser ?? message.sender;
 
@@ -127,15 +148,7 @@ export function MessageBubble({
               ref={actionMenuRef}
               className="absolute -top-3 right-0 z-20 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto"
             >
-              <button
-                type="button"
-                className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                aria-label="Tùy chọn tin nhắn"
-                aria-expanded={isActionMenuOpen}
-                onClick={() => setIsActionMenuOpen((current) => !current)}
-              >
-                <MoreHorizontal className="h-3.5 w-3.5" />
-              </button>
+              {actionMenuButton}
 
               {isActionMenuOpen ? (
                 <div className="absolute right-0 top-full mt-2 w-48 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-[0_14px_36px_rgba(15,23,42,0.22)] dark:border-slate-700 dark:bg-slate-900">
@@ -185,10 +198,7 @@ export function MessageBubble({
           {message.deleted ? (
             <p className="italic opacity-80">Tin nhắn đã được thu hồi</p>
           ) : (
-            <p
-              className="block max-w-full whitespace-pre-wrap break-words"
-              style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
-            >
+            <p className="block max-w-full whitespace-pre-wrap wrap-break-word">
               {message.content}
             </p>
           )}
@@ -202,10 +212,7 @@ export function MessageBubble({
         >
           {message.jobContext ? (
             <span className="msg-job-tag">
-              <span
-                className="job-tag-dot"
-                style={{ background: getJobColor(message.jobContext.jobId) }}
-              />
+              <span className={cn("job-tag-dot", getJobColorClass(message.jobContext.jobId))} />
               <span>{message.jobContext.jobTitle}</span>
             </span>
           ) : null}

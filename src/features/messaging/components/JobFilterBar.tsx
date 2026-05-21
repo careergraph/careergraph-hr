@@ -1,6 +1,6 @@
 import type { ThreadJob } from "@/features/messaging/types/messaging.types";
 import { cn } from "@/lib/utils";
-import { getJobColor } from "@/features/messaging/utils/jobColor";
+import { getJobColorClass } from "@/features/messaging/utils/jobColor";
 
 interface JobFilterBarProps {
   jobs: ThreadJob[];
@@ -25,17 +25,16 @@ export function JobFilterBar({ jobs, activeFilter, onFilter }: JobFilterBarProps
 
       {jobs.map((job) => {
         const active = activeFilter === job.jobId;
-        const color = getJobColor(job.jobId);
+        const colorClass = getJobColorClass(job.jobId);
 
         return (
           <button
             key={job.jobId}
             type="button"
-            className={cn("filter-tab", active && "active")}
-            style={active ? { borderColor: color } : undefined}
+            className={cn("filter-tab", active && "active", colorClass)}
             onClick={() => onFilter(job.jobId)}
           >
-            <span className="job-tag-dot" style={{ background: color }} />
+            <span className={cn("job-tag-dot", colorClass)} />
             <span className="truncate">{job.jobTitle}</span>
             {job.unreadCount > 0 ? (
               <span className="filter-badge">{job.unreadCount > 99 ? "99+" : job.unreadCount}</span>

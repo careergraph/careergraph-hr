@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import BlockDialog from "@/features/messaging/components/BlockDialog";
 import type { ThreadSummary } from "@/features/messaging/types/messaging.types";
-import { getJobColor } from "@/features/messaging/utils/jobColor";
+import { getJobColorClass } from "@/features/messaging/utils/jobColor";
 import { cn } from "@/lib/utils";
 
 interface ThreadItemProps {
@@ -202,10 +202,7 @@ export function ThreadItem({
                     key={job.jobId}
                     className={cn("job-chip", job.unreadCount > 0 && "has-unread")}
                   >
-                    <span
-                      className="chip-dot"
-                      style={{ background: getJobColor(job.jobId) }}
-                    />
+                    <span className={cn("chip-dot", getJobColorClass(job.jobId))} />
                     <span className="truncate">{job.jobTitle}</span>
                   </span>
                 ))}

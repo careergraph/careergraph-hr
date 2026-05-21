@@ -1,6 +1,6 @@
 import type { ThreadJob } from "@/features/messaging/types/messaging.types";
 import { cn } from "@/lib/utils";
-import { getJobColor } from "@/features/messaging/utils/jobColor";
+import { getJobColorClass } from "@/features/messaging/utils/jobColor";
 
 interface JobContextSelectorProps {
   jobs: ThreadJob[];
@@ -21,18 +21,17 @@ export function JobContextSelector({ jobs, selectedJobId, onSelect }: JobContext
 
       {jobs.map((job) => {
         const active = selectedJobId === job.jobId;
-        const color = getJobColor(job.jobId);
+        const colorClass = getJobColorClass(job.jobId);
 
         return (
           <button
             key={job.jobId}
             type="button"
-            className={cn("ctx-chip", active && "active")}
-            style={active ? { background: color } : undefined}
+            className={cn("ctx-chip", active && "active", colorClass)}
             onClick={() => onSelect(job.jobId)}
             title={job.jobTitle}
           >
-            <span className="job-tag-dot" style={{ background: color }} />
+            <span className={cn("job-tag-dot", colorClass)} />
             <span className="truncate">{job.jobTitle}</span>
             {job.unreadCount > 0 ? (
               <span className="ctx-unread">{job.unreadCount > 99 ? "99+" : job.unreadCount}</span>
