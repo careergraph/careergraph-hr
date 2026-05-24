@@ -101,6 +101,9 @@ export function ThreadItem({
     thread.otherUser.email,
     thread.otherUser.id
   );
+  const visibleJobs = thread.jobs?.slice(0, 2) ?? [];
+  const hiddenJobs = thread.jobs?.slice(2) ?? [];
+  const hiddenJobTitle = hiddenJobs.map((job) => job.jobTitle).join("\n");
 
   const handleArchiveToggle = async () => {
     if (submitting) {
@@ -197,7 +200,7 @@ export function ThreadItem({
 
             {thread.jobs && thread.jobs.length > 0 ? (
               <div className="thread-job-chips mt-1 flex-col">
-                {thread.jobs.slice(0, 2).map((job) => (
+                {visibleJobs.map((job) => (
                   <span
                     key={job.jobId}
                     className={cn("job-chip", job.unreadCount > 0 && "has-unread")}
@@ -206,6 +209,15 @@ export function ThreadItem({
                     <span className="truncate">{job.jobTitle}</span>
                   </span>
                 ))}
+                {hiddenJobs.length > 0 ? (
+                  <span
+                    className="job-chip border border-dashed border-gray-300 bg-white text-gray-600 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
+                    title={hiddenJobTitle}
+                    aria-label={`${hiddenJobs.length} vị trí khác`}
+                  >
+                    +{hiddenJobs.length} vị trí
+                  </span>
+                ) : null}
               </div>
             ) : null}
 

@@ -84,6 +84,8 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
   const didConfirmRef = useRef(false);
   // State for interview scheduling modal (shown when moving to "interview" column)
   const [showInterviewModal, setShowInterviewModal] = useState(false);
+  const [scheduleFromDetailCandidate, setScheduleFromDetailCandidate] =
+    useState<Candidate | null>(null);
   const pipelineColumns = useMemo(
     () => buildColumnsFromStages(pipelineStages),
     [pipelineStages]
@@ -982,6 +984,10 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
         onOpenChange={setDetailOpen}
         candidate={activeCandidate}
         setHeaderBlur={() => {}}
+        onScheduleInterview={(candidate) => {
+          setDetailOpen(false);
+          setScheduleFromDetailCandidate(candidate);
+        }}
         onRejectCandidate={async (candidate) => {
           const current = candidates.find((item) => item.id === candidate.id);
           if (!current) return;
@@ -1010,6 +1016,25 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           }
         }}
       />
+
+      {scheduleFromDetailCandidate ? (
+        <ScheduleInterviewKanbanModal
+          open={!!scheduleFromDetailCandidate}
+          onClose={() => setScheduleFromDetailCandidate(null)}
+          onScheduled={() => {
+            setCandidates((prev) =>
+              prev.map((item) =>
+                item.id === scheduleFromDetailCandidate.id
+                  ? { ...item, status: "interview" as CandidateStatusType }
+                  : item
+              )
+            );
+          }}
+          jobId={scheduleFromDetailCandidate.jobId}
+          preselectedApplicationId={scheduleFromDetailCandidate.id}
+          preselectedCandidateName={scheduleFromDetailCandidate.name}
+        />
+      ) : null}
     </div>
   );
 };

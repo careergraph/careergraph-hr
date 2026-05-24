@@ -35,6 +35,8 @@ interface UnscheduledApp {
   jobTitle: string;
   currentStage: string;
   appliedDate: string;
+  nextRound?: number;
+  maxCompletedRound?: number;
   hasActiveInterview?: boolean;
   activeInterviewCount?: number;
 }
@@ -254,6 +256,7 @@ export default function ScheduleInterviewKanbanModal({
         notes: notes || undefined,
         confirmOverwrite,
         notifyCandidate: true,
+        roundNumber: selectedApp?.nextRound ?? undefined,
       };
 
       return createInterview(request);

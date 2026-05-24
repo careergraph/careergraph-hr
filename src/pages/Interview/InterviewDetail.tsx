@@ -247,7 +247,20 @@ export default function InterviewDetail() {
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               Phỏng vấn: {iv.candidateName}
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{iv.jobTitle}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400">{iv.jobTitle}</p>
+              {iv.jobId ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1 px-2 text-xs"
+                  onClick={() => navigate(`/kanbans/${iv.jobId}?applicationId=${iv.applicationId}`)}
+                >
+                  <LinkIcon className="h-3.5 w-3.5" />
+                  Mở Kanban job
+                </Button>
+              ) : null}
+            </div>
           </div>
           <Badge className={STATUS_STYLES[iv.interviewStatus] ?? ""} variant="secondary">
             {STATUS_LABELS[iv.interviewStatus] ?? iv.interviewStatus}

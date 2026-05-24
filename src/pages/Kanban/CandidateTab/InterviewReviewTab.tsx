@@ -1,14 +1,17 @@
 import type { Interview, InterviewFeedback, InterviewRecording } from "@/types/interview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Star, Video, MapPin, UserCheck, CircleAlert, Link as LinkIcon, PlayCircle } from "lucide-react";
+import { CalendarPlus, CalendarDays, Star, Video, MapPin, UserCheck, CircleAlert, Link as LinkIcon, PlayCircle } from "lucide-react";
 import { formatDateTimeYMDHM } from "@/lib/dateUtils";
 import { getFeedbackRecommendationLabel } from "@/pages/Interview/feedbackRecommendationOptions";
+import type { Candidate } from "@/types/candidate";
 
 interface InterviewReviewTabProps {
+  candidate: Candidate;
   interviews: Interview[];
   loading?: boolean;
   error?: string | null;
+  onScheduleInterview?: (candidate: Candidate) => void;
 }
 
 const getLatestFeedback = (feedback: InterviewFeedback[] | undefined) => {
@@ -59,7 +62,45 @@ const getInterviewRecordings = (interview: Interview): InterviewRecording[] => {
     : [];
 };
 
-export function InterviewReviewTab({ interviews, loading, error }: InterviewReviewTabProps) {
+export function InterviewReviewTab({ candidate, interviews, loading, error, onScheduleInterview }: InterviewReviewTabProps) {
+  const hasValidActiveInterview = interviews.some((interview) => {
+    const endTimeMs = interview.endAt ? new Date(interview.endAt).getTime() : new Date(interview.scheduledAt).getTime();
+    return (
+      ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"].includes(interview.interviewStatus) &&
+      (!Number.isFinite(endTimeMs) || Date.now() <= endTimeMs)
+    );
+  });
+
+  const scheduleAction = (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">Lịch phỏng vấn</p>
+          <p className="text-xs text-slate-500">
+            Có thể lên lịch lại khi lịch hiện tại đã quá giờ, bị hủy, vắng mặt hoặc đã hoàn thành.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          className="h-9 bg-blue-600 hover:bg-blue-700"
+          disabled={hasValidActiveInterview || !candidate.jobId}
+          onClick={() => onScheduleInterview?.(candidate)}
+          title={hasValidActiveInterview ? "Ứng viên đang có một lịch phỏng vấn hợp lệ" : undefined}
+        >
+          <CalendarPlus className="h-4 w-4" />
+          Lên lịch phỏng vấn
+        </Button>
+      </div>
+
+      {hasValidActiveInterview ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          Ứng viên đang có lịch phỏng vấn hợp lệ ở hiện tại hoặc tương lai. Hãy hoàn tất, hủy hoặc chờ lịch quá hạn trước khi tạo lịch mới.
+        </div>
+      ) : null}
+
+    </>
+  );
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center p-6">
@@ -76,7 +117,12 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
 
   if (!interviews.length) {
     return (
-      <div className="p-6 text-sm text-slate-500">Chưa có dữ liệu phỏng vấn.</div>
+      <div className="h-full overflow-y-auto p-6 space-y-4">
+        {scheduleAction}
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+          Chưa có dữ liệu phỏng vấn.
+        </div>
+      </div>
     );
   }
 
@@ -91,6 +137,7 @@ export function InterviewReviewTab({ interviews, loading, error }: InterviewRevi
 
   return (
     <div className="h-full overflow-y-auto p-6 space-y-4">
+      {scheduleAction}
       {sorted.map((interview) => {
         const latestFeedback = getLatestFeedback(interview.feedback || undefined);
         const recordings = getInterviewRecordings(interview);

@@ -38,6 +38,7 @@ type CandidateDetailProps = {
   candidate: Candidate | null;
   setHeaderBlur: (blur: boolean) => void;
   onRejectCandidate?: (candidate: Candidate) => Promise<void> | void;
+  onScheduleInterview?: (candidate: Candidate) => void;
 };
 
 export function CandidateDetail({
@@ -46,6 +47,7 @@ export function CandidateDetail({
   candidate,
   setHeaderBlur,
   onRejectCandidate,
+  onScheduleInterview,
 }: CandidateDetailProps) {
   useEffect(() => {
     // Làm mờ header khi panel mở để tạo trọng tâm.
@@ -335,9 +337,11 @@ export function CandidateDetail({
                   className="flex-1 min-h-0 overflow-hidden"
                 >
                   <InterviewReviewTab
+                    candidate={candidate}
                     interviews={interviewReviews}
                     loading={loading?.["interview-review"]}
                     error={errors?.["interview-review"]}
+                    onScheduleInterview={onScheduleInterview}
                   />
                 </TabsContent>
 

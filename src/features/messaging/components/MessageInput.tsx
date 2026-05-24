@@ -29,6 +29,7 @@ export function MessageInput({
   const typingHeartbeatRef = useRef<number | null>(null);
   const isTypingRef = useRef(false);
   const isFocusedRef = useRef(false);
+  const isSendingRef = useRef(false);
 
   const stopTyping = useCallback(() => {
     if (isTypingRef.current) {
@@ -91,10 +92,11 @@ export function MessageInput({
   const submitMessage = useCallback(async () => {
     const payload = value.trim();
 
-    if (!payload || disabled || isSending) {
+    if (!payload || disabled || isSendingRef.current) {
       return;
     }
 
+    isSendingRef.current = true;
     setIsSending(true);
     stopTyping();
 
@@ -102,15 +104,19 @@ export function MessageInput({
       const sent = await onSend(payload);
 
       if (sent) {
-        setValue("");
+        setValue((currentValue) => (currentValue.trim() === payload ? "" : currentValue));
         if (textareaRef.current) {
-          textareaRef.current.style.height = "auto";
+          requestAnimationFrame(resizeTextarea);
         }
       }
     } finally {
+      isSendingRef.current = false;
       setIsSending(false);
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+      });
     }
-  }, [disabled, isSending, onSend, stopTyping, value]);
+  }, [disabled, onSend, resizeTextarea, stopTyping, value]);
 
   useEffect(() => {
     return () => {
@@ -161,7 +167,7 @@ export function MessageInput({
           }}
           placeholder={placeholder}
           className="min-h-10.5 max-h-35 resize-none rounded-2xl border-gray-200 bg-gray-50 text-sm shadow-inner focus-visible:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800"
-          disabled={disabled || isSending}
+          disabled={disabled}
         />
 
         <Button
