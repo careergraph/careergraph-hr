@@ -7,7 +7,7 @@ import {
   formatTimeForInput,
 } from "../../lib/calendar-utils";
 import { CalendarEvent } from "@/types/calendar";
-import type { InterviewType, CreateInterviewRequest, InterviewStatus } from "@/types/interview";
+import type { InterviewType, InterviewStatus } from "@/types/interview";
 
 import { Modal } from "@/components/custom/modal";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -28,6 +38,7 @@ import { jobService } from "@/services/jobService";
 import { interviewService } from "@/services/interviewService";
 import { companyPipelineService } from "@/services/companyPipelineService";
 import { useInterviewStore } from "@/stores/interviewStore";
+import { useAuthStore } from "@/stores/authStore";
 import { extractApiErrorMessage } from "@/lib/error-utils";
 import {
   DEFAULT_COMPANY_STAGES,
@@ -105,7 +116,10 @@ export const CalendarModalForm = ({
 }: CalendarModalFormProps) => {
   const isCreateMode = !editingEvent;
   const { createInterview } = useInterviewStore();
+  const companyId = useAuthStore((state) => state.company?.id ?? state.user?.companyId ?? "");
   const todayStr = new Date().toISOString().split("T")[0];
+  const scrollableSelectContentClass =
+    "custom-scrollbar max-h-72 w-[var(--radix-select-trigger-width)] overflow-y-auto border bg-white text-slate-900";
 
   // Internal state for create mode
   const [jobs, setJobs] = useState<JobOption[]>([]);
@@ -125,6 +139,9 @@ export const CalendarModalForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
+  const [overwritePromptOpen, setOverwritePromptOpen] = useState(false);
+  const [overwritePromptMessage, setOverwritePromptMessage] = useState("");
+  const [cancelPromptOpen, setCancelPromptOpen] = useState(false);
   const formErrorRef = useRef<HTMLDivElement>(null);
   const jobFieldRef = useRef<HTMLDivElement>(null);
   const appFieldRef = useRef<HTMLDivElement>(null);
@@ -177,9 +194,14 @@ export const CalendarModalForm = ({
     if (!isOpen || !isCreateMode) return;
     setFieldErrors({});
     setFormError("");
+    if (!companyId) {
+      setJobs([]);
+      setLoadingJobs(false);
+      return;
+    }
     setLoadingJobs(true);
     jobService
-      .getAllJobs()
+      .getMyCompanyJobs()
       .then((data: unknown) => {
         const list = Array.isArray(data)
           ? data
@@ -193,7 +215,7 @@ export const CalendarModalForm = ({
       })
       .catch(() => setJobs([]))
       .finally(() => setLoadingJobs(false));
-  }, [isOpen, isCreateMode]);
+  }, [companyId, isOpen, isCreateMode]);
 
   useEffect(() => {
     if (!isOpen || !isCreateMode) return;
@@ -264,6 +286,9 @@ export const CalendarModalForm = ({
       setUnscheduledApps([]);
       setFieldErrors({});
       setFormError("");
+      setOverwritePromptOpen(false);
+      setOverwritePromptMessage("");
+      setCancelPromptOpen(false);
     }
   }, [isOpen]);
 
@@ -335,8 +360,9 @@ export const CalendarModalForm = ({
     setFieldErrors({});
     setFormError("");
 
-    const submitRequest = async (confirmOverwrite: boolean) => {
-      const request: CreateInterviewRequest = {
+    setIsSubmitting(true);
+    try {
+      await createInterview({
         applicationId: selectedAppId,
         date: eventStartDate,
         startTime,
@@ -344,45 +370,54 @@ export const CalendarModalForm = ({
         type: interviewType,
         location: interviewType === "OFFLINE" ? eventLocation : undefined,
         notes: eventNotes || undefined,
-        confirmOverwrite,
+        confirmOverwrite: false,
         notifyCandidate: true,
         roundNumber: selectedRound,
-      };
-
-      await createInterview(request);
-    };
-
-    setIsSubmitting(true);
-    try {
-      await submitRequest(false);
+      });
       toast.success("Đã tạo lịch phỏng vấn thành công");
       onInterviewCreated?.();
       onClose();
     } catch (error: unknown) {
       const rawMessage = extractApiErrorMessage(error, "Không thể tạo lịch phỏng vấn");
       if (rawMessage.includes("ACTIVE_INTERVIEW")) {
-        const confirm = window.confirm(
-          "Ứng viên đã có một lịch phỏng vấn đang hoạt động cho vị trí này. Bạn có muốn ghi đè lịch cũ bằng lịch mới không?"
+        setOverwritePromptMessage(
+          rawMessage.replace(/^ACTIVE_INTERVIEW_[A-Z_]+\|/, "")
         );
-        if (confirm) {
-          try {
-            await submitRequest(true);
-            toast.success("Đã cập nhật lịch phỏng vấn thành công");
-            onInterviewCreated?.();
-            onClose();
-            return;
-          } catch (confirmError: unknown) {
-            setFormError(extractApiErrorMessage(confirmError, "Không thể cập nhật lịch phỏng vấn"));
-            setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
-            return;
-          }
-        }
-        setFormError("Bạn đã hủy thao tác ghi đè lịch hiện tại.");
-        setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+        setOverwritePromptOpen(true);
         return;
       }
 
       setFormError(rawMessage);
+      setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmOverwrite = async () => {
+    setIsSubmitting(true);
+    setFormError("");
+    try {
+      await createInterview({
+        applicationId: selectedAppId,
+        date: eventStartDate,
+        startTime,
+        durationMinutes: duration,
+        type: interviewType,
+        location: interviewType === "OFFLINE" ? eventLocation : undefined,
+        notes: eventNotes || undefined,
+        confirmOverwrite: true,
+        notifyCandidate: true,
+        roundNumber: selectedRound,
+      });
+      setOverwritePromptOpen(false);
+      setOverwritePromptMessage("");
+      toast.success("Đã cập nhật lịch phỏng vấn thành công");
+      onInterviewCreated?.();
+      onClose();
+    } catch (error: unknown) {
+      setOverwritePromptOpen(false);
+      setFormError(extractApiErrorMessage(error, "Không thể cập nhật lịch phỏng vấn"));
       setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
     } finally {
       setIsSubmitting(false);
@@ -444,6 +479,32 @@ export const CalendarModalForm = ({
 
     return timeChanged || notesChanged || statusChanged;
   }, [editingEvent, eventLevel, eventNotes, eventStartDate, getEditingStartFromEvent, startTime]);
+
+  const currentInterviewStatus = editingEvent?.extendedProps?.interviewStatus as InterviewStatus | undefined;
+  const canEditCurrentInterview =
+    !isCreateMode &&
+    !!currentInterviewStatus &&
+    ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE"].includes(currentInterviewStatus);
+  const canCancelCurrentInterview =
+    !isCreateMode &&
+    !!currentInterviewStatus &&
+    ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE"].includes(currentInterviewStatus);
+  const readOnlyEditReason = useMemo(() => {
+    if (isCreateMode || !currentInterviewStatus) return "";
+    if (currentInterviewStatus === "CANCELLED") {
+      return "Lịch này đã bị hủy hoặc đã trở thành bản ghi lịch sử sau khi dời lịch, chỉ có thể xem thông tin.";
+    }
+    if (currentInterviewStatus === "NO_SHOW") {
+      return "Lịch này đã được đánh dấu vắng mặt, không thể chỉnh sửa hoặc hủy thêm.";
+    }
+    if (currentInterviewStatus === "COMPLETED") {
+      return "Lịch này đã hoàn thành, không thể chỉnh sửa thêm.";
+    }
+    if (currentInterviewStatus === "IN_PROGRESS") {
+      return "Buổi phỏng vấn đang diễn ra, không thể đổi lịch hoặc hủy từ modal này.";
+    }
+    return "";
+  }, [currentInterviewStatus, isCreateMode]);
 
   const handleEditSubmit = async () => {
     if (!editingEvent?.id) {
@@ -549,12 +610,16 @@ export const CalendarModalForm = ({
       return;
     }
 
-    const confirmed = window.confirm("Bạn có chắc muốn hủy lịch phỏng vấn này?");
-    if (!confirmed) return;
+    setCancelPromptOpen(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!editingEvent?.id) return;
 
     setIsSubmitting(true);
     try {
       await interviewService.cancelInterview(editingEvent.id, "Hủy từ lịch phỏng vấn");
+      setCancelPromptOpen(false);
       toast.success("Đã hủy lịch phỏng vấn");
       onInterviewCreated?.();
       onClose();
@@ -595,6 +660,11 @@ export const CalendarModalForm = ({
                 {formError.replace(/^ACTIVE_INTERVIEW_[A-Z_]+\|/, "")}
               </div>
             ) : null}
+            {!isCreateMode && readOnlyEditReason ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                {readOnlyEditReason}
+              </div>
+            ) : null}
             {/* ========== CREATE MODE: Job → Candidate → Type ========== */}
             {isCreateMode && (
               <>
@@ -623,7 +693,7 @@ export const CalendarModalForm = ({
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn công việc..." />
                       </SelectTrigger>
-                      <SelectContent className="border border-gray-400 bg-white text-slate-900">
+                      <SelectContent className={`${scrollableSelectContentClass} max-w-[min(36rem,var(--radix-select-trigger-width))] border-gray-400 pr-1`}>
                         {jobs.map((job) => (
                           <SelectItem key={job.id} value={job.id}>
                             {job.title}
@@ -654,7 +724,7 @@ export const CalendarModalForm = ({
                           <SelectTrigger>
                             <SelectValue placeholder="Chọn vòng phỏng vấn" />
                           </SelectTrigger>
-                          <SelectContent className="border border-slate-200 bg-white text-slate-900">
+                            <SelectContent className="max-h-72 w-[var(--radix-select-trigger-width)] border border-slate-200 bg-white text-slate-900">
                             {availableRounds.map((round) => (
                               <SelectItem key={round} value={String(round)}>
                                 Vòng {round}
@@ -692,7 +762,7 @@ export const CalendarModalForm = ({
                             <SelectTrigger>
                               <SelectValue placeholder="Chọn ứng viên chưa lên lịch..." />
                             </SelectTrigger>
-                            <SelectContent className="border border-slate-200 bg-white text-slate-900">
+                            <SelectContent className={`${scrollableSelectContentClass} border-slate-200 pr-1`}>
                               {unscheduledApps.map((app) => (
                                 <SelectItem key={app.applicationId} value={app.applicationId}>
                                   <div className="flex flex-col">
@@ -803,6 +873,7 @@ export const CalendarModalForm = ({
                     value={eventTitle}
                     onChange={(e) => onTitleChange(e.target.value)}
                     placeholder="Ví dụ: Phỏng vấn vòng 2 - Nguyễn Văn A"
+                    disabled={!canEditCurrentInterview || isSubmitting}
                   />
                 </div>
                 <div className="space-y-2">
@@ -814,6 +885,7 @@ export const CalendarModalForm = ({
                     value={eventCandidate}
                     onChange={(e) => onCandidateChange(e.target.value)}
                     placeholder="Nhập tên ứng viên"
+                    disabled={!canEditCurrentInterview || isSubmitting}
                   />
                 </div>
               </div>
@@ -852,12 +924,16 @@ export const CalendarModalForm = ({
                     <button
                       key={level}
                       type="button"
-                      onClick={() => onLevelChange(level)}
+                      onClick={() => {
+                        if (!isCreateMode && !canEditCurrentInterview) return;
+                        onLevelChange(level);
+                      }}
+                      disabled={!isCreateMode && !canEditCurrentInterview}
                       className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-left transition focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 ${
                         active
                           ? "border-transparent bg-brand-500/10 shadow-sm"
                           : "border-border/60 bg-background/60 hover:bg-background"
-                      }`}
+                      } ${!isCreateMode && !canEditCurrentInterview ? "cursor-not-allowed opacity-60" : ""}`}
                     >
                       <span className={`mt-1 size-2.5 rounded-full ${styles.indicator}`} />
                       <span>
@@ -891,6 +967,7 @@ export const CalendarModalForm = ({
                       setFieldErrors((prev) => ({ ...prev, eventStartDate: "" }));
                     }}
                   min={todayStr}
+                  disabled={!isCreateMode && !canEditCurrentInterview}
                 />
                 {fieldErrors.eventStartDate ? (
                   <p className="text-xs text-rose-600">{fieldErrors.eventStartDate}</p>
@@ -913,6 +990,7 @@ export const CalendarModalForm = ({
                     setStartTime(e.target.value);
                     setFieldErrors((prev) => ({ ...prev, startTime: "" }));
                   }}
+                  disabled={!isCreateMode && !canEditCurrentInterview}
                 />
                 {fieldErrors.startTime ? (
                   <p className="text-xs text-rose-600">{fieldErrors.startTime}</p>
@@ -935,6 +1013,7 @@ export const CalendarModalForm = ({
                     onFocus={() => openDatePicker(endDateInputRef.current)}
                     onChange={(e) => onEndDateChange(e.target.value)}
                     min={eventStartDate || todayStr}
+                    disabled={!canEditCurrentInterview || isSubmitting}
                   />
                   <p className="text-xs text-muted-foreground">
                     Ngày kết thúc dùng cho trường hợp lịch kéo dài qua nhiều ngày.
@@ -999,6 +1078,7 @@ export const CalendarModalForm = ({
                   onChange={(e) => onNotesChange(e.target.value)}
                   placeholder="Thông tin thêm để ứng viên và interviewer nắm rõ"
                   rows={3}
+                  disabled={!isCreateMode && !canEditCurrentInterview}
                 />
               </div>
             </div>
@@ -1019,22 +1099,71 @@ export const CalendarModalForm = ({
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-3">
-              <Button variant="destructive" onClick={handleQuickCancel} disabled={isSubmitting}>
-                {isSubmitting ? "Đang xử lý..." : "Hủy lịch phỏng vấn"}
-              </Button>
-
               <div className="ml-auto flex flex-wrap gap-3">
                 <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
                   Đóng
                 </Button>
-                <Button onClick={handleEditSubmit} disabled={isSubmitting || !isEditFormChanged}>
-                  {isSubmitting ? "Đang xử lý..." : "Lưu thay đổi"}
-                </Button>
+                {canCancelCurrentInterview ? (
+                  <Button variant="destructive" onClick={handleQuickCancel} disabled={isSubmitting}>
+                    {isSubmitting ? "Đang xử lý..." : "Hủy lịch phỏng vấn"}
+                  </Button>
+                ) : null}
+                {canEditCurrentInterview ? (
+                  <Button onClick={handleEditSubmit} disabled={isSubmitting || !isEditFormChanged}>
+                    {isSubmitting ? "Đang xử lý..." : "Lưu thay đổi"}
+                  </Button>
+                ) : null}
               </div>
             </div>
           )}
         </div>
       </div>
+      <AlertDialog open={overwritePromptOpen} onOpenChange={setOverwritePromptOpen}>
+        <AlertDialogContent className="border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.30)] sm:max-w-md dark:border-slate-700 dark:bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ghi đè lịch phỏng vấn hiện tại</AlertDialogTitle>
+            <AlertDialogDescription>
+              {overwritePromptMessage || "Ứng viên đang có một lịch phỏng vấn còn hiệu lực cho vị trí này. Xác nhận để hủy lịch hiện tại và tạo lịch mới."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Giữ lịch hiện tại</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-brand-600 hover:bg-brand-700"
+              disabled={isSubmitting}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmOverwrite();
+              }}
+            >
+              {isSubmitting ? "Đang xử lý..." : "Xác nhận ghi đè"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={cancelPromptOpen} onOpenChange={setCancelPromptOpen}>
+        <AlertDialogContent className="border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.30)] sm:max-w-md dark:border-slate-700 dark:bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hủy lịch phỏng vấn</AlertDialogTitle>
+            <AlertDialogDescription>
+              Lịch hiện tại sẽ chuyển sang trạng thái đã hủy và vẫn hiển thị trong lịch sử của ứng viên. Bạn có muốn tiếp tục không?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Giữ lịch</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isSubmitting}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmCancel();
+              }}
+            >
+              {isSubmitting ? "Đang xử lý..." : "Xác nhận hủy lịch"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Modal>
   );
 };

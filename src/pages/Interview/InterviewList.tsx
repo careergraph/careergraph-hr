@@ -82,7 +82,7 @@ export default function InterviewList() {
     let cancelled = false;
 
     jobService
-      .getAllJobs()
+      .getMyCompanyJobs()
       .then((data: unknown) => {
         if (cancelled) return;
         const list = Array.isArray(data)

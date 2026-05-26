@@ -333,6 +333,11 @@ const jobService = {
     return unwrapResponse(response.data);
   },
 
+  getMyCompanyJobs: async () => {
+    const response = await api.get("/jobs/my-company");
+    return unwrapResponse(response.data);
+  },
+
   getJobById: async (jobId: string) => {
     const response = await api.get(`/jobs/${jobId}`);
     return unwrapResponse(response.data);
