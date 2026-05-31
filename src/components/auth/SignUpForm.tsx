@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -126,13 +126,42 @@ const extractAuthUser = (payload: LoginResponse, fallbackEmail: string): AuthUse
 export default function SignUpForm() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [googlePromptPending, setGooglePromptPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const googlePromptTimerRef = useRef<number | null>(null);
 
-  const { setAccessToken, setUser, updateUser, setCompany, setIsAuthenticating } =
+  const { setAccessToken, setUser, updateUser, setCompany, setIsAuthenticating, isAuthenticating } =
     useAuthStore();
 
+  const clearGooglePromptPending = () => {
+    if (googlePromptTimerRef.current !== null) {
+      window.clearTimeout(googlePromptTimerRef.current);
+      googlePromptTimerRef.current = null;
+    }
+
+    setGooglePromptPending(false);
+  };
+
+  const startGooglePromptPending = () => {
+    clearGooglePromptPending();
+    setGooglePromptPending(true);
+    googlePromptTimerRef.current = window.setTimeout(() => {
+      googlePromptTimerRef.current = null;
+      setGooglePromptPending(false);
+    }, 45_000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (googlePromptTimerRef.current !== null) {
+        window.clearTimeout(googlePromptTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleGoogleSignUp = async (idToken: string) => {
+    clearGooglePromptPending();
     setIsAuthenticating(true);
     try {
       const response = await authService.googleLogin(idToken);
@@ -169,6 +198,11 @@ export default function SignUpForm() {
     }
   };
 
+  const handleGoogleError = () => {
+    clearGooglePromptPending();
+    toast.error("Đăng nhập Google thất bại");
+  };
+
   const { control, handleSubmit, formState, reset } = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -181,6 +215,8 @@ export default function SignUpForm() {
   });
 
   const { errors, isSubmitting } = formState;
+  const authBusy = isSubmitting || isAuthenticating || googlePromptPending;
+  const disabledLinkClass = authBusy ? "pointer-events-none opacity-60" : "";
 
   useEffect(() => {
     if (errors.password || errors.email || errors.firstName || errors.lastName) {
@@ -189,6 +225,8 @@ export default function SignUpForm() {
   }, [errors.password, errors.email, errors.firstName, errors.lastName]);
 
   const onSubmit = async (values: SignUpFormValues) => {
+    if (authBusy) return;
+
     setFormError(null);
     setFormSuccess(null);
 
@@ -224,7 +262,11 @@ export default function SignUpForm() {
       <div className="w-full max-w-md mx-auto mb-5 sm:pt-10">
         <Link
           to="/"
-          className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          onClick={(event) => {
+            if (authBusy) event.preventDefault();
+          }}
+          aria-disabled={authBusy}
+          className={`inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 ${disabledLinkClass}`}
         >
           <ChevronLeftIcon className="size-5" />
           Quay về trang chủ
@@ -243,7 +285,13 @@ export default function SignUpForm() {
 
           <div>
             <div className="flex justify-center">
-              <GoogleAuth onSuccess={handleGoogleSignUp} text="signup_with" />
+              <GoogleAuth
+                onSuccess={handleGoogleSignUp}
+                onStart={startGooglePromptPending}
+                onError={handleGoogleError}
+                disabled={authBusy}
+                text="signup_with"
+              />
             </div>
             <div className="relative py-3 sm:py-5">
               <div className="absolute inset-0 flex items-center">
@@ -275,6 +323,7 @@ export default function SignUpForm() {
                           placeholder="Nhập họ và tên đệm (nếu có)"
                           error={!!errors.firstName}
                           hint={errors.firstName?.message}
+                          disabled={authBusy}
                         />
                       )}
                     />
@@ -296,6 +345,7 @@ export default function SignUpForm() {
                           placeholder="Nhập tên"
                           error={!!errors.lastName}
                           hint={errors.lastName?.message}
+                          disabled={authBusy}
                         />
                       )}
                     />
@@ -318,6 +368,7 @@ export default function SignUpForm() {
                         placeholder="Nhập email"
                         error={!!errors.email}
                         hint={errors.email?.message}
+                        disabled={authBusy}
                       />
                     )}
                   />
@@ -340,11 +391,13 @@ export default function SignUpForm() {
                           type={showPassword ? "text" : "password"}
                           error={!!errors.password}
                           hint={errors.password?.message}
+                          disabled={authBusy}
                           endAdornment={
                             <button
                               type="button"
+                              disabled={authBusy}
                               onClick={() => setShowPassword((prev) => !prev)}
-                              className="text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                              className="text-gray-500 transition-colors hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-200"
                               aria-label={showPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
                             >
                               {showPassword ? (
@@ -369,6 +422,7 @@ export default function SignUpForm() {
                           className="w-5 h-5 mt-1"
                           checked={field.value ?? false}
                           onChange={(checked) => field.onChange(checked)}
+                          disabled={authBusy}
                         />
                       )}
                     />
@@ -396,9 +450,9 @@ export default function SignUpForm() {
                   <button
                     type="submit"
                     className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white transition rounded-lg bg-brand-500 shadow-theme-xs hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={isSubmitting}
+                    disabled={authBusy}
                   >
-                    {isSubmitting ? "Đang đăng ký..." : "Đăng ký"}
+                    {authBusy ? "Đang đăng ký..." : "Đăng ký"}
                   </button>
                 </div>
               </div>
@@ -409,7 +463,11 @@ export default function SignUpForm() {
                 Đã có tài khoản? {""}
                 <Link
                   to="/signin"
-                  className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
+                  onClick={(event) => {
+                    if (authBusy) event.preventDefault();
+                  }}
+                  aria-disabled={authBusy}
+                  className={`text-brand-500 hover:text-brand-600 dark:text-brand-400 ${disabledLinkClass}`}
                 >
                   Đăng nhập
                 </Link>
