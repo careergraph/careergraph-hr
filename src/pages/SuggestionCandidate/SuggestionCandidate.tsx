@@ -30,7 +30,7 @@ const SuggestionCandidate = () => {
   const [candidates, setCandidates] = useState<SuggestionCandidateListItem[]>(
     []
   );
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Initial loading = true để hiển thị spinner ngay
   const [error, setError] = useState<string | null>(null);
 
   // Pagination state
@@ -69,7 +69,7 @@ const SuggestionCandidate = () => {
         debouncedQuery || undefined,
         filters,
         page,
-        10,
+        10, // Fetch 10 candidates per page
         abortControllerRef.current.signal
       );
       console.log(response)
