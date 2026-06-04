@@ -23,12 +23,9 @@ const CandidateHorizontalList = ({
   onPageChange,
 }: CandidateHorizontalListProps) => {
     const isMobile = useMediaQuery("(max-width: 767px)");
-  const PAGE_SIZE = 3;
 
-  // Tính toán những ứng viên nằm trong view hiện tại
-  const visibleCandidates = useMemo(() => {
-    return candidates.slice(0, PAGE_SIZE);
-  }, [candidates]);
+  // Backend đã handle pagination, hiển thị tất cả candidates trong page
+  const visibleCandidates = candidates;
 
   const handlePrevious = () => {
     if (currentPage > 0) {

@@ -158,12 +158,22 @@ const SuggestionCandidate = () => {
         onFilterChange={handleFilterChange}
       />
 
-      {/* Loading state */}
-      {loading && (
-        <div className="flex items-center justify-center py-8">
+      {/* Loading state - hiển thị khi đang fetch */}
+      {loading && candidates.length === 0 && (
+        <div className="flex items-center justify-center py-12 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-900/20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2 text-muted-foreground">
+          <span className="ml-2 text-muted-foreground font-medium">
             Đang tìm kiếm ứng viên...
+          </span>
+        </div>
+      )}
+      
+      {/* Loading overlay - khi có candidates cũ nhưng đang fetch page mới */}
+      {loading && candidates.length > 0 && (
+        <div className="flex items-center justify-center py-4 bg-blue-50/80 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-900/40 mb-4">
+          <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
+          <span className="ml-2 text-sm text-blue-700 dark:text-blue-300 font-medium">
+            Đang cập nhật...
           </span>
         </div>
       )}
@@ -175,26 +185,32 @@ const SuggestionCandidate = () => {
         </div>
       )}
 
-      {/* Results info */}
-      {!loading && !error && (
+      {/* Results info - hiển thị cả khi loading */}
+      {!error && totalElements > 0 && (
         <div className="mb-4 flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Tìm thấy <span className="font-semibold">{totalElements}</span> ứng
+            Tìm thấy <span className="font-semibold text-blue-600 dark:text-blue-400">{totalElements}</span> ứng
             viên phù hợp
+            {loading && <span className="ml-2 text-xs">(đang cập nhật...)</span>}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Trang {page + 1} / {Math.max(totalPages, 1)}
           </p>
         </div>
       )}
 
-      {/* Danh sách ứng viên gợi ý phía trên. */}
-      {!loading && !error && (
-        <CandidateHorizontalList
-          candidates={candidates}
-          selectedCandidate={selectedCandidate}
-          setSelectedCandidate={handleSelectCandidate}
-          currentPage={page}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-        />
+      {/* Danh sách ứng viên gợi ý phía trên - hiển thị cả khi loading */}
+      {!error && (
+        <div className={loading ? "opacity-60 pointer-events-none" : ""}>
+          <CandidateHorizontalList
+            candidates={candidates}
+            selectedCandidate={selectedCandidate}
+            setSelectedCandidate={handleSelectCandidate}
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+        </div>
       )}
 
       {/* Khu vực hiển thị chi tiết ứng viên đã chọn. */}
