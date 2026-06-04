@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -181,6 +181,8 @@ const resolveErrorStatus = (error: unknown): number | null => {
 export default function SignInForm() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [googlePromptPending, setGooglePromptPending] = useState(false);
+  const googlePromptTimerRef = useRef<number | null>(null);
 
   const { control, handleSubmit, formState } = useForm<SignInFormValues>({
     resolver: zodResolver(signInSchema),
@@ -196,7 +198,37 @@ export default function SignInForm() {
   const { setAccessToken, setUser, updateUser, setCompany, setIsAuthenticating, isAuthenticating } =
     useAuthStore();
 
+  const submitting = isSubmitting || isAuthenticating || googlePromptPending;
+  const disabledLinkClass = submitting ? "pointer-events-none opacity-60" : "";
+
+  const clearGooglePromptPending = () => {
+    if (googlePromptTimerRef.current !== null) {
+      window.clearTimeout(googlePromptTimerRef.current);
+      googlePromptTimerRef.current = null;
+    }
+
+    setGooglePromptPending(false);
+  };
+
+  const startGooglePromptPending = () => {
+    clearGooglePromptPending();
+    setGooglePromptPending(true);
+    googlePromptTimerRef.current = window.setTimeout(() => {
+      googlePromptTimerRef.current = null;
+      setGooglePromptPending(false);
+    }, 45_000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (googlePromptTimerRef.current !== null) {
+        window.clearTimeout(googlePromptTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleGoogleLogin = async (idToken: string) => {
+    clearGooglePromptPending();
     setIsAuthenticating(true);
     try {
       const response = await authService.googleLogin(idToken);
@@ -233,7 +265,14 @@ export default function SignInForm() {
     }
   };
 
+  const handleGoogleError = () => {
+    clearGooglePromptPending();
+    toast.error("Đăng nhập Google thất bại");
+  };
+
   const onSubmit = async (values: SignInFormValues) => {
+    if (submitting) return;
+
     setIsAuthenticating(true);
 
     let token: string | null = null;
@@ -297,14 +336,16 @@ export default function SignInForm() {
     }
   };
 
-  const submitting = isSubmitting || isAuthenticating;
-
   return (
     <div className="flex flex-col flex-1 w-full overflow-y-auto lg:w-1/2 no-scrollbar">
       <div className="w-full max-w-md mx-auto mb-5 sm:pt-10">
         <Link
           to="/"
-          className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          onClick={(event) => {
+            if (submitting) event.preventDefault();
+          }}
+          aria-disabled={submitting}
+          className={`inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 ${disabledLinkClass}`}
         >
           <ChevronLeftIcon className="size-5" />
           Quay về trang chủ
@@ -324,7 +365,9 @@ export default function SignInForm() {
             <div className="flex justify-center">
               <GoogleAuth
                 onSuccess={handleGoogleLogin}
-                onError={() => toast.error("Đăng nhập Google thất bại")}
+                onStart={startGooglePromptPending}
+                disabled={submitting}
+                onError={handleGoogleError}
                 text="signin_with"
               />
             </div>
@@ -357,6 +400,7 @@ export default function SignInForm() {
                         placeholder="info@gmail.com"
                         error={!!errors.email}
                         hint={errors.email?.message}
+                        disabled={submitting}
                       />
                     )}
                   />
@@ -379,11 +423,13 @@ export default function SignInForm() {
                           placeholder="Nhập mật khẩu"
                           error={!!errors.password}
                           hint={errors.password?.message}
+                          disabled={submitting}
                           endAdornment={
                             <button
                               type="button"
+                              disabled={submitting}
                               onClick={() => setShowPassword((prev) => !prev)}
-                              className="text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                              className="text-gray-500 transition-colors hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-200"
                               aria-label={showPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
                             >
                               {showPassword ? (
@@ -407,6 +453,7 @@ export default function SignInForm() {
                         <Checkbox
                           checked={field.value ?? false}
                           onChange={(checked) => field.onChange(checked)}
+                          disabled={submitting}
                         />
                       )}
                     />
@@ -416,7 +463,11 @@ export default function SignInForm() {
                   </div>
                   <Link
                     to="/forgot-password"
-                    className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
+                    onClick={(event) => {
+                      if (submitting) event.preventDefault();
+                    }}
+                    aria-disabled={submitting}
+                    className={`text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400 ${disabledLinkClass}`}
                   >
                     Quên mật khẩu?
                   </Link>
@@ -435,7 +486,11 @@ export default function SignInForm() {
                 Chưa có tài khoản? {""}
                 <Link
                   to="/signup"
-                  className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
+                  onClick={(event) => {
+                    if (submitting) event.preventDefault();
+                  }}
+                  aria-disabled={submitting}
+                  className={`text-brand-500 hover:text-brand-600 dark:text-brand-400 ${disabledLinkClass}`}
                 >
                   Đăng ký
                 </Link>
