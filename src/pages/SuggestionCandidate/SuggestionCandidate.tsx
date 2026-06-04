@@ -15,6 +15,7 @@ import { Loader2 } from "lucide-react";
 // SuggestionCandidate hiển thị danh sách gợi ý và chi tiết ứng viên.
 
 const SuggestionCandidate = () => {
+  const PAGE_SIZE = 8;
   // State cho candidate đã chọn
   const [selectedCandidate, setSelectedCandidate] =
     useState<SuggestionCandidateListItem | null>(null);
@@ -69,7 +70,7 @@ const SuggestionCandidate = () => {
         debouncedQuery || undefined,
         filters,
         page,
-        10, // Fetch 10 candidates per page
+        PAGE_SIZE, // Fetch PAGE_SIZE candidates per page
         abortControllerRef.current.signal
       );
       console.log(response)
