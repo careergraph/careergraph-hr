@@ -22,13 +22,11 @@ const CandidateHorizontalList = ({
   totalPages,
   onPageChange,
 }: CandidateHorizontalListProps) => {
-    const isMobile = useMediaQuery("(max-width: 767px)");
-  const PAGE_SIZE = 3;
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
-  // Tính toán những ứng viên nằm trong view hiện tại
-  const visibleCandidates = useMemo(() => {
-    return candidates.slice(0, PAGE_SIZE);
-  }, [candidates]);
+  // Desktop: responsive grid (3-5 columns based on screen)
+  // Mobile: horizontal scroll
+  const visibleCandidates = candidates;
 
   const handlePrevious = () => {
     if (currentPage > 0) {
@@ -70,23 +68,17 @@ const CandidateHorizontalList = ({
               ))
             )}
           </div>
-        ) : (      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={handlePrevious}
-          disabled={currentPage === 0}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-600 shadow-sm transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-blue-900/60 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-900/80"
-          aria-label="Xem ứng viên trước"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <div className="flex flex-1 items-stretch gap-3 mt-3">
-          {visibleCandidates.map((candidate) => (
-            <div
-              key={candidate.id}
-              role="button"
-              tabIndex={0}
-              className={`flex min-w-[200px] flex-1 flex-col justify-between rounded-xl border bg-white/90 p-3 shadow-sm transition-all backdrop-blur-sm dark:bg-slate-900/60 cursor-pointer ${
+        ) : (
+        /* Desktop: responsive grid layout */
+        <div className="space-y-4">
+          {/* Grid of candidates - responsive columns */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {visibleCandidates.map((candidate) => (
+              <div
+                key={candidate.id}
+                role="button"
+                tabIndex={0}
+                className={`flex flex-col justify-between rounded-xl border bg-white/90 p-3 shadow-sm transition-all backdrop-blur-sm dark:bg-slate-900/60 cursor-pointer hover:shadow-md ${
                 selectedCandidate?.id === candidate.id
                   ? "border-blue-500 ring-2 ring-blue-200 dark:border-blue-500 dark:ring-blue-500/30"
                   : "border-blue-100 hover:border-blue-300 dark:border-blue-900/40 dark:hover:border-blue-600"
@@ -172,40 +164,44 @@ const CandidateHorizontalList = ({
                   </span>
                 </div>
               )}
-            </div>
-          ))}
+              </div>
+            ))}
+          </div>
 
-          {/* Placeholder nếu không đủ ứng viên */}
-          {visibleCandidates.length < PAGE_SIZE &&
-            Array.from({ length: PAGE_SIZE - visibleCandidates.length }).map(
-              (_, idx) => (
-                <div
-                  key={`placeholder-${idx}`}
-                  className="flex min-w-[200px] flex-1 flex-col justify-center items-center rounded-xl border border-dashed border-blue-100 bg-slate-50/60 p-3 text-sm text-slate-400 dark:border-blue-900/40 dark:bg-slate-900/40"
-                >
-                  {candidates.length === 0
-                    ? "Không tìm thấy ứng viên"
-                    : "Đang cập nhật..."}
-                </div>
-              )
-            )}
+          {/* Pagination controls */}
+          <div className="flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={handlePrevious}
+              disabled={currentPage === 0}
+              className="flex h-10 px-4 items-center justify-center rounded-lg border border-blue-200 bg-white text-blue-600 shadow-sm transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-blue-900/60 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-900/80"
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              <span className="text-sm">Trước</span>
+            </button>
+            
+            <span className="text-sm text-muted-foreground">
+              Trang {currentPage + 1} / {Math.max(totalPages, 1)}
+            </span>
+            
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={currentPage >= totalPages - 1}
+              className="flex h-10 px-4 items-center justify-center rounded-lg border border-blue-200 bg-white text-blue-600 shadow-sm transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-blue-900/60 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-900/80"
+            >
+              <span className="text-sm">Sau</span>
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={handleNext}
-          disabled={currentPage >= totalPages - 1}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-600 shadow-sm transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-blue-900/60 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-900/80"
-          aria-label="Xem ứng viên tiếp theo"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
         )}
 
-      {/* Pagination info */}
-      {!isMobile && totalPages > 0 && (
-        <div className="mt-2 text-center text-xs text-muted-foreground">
-          Trang {currentPage + 1} / {totalPages}
+      {/* Empty state */}
+      {candidates.length === 0 && !isMobile && (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-muted-foreground mb-2">Không tìm thấy ứng viên phù hợp</p>
+          <p className="text-sm text-muted-foreground">Thử thay đổi từ khóa hoặc bộ lọc</p>
         </div>
       )}
     </div>
