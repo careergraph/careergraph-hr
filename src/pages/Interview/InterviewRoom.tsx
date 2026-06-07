@@ -1003,8 +1003,9 @@ export default function InterviewRoom() {
     );
   }
 
-  if (isRoomEnded && interview) {
+  if (isRoomEnded && interview && !joined) {
     const interviewDate = formatDateYMD(interview.scheduledAt);
+    const needsFeedback = feedbackCandidateOptions.length > 0;
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950">
@@ -1026,10 +1027,52 @@ export default function InterviewRoom() {
               Tổng ứng viên trong phòng: <span className="text-gray-300">{candidateActionItems.length}</span>
             </p>
           </div>
-          <Button variant="ghost" className="text-gray-400 hover:text-white" onClick={() => navigate(-1)}>
-            Quay lại
-          </Button>
+          <div className="flex flex-col gap-3">
+            {needsFeedback && (
+              <Button
+                onClick={() => {
+                   setFeedbackIsPostMeeting(true);
+                   setShowFeedbackModal(true);
+                }}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <ClipboardCheck className="mr-2 h-4 w-4" /> Đánh giá ứng viên
+              </Button>
+            )}
+            <Button variant="ghost" className="text-gray-400 hover:text-white w-full" onClick={() => navigate(-1)}>
+              Quay lại
+            </Button>
+          </div>
         </div>
+        
+        {/* Render FeedbackModal directly here in case it gets invoked from this screen */}
+        {showFeedbackModal && interview?.id ? (
+          <FeedbackModal
+            open={showFeedbackModal}
+            onClose={() => {
+              setShowFeedbackModal(false);
+              setSelectedFeedbackInterviewId(null);
+              if (feedbackIsPostMeeting) {
+                navigate("/interviews");
+              }
+            }}
+            interviewId={interview.id}
+            initialInterviewId={selectedFeedbackInterviewId ?? undefined}
+            candidateName={interview.candidateName}
+            candidateOptions={feedbackCandidateOptions}
+            onSubmitted={async (submittedInterviewId) => {
+              const target = roomInterviews.find((iv) => iv.id === submittedInterviewId);
+              if (!target) return;
+              if (target.interviewStatus === "COMPLETED") return;
+  
+              try {
+                await handleCompleteCandidateInterview(target);
+              } catch {
+                toast.warning("Đã gửi đánh giá nhưng chưa thể cập nhật trạng thái hoàn thành");
+              }
+            }}
+          />
+        ) : null}
       </div>
     );
   }
@@ -1304,6 +1347,14 @@ export default function InterviewRoom() {
                           p.candidateId === matched.candidateId
                             ? { ...p, admitStatus: "ADMITTED", joinedAt: new Date().toISOString() }
                             : p
+                        )
+                      );
+                      
+                      setRoomInterviews((prev) =>
+                        prev.map((iv) =>
+                          iv.candidateId === matched.candidateId
+                            ? { ...iv, interviewStatus: "IN_PROGRESS" }
+                            : iv
                         )
                       );
                     }

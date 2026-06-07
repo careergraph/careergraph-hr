@@ -259,7 +259,7 @@ export default function SignUpForm() {
 
   return (
     <div className="flex flex-col flex-1 w-full overflow-y-auto lg:w-1/2 no-scrollbar">
-      <div className="w-full max-w-md mx-auto mb-5 sm:pt-10">
+      <div className="w-full max-w-md mx-auto mb-2 sm:pt-4">
         <Link
           to="/"
           onClick={(event) => {
@@ -274,7 +274,7 @@ export default function SignUpForm() {
       </div>
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div>
-          <div className="mb-5 sm:mb-8">
+          <div className="mb-5 sm:mb-5">
             <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
               Đăng ký
             </h1>
@@ -293,7 +293,7 @@ export default function SignUpForm() {
                 text="signup_with"
               />
             </div>
-            <div className="relative py-3 sm:py-5">
+            <div className="relative py-2 sm:py-2">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
               </div>
@@ -304,7 +304,7 @@ export default function SignUpForm() {
               </div>
             </div>
             <form onSubmit={handleSubmit(onSubmit)} noValidate>
-              <div className="space-y-5">
+              <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   <div className="sm:col-span-1">
                     <Label>
@@ -324,6 +324,7 @@ export default function SignUpForm() {
                           error={!!errors.firstName}
                           hint={errors.firstName?.message}
                           disabled={authBusy}
+                          className={"text-xs"}
                         />
                       )}
                     />
@@ -343,6 +344,7 @@ export default function SignUpForm() {
                           onChange={field.onChange}
                           onBlur={field.onBlur}
                           placeholder="Nhập tên"
+                          className={"text-xs"}
                           error={!!errors.lastName}
                           hint={errors.lastName?.message}
                           disabled={authBusy}
@@ -366,6 +368,7 @@ export default function SignUpForm() {
                         onChange={field.onChange}
                         onBlur={field.onBlur}
                         placeholder="Nhập email"
+                        className={"text-xs"}
                         error={!!errors.email}
                         hint={errors.email?.message}
                         disabled={authBusy}
@@ -407,6 +410,7 @@ export default function SignUpForm() {
                               )}
                             </button>
                           }
+                          className={"text-xs"}
                         />
                       )}
                     />
@@ -426,7 +430,7 @@ export default function SignUpForm() {
                         />
                       )}
                     />
-                    <p className="inline-block font-normal text-gray-500 dark:text-gray-400">
+                    <p className="inline-block font-normal text-gray-500 dark:text-gray-400 text-xs">
                       Tạo tài khoản HR với CareerGraph bằng cách đồng ý với{" "}
                       <span className="text-gray-800 dark:text-white/90">Điều khoản dịch vụ</span>, và{" "}
                       <span className="text-gray-800 dark:text-white">Chính sách</span> của chúng tôi.
@@ -458,7 +462,7 @@ export default function SignUpForm() {
               </div>
             </form>
 
-            <div className="mt-5">
+            <div className="mt-2 mb-5">
               <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
                 Đã có tài khoản? {""}
                 <Link

@@ -384,7 +384,7 @@ const Calendar = () => {
       {/* Trang lịch kết hợp phần thống kê, bảng lịch, sidebar và modal chỉnh sửa. */}
       <PageMeta title="HR - CareerGraph" description="HR - CareerGraph" />
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background dark:via-muted/10">
-        <div className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
           <PageBreadcrumb pageTitle="Lịch phỏng vấn" />
           <div className="mt-8 space-y-6">
             <CalendarHero

@@ -353,7 +353,7 @@ export default function SignInForm() {
       </div>
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div>
-          <div className="mb-5 sm:mb-8">
+          <div className="mb-5 sm:mb-5">
             <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
               Đăng nhập
             </h1>
@@ -371,7 +371,7 @@ export default function SignInForm() {
                 text="signin_with"
               />
             </div>
-            <div className="relative py-3 sm:py-5">
+            <div className="relative py-3 sm:py-3">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
               </div>
@@ -382,7 +382,7 @@ export default function SignInForm() {
               </div>
             </div>
             <form onSubmit={handleSubmit(onSubmit)} noValidate>
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
                   <Label>
                     Email <span className="text-error-500">*</span>{" "}
@@ -481,7 +481,7 @@ export default function SignInForm() {
               </div>
             </form>
 
-            <div className="mt-5">
+            <div className="mb-10 mt-5">
               <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
                 Chưa có tài khoản? {""}
                 <Link

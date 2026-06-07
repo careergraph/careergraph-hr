@@ -22,7 +22,7 @@ const getSummary = async (
 ): Promise<DashboardSummaryDto> => {
   const response = await api.get<RestEnvelope<DashboardSummaryDto>>(
     "/analytics/dashboard-summary",
-    {
+    { 
       params: {
         ...(from ? { from } : {}),
         ...(to ? { to } : {}),

@@ -299,7 +299,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
             >
               <Share2 className="h-4 w-4" />
             </Button>
-            <Button className="px-5">Mua thông tin liên hệ</Button>
+            {/* <Button className="px-5">Mua thông tin liên hệ</Button> */}
           </div>
         </div>
 
@@ -558,7 +558,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
           <Separator />
 
           {/* Hướng dẫn liên hệ */}
-          <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-4 dark:border-blue-800/50 dark:bg-blue-900/20">
+          {/* <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-4 dark:border-blue-800/50 dark:bg-blue-900/20">
             <h4 className="mb-2 text-sm font-medium text-blue-800 dark:text-blue-300">
               💡 Gợi ý liên hệ
             </h4>
@@ -567,7 +567,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
               "Mua thông tin liên hệ" phía trên. Thông tin bao gồm email, số điện
               thoại và CV chi tiết của ứng viên.
             </p>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

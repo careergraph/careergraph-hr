@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -16,6 +17,7 @@ type RecentCandidateActivityProps = {
   loading?: boolean;
   error?: string | null;
   dateRangeLabel?: string;
+  itemsPerPage?: number;
 };
 
 const statusLabelMap: Record<string, string> = {
@@ -50,6 +52,7 @@ export default function RecentCandidateActivity({
   loading = false,
   error = null,
   dateRangeLabel = "30 ngày gần nhất",
+  itemsPerPage = 5,
 }: RecentCandidateActivityProps) {
   if (loading) {
     return (
@@ -74,18 +77,42 @@ export default function RecentCandidateActivity({
   }
 
   return (
-    <RecentCandidateActivityInner data={data} dateRangeLabel={dateRangeLabel} />
+    <RecentCandidateActivityInner
+      data={data}
+      dateRangeLabel={dateRangeLabel}
+      itemsPerPage={itemsPerPage}
+    />
   );
 }
 
 function RecentCandidateActivityInner({
   data,
   dateRangeLabel,
+  itemsPerPage,
 }: {
   data: DashboardRecentActivity[];
   dateRangeLabel: string;
+  itemsPerPage: number;
 }) {
   const isMobile = useMediaQuery("(max-width: 767px)");
+  const safeItemsPerPage = Math.max(1, Math.floor(itemsPerPage || 1));
+  const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    setPage(0);
+  }, [data, safeItemsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil(data.length / safeItemsPerPage));
+  const currentPage = Math.min(page, totalPages - 1);
+  const startIndex = currentPage * safeItemsPerPage;
+  const visibleData = useMemo(
+    () => data.slice(startIndex, startIndex + safeItemsPerPage),
+    [data, safeItemsPerPage, startIndex]
+  );
+  const startItem = data.length === 0 ? 0 : startIndex + 1;
+  const endItem = Math.min(startIndex + safeItemsPerPage, data.length);
+  const canGoPrevious = currentPage > 0;
+  const canGoNext = currentPage < totalPages - 1;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-4 pb-4 pt-5 dark:border-gray-800 dark:bg-white/3 sm:px-6">
@@ -104,9 +131,36 @@ function RecentCandidateActivityInner({
         </div>
       </div>
 
+      <div className="mb-4 flex flex-col gap-3 border-b border-gray-100 pb-4 text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400 sm:flex-row sm:items-center sm:justify-between">
+        <p>
+          Hiển thị {startItem}-{endItem} trên {data.length} mục
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((current) => Math.max(0, current - 1))}
+            disabled={!canGoPrevious}
+            className="inline-flex items-center rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            Trước
+          </button>
+          <span className="min-w-20 text-center text-xs font-medium text-gray-600 dark:text-gray-400">
+            Trang {currentPage + 1}/{totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
+            disabled={!canGoNext}
+            className="inline-flex items-center rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            Sau
+          </button>
+        </div>
+      </div>
+
       {isMobile ? (
         <div className="space-y-3">
-          {data.map((activity) => (
+          {visibleData.map((activity) => (
             <div
               key={`${activity.applicationId}-${activity.updatedAt}`}
               className="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800"
@@ -188,7 +242,7 @@ function RecentCandidateActivityInner({
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
-            {data.map((activity) => (
+            {visibleData.map((activity) => (
               <TableRow key={`${activity.applicationId}-${activity.updatedAt}`}>
                 <TableCell className="py-3">
                   <div className="flex items-center gap-3">
