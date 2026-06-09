@@ -37,6 +37,11 @@ export interface CandidateSuggestionResponse {
   isOpenToWork?: boolean;
   lastActive?: string;
 
+  resumeFileId?: string;
+  resumeFileName?: string;
+  resumeUrl?: string;
+  profileUrl?: string;
+
   // Search relevance score
   score?: number;
 }
@@ -79,6 +84,10 @@ export interface SuggestionCandidateListItem {
   location: string;
   salary: string;
   isOpenToWork: boolean;
+  resumeFileId?: string;
+  resumeFileName?: string;
+  resumeUrl?: string;
+  profileUrl?: string;
   score?: number;
 }
 
@@ -187,6 +196,10 @@ export const mapToListItem = (
     location,
     salary,
     isOpenToWork: candidate.isOpenToWork ?? false,
+    resumeFileId: candidate.resumeFileId,
+    resumeFileName: candidate.resumeFileName,
+    resumeUrl: candidate.resumeUrl,
+    profileUrl: candidate.profileUrl,
     score: candidate.score,
   };
 };

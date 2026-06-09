@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import {
   SuggestionCandidateListItem,
   CandidateEducationResponse,
   CandidateExperienceResponse,
 } from "@/types/suggestionCandidate";
 import { suggestionCandidateService } from "@/services/suggestionCandidateService";
+import messagingApi from "@/features/messaging/api/messagingApi";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -24,6 +26,9 @@ import {
   GraduationCap,
   Calendar,
   Loader2,
+  MessageCircle,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 
 type CandidateDetailProps = {
@@ -40,6 +45,9 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
   );
   const [totalYears, setTotalYears] = useState<number>(0);
   const [loading, setLoading] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Fetch education and experience when candidate changes
   useEffect(() => {
@@ -128,6 +136,26 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
     const end = isCurrent ? "Hiện tại" : formatDate(endDate);
     if (!start && !end) return "";
     return `${start} - ${end}`;
+  };
+
+  const handleOpenProfile = () => {
+    navigate(candidate.profileUrl || `/candidates?candidateId=${candidate.id}`);
+  };
+
+  const handleStartChat = async () => {
+    setChatLoading(true);
+    setChatError(null);
+    try {
+      const thread = await messagingApi.getOrCreateThread({
+        candidateId: candidate.id,
+      });
+      navigate(`/messages?thread=${thread.threadId}`);
+    } catch (error) {
+      console.error("Error preparing message thread:", error);
+      setChatError("Không thể mở cuộc trò chuyện. Vui lòng thử lại.");
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   return (
@@ -285,6 +313,36 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
             Thông tin chi tiết
           </h1>
           <div className="flex gap-2">
+            {candidate.resumeUrl && (
+              <Button
+                variant="outline"
+                className="gap-2 border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                onClick={() => window.open(candidate.resumeUrl, "_blank", "noopener,noreferrer")}
+              >
+                <FileText className="h-4 w-4" />
+                Xem CV
+              </Button>
+            )}
+            {/* <Button
+              variant="outline"
+              className="gap-2 border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              onClick={handleOpenProfile}
+            >
+              <ExternalLink className="h-4 w-4" />
+              Xem hồ sơ
+            </Button> */}
+            <Button
+              className="gap-2 px-5"
+              onClick={handleStartChat}
+              disabled={chatLoading}
+            >
+              {chatLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MessageCircle className="h-4 w-4" />
+              )}
+              Chat
+            </Button>
             <Button
               variant="outline"
               size="icon"
@@ -311,6 +369,12 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
               <span className="ml-2 text-sm text-muted-foreground">
                 Đang tải thông tin...
               </span>
+            </div>
+          )}
+
+          {chatError && (
+            <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+              {chatError}
             </div>
           )}
 

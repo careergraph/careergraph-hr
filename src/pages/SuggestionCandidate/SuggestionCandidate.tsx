@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router";
 import { CandidateDetail } from "@/pages/SuggestionCandidate/CandidateDetail";
 import PageMeta from "@/components/common/PageMeta";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
@@ -16,6 +17,8 @@ import { Loader2 } from "lucide-react";
 
 const SuggestionCandidate = () => {
   const PAGE_SIZE = 8;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryCandidateId = searchParams.get("candidateId");
   // State cho candidate đã chọn
   const [selectedCandidate, setSelectedCandidate] =
     useState<SuggestionCandidateListItem | null>(null);
@@ -113,10 +116,19 @@ const SuggestionCandidate = () => {
       return;
     }
 
+    const queryCandidate = queryCandidateId
+      ? candidates.find((c) => c.id === queryCandidateId)
+      : null;
+
+    if (queryCandidate) {
+      setSelectedCandidate(queryCandidate);
+      return;
+    }
+
     if (!selectedCandidate || !candidates.some((c) => c.id === selectedCandidate.id)) {
       setSelectedCandidate(candidates[0]);
     }
-  }, [candidates, selectedCandidate]);
+  }, [candidates, queryCandidateId, selectedCandidate]);
 
   // Handle search input change
   const handleSearchChange = useCallback((value: string) => {
@@ -136,8 +148,11 @@ const SuggestionCandidate = () => {
   const handleSelectCandidate = useCallback(
     (candidate: SuggestionCandidateListItem) => {
       setSelectedCandidate(candidate);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set("candidateId", candidate.id);
+      setSearchParams(nextParams, { replace: true });
     },
-    []
+    [searchParams, setSearchParams]
   );
 
   // Handle page change
