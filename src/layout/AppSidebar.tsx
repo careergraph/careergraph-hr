@@ -26,7 +26,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
-    name: "Dashboard",
+    name: "Trang chủ",
     path: "/dashboard",
   },
   // {
@@ -36,7 +36,7 @@ const navItems: NavItem[] = [
   // },
   {
     icon: <CalenderIcon />,
-    name: "Calendar",
+    name: "Lịch",
     path: "/calendar",
   },
   // {
@@ -46,7 +46,7 @@ const navItems: NavItem[] = [
   // },
   {
     icon: <UserCircleIcon />,
-    name: "Candidates",
+    name: "Tìm ứng viên",
     path: "/candidates",
   },
   {
@@ -55,7 +55,7 @@ const navItems: NavItem[] = [
     path: "/messages",
   },
   {
-    name: "Jobs",
+    name: "Công việc",
     icon: <TableIcon />,
     // subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
     path: "/jobs",

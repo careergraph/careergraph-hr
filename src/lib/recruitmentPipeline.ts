@@ -52,7 +52,7 @@ export const STAGE_LABELS: Record<ApplicationStageCode, string> = {
   INTERVIEW: "Phỏng vấn",
   INTERVIEW_COMPLETED: "Phỏng vấn hoàn thành",
   TRIAL: "Thử việc",
-  OFFER_EXTENDED: "Offer",
+  OFFER_EXTENDED: "Mời nhận việc",
   HIRED: "Nhận chính thức",
   OFFBOARDED: "Nghỉ việc",
   REJECTED: "Từ chối",
