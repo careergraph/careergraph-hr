@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { SuggestionCandidateListItem } from "@/types/suggestionCandidate";
 import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
