@@ -17,7 +17,7 @@ export default function NotFound() {
             Trang bạn tìm không tồn tại
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-center text-sm leading-6 text-slate-300 sm:text-base">
-            Đường dẫn có thể đã thay đổi hoặc không còn khả dụng. Hãy quay về dashboard để
+            Đường dẫn có thể đã thay đổi hoặc không còn khả dụng. Hãy quay về trang chủ để
             tiếp tục quản trị lịch phỏng vấn và ứng viên.
           </p>
 
@@ -27,7 +27,7 @@ export default function NotFound() {
               className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-500"
             >
               <Home className="h-4 w-4" />
-              Về Dashboard
+              Về trang chủ
             </Link>
             <button
               type="button"

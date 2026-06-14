@@ -1,26 +1,30 @@
-import {
+﻿import {
   Briefcase,
-  MapPin,
+  CalendarClock,
   Eye,
+  MapPin,
+  RefreshCw,
+  Users,
   Bookmark,
-  ThumbsUp,
-  Share2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Job } from "@/types/job";
 import { Status } from "@/enums/commonEnum";
 import { EmploymentType, JOB_CATEGORY_OPTIONS, JobCategory } from "@/enums/workEnum";
 import { KeyboardEvent } from "react";
 import { formatDateYMD } from "@/lib/dateUtils";
+import { getJobDisplayStatus, isJobExpired } from "@/lib/jobStatus";
 
 // JobCard hiển thị thông tin tóm tắt của một job kèm các chỉ số tương tác.
 
 interface JobCardProps {
   job: Job;
   onSelectJob?: () => void;
+  onManageExpiry?: () => void;
 }
 
-export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
+export const JobCard = ({ job, onSelectJob, onManageExpiry }: JobCardProps) => {
   // Màu cho từng loại công việc giúp người xem nhận diện nhanh.
   const typeColors = {
     [EmploymentType.FULL_TIME]: {
@@ -70,28 +74,35 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
 
   // Nếu job không có trạng thái thì mặc định ACTIVE để hiển thị badge.
   const currentStatus = job.status ?? Status.ACTIVE;
+  const displayStatus = getJobDisplayStatus(currentStatus, job.expiryDate);
+  const isExpiredByDeadline = isJobExpired(job.expiryDate);
 
   const typeLabelMap: Partial<Record<EmploymentType, string>> = {
-    [EmploymentType.FULL_TIME]: "Toàn thời gian",
-    [EmploymentType.PART_TIME]: "Bán thời gian",
-    [EmploymentType.CONTRACT]: "Hợp đồng",
-    [EmploymentType.INTERNSHIP]: "Thực tập",
-    [EmploymentType.FREELANCE]: "Tự do",
-    [EmploymentType.TEMPORARY]: "Tạm thời",
+    [EmploymentType.FULL_TIME]: "To\u00e0n th\u1eddi gian",
+    [EmploymentType.PART_TIME]: "B\u00e1n th\u1eddi gian",
+    [EmploymentType.CONTRACT]: "H\u1ee3p \u0111\u1ed3ng",
+    [EmploymentType.INTERNSHIP]: "Th\u1ef1c t\u1eadp",
+    [EmploymentType.FREELANCE]: "T\u1ef1 do",
+    [EmploymentType.TEMPORARY]: "T\u1ea1m th\u1eddi",
   };
 
   // Bảng ánh xạ trạng thái sang nhãn tiếng Việt.
   const statusLabelMap: Record<Status, string> = {
-    [Status.ACTIVE]: "Đang tuyển",
-    [Status.INACTIVE]: "Tạm dừng",
-    [Status.DRAFT]: "Bản nháp",
-    [Status.CLOSED]: "Đã đóng",
+    [Status.ACTIVE]: "\u0110ang tuy\u1ec3n",
+    [Status.INACTIVE]: "T\u1ea1m d\u1eebng",
+    [Status.DRAFT]: "B\u1ea3n nh\u00e1p",
+    [Status.CLOSED]: "\u0110\u00e3 \u0111\u00f3ng",
   };
 
   const jobCategoryLabel =
     JOB_CATEGORY_OPTIONS.find((option) => option.value === job.jobCategory)?.label ??
     (job.jobCategory as JobCategory | undefined) ??
     "";
+  const departmentLabel = job.department?.trim() ?? "";
+  const summaryLabel = jobCategoryLabel || departmentLabel;
+  const statusLabel = isExpiredByDeadline
+    ? "H\u1ebft h\u1ea1n"
+    : statusLabelMap[displayStatus.status];
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     // Cho phép mở job bằng phím Enter hoặc Space để đảm bảo accessibility.
@@ -104,13 +115,17 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
 
   // Màu cho trạng thái hiển thị badge tương ứng.
   const statusColor =
-    currentStatus === Status.ACTIVE
+    isExpiredByDeadline
+      ? "bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"
+      : displayStatus.status === Status.ACTIVE
       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
-      : currentStatus === Status.DRAFT
+      : displayStatus.status === Status.DRAFT
       ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-300"
-      : currentStatus === Status.INACTIVE
+      : displayStatus.status === Status.INACTIVE
       ? "bg-slate-200 text-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
       : "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-300";
+
+  const manageLabel = displayStatus.requiresReopen ? "M\u1edf l\u1ea1i" : "Gia h\u1ea1n";
 
   return (
     <div
@@ -123,19 +138,37 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
       <div
         className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${color.gradient} opacity-60 transition-opacity duration-300 group-hover:opacity-80`}
       />
-      {/* Thẻ hiển thị thông tin chính và hành động nhanh cho job. */}
-      {/* Phần đầu: biểu tượng và badge loại công việc */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="relative z-10 flex items-center justify-between mb-4">
         <div className={`p-2.5 rounded-xl ${color.bg}`}>
           <Briefcase className={`w-5 h-5 ${color.icon}`} />
         </div>
-        <Badge className={`rounded-full px-2 py-1 text-sm ${color.badge}`}>
-          {typeLabelMap[job.type as EmploymentType] ?? job.type}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {onManageExpiry && currentStatus !== Status.DRAFT && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full border-border/70 bg-background/80 px-3 text-xs font-semibold shadow-sm backdrop-blur transition hover:border-primary/40 hover:text-primary"
+              onClick={(event) => {
+                event.stopPropagation();
+                onManageExpiry();
+              }}
+            >
+              {displayStatus.requiresReopen ? (
+                <RefreshCw className="h-4 w-4" />
+              ) : (
+                <CalendarClock className="h-4 w-4" />
+              )}
+              {manageLabel}
+            </Button>
+          )}
+          <Badge className={`rounded-full px-2.5 py-1 text-xs font-semibold ${color.badge}`}>
+            {typeLabelMap[job.type as EmploymentType] ?? job.type}
+          </Badge>
+        </div>
       </div>
 
-      {/* Tiêu đề, phòng ban và badge trạng thái */}
-      <div className="flex items-start justify-between mb-3 cursor-pointer">
+      <div className="relative z-10 flex items-start justify-between gap-3 mb-3 cursor-pointer">
         <div className="flex-1 min-w-0">
           <h3
             className="font-bold text-lg text-foreground dark:text-slate-100 group-hover:text-primary transition-colors line-clamp-1"
@@ -143,43 +176,42 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
           >
             {job.title}
           </h3>
-          <p className="text-sm text-muted-foreground dark:text-slate-300 mt-1">
-            {jobCategoryLabel}
-          </p>
+          {summaryLabel && (
+            <p className="text-sm text-muted-foreground dark:text-slate-300 mt-1 line-clamp-1">
+              {summaryLabel}
+            </p>
+          )}
         </div>
-        <Badge className={`ml-3 rounded-full px-2 py-1 text-sm ${statusColor}`}>
-          {statusLabelMap[currentStatus]}
+        <Badge className={`ml-3 rounded-full px-2 py-1 text-xs font-semibold ${statusColor}`}>
+          {statusLabel}
         </Badge>
       </div>
 
-      {/* Địa điểm và ngày đăng tin */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground dark:text-slate-400 mb-4">
+      <div className="relative z-10 grid gap-2 text-xs text-muted-foreground dark:text-slate-400 mb-4">
+        {job.city && (
+          <span className="flex items-center gap-1">
+            <MapPin className="w-3 h-3 shrink-0" />
+            <span className="truncate">{job.city}</span>
+          </span>
+        )}
         <span className="flex items-center gap-1">
-          <MapPin className="w-3 h-3" />
-          {job.city}
-        </span>
-        <span>
-          {formatDateYMD(job.postedDate)}
+          <CalendarClock className="w-3 h-3 shrink-0" />
+          <span>{isExpiredByDeadline ? "H\u1ebft h\u1ea1n:" : "K\u1ebft th\u00fac:"} {formatDateYMD(job.expiryDate)}</span>
         </span>
       </div>
 
-      {/* Các chỉ số tương tác của tin tuyển dụng */}
-      <div className="flex items-center text-sm text-muted-foreground mt-auto justify-between">
+      <div className="relative z-10 mt-auto grid grid-cols-3 gap-2 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
-          <Bookmark className="w-4 h-4" />
-          <span>{job.applicants}</span>
+          <Users className="w-4 h-4" />
+          <span>{job.applicants ?? 0}</span>
         </div>
         <div className="flex items-center gap-2">
           <Eye className="w-4 h-4" />
-          <span>{job.views}</span>
+          <span>{job.views ?? 0}</span>
         </div>
         <div className="flex items-center gap-2">
-          <ThumbsUp className="w-4 h-4" />
-          <span>{job.likes}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Share2 className="w-4 h-4" />
-          <span>{job.shares}</span>
+          <Bookmark className="w-4 h-4" />
+          <span>{job.saved ?? 0}</span>
         </div>
       </div>
     </div>

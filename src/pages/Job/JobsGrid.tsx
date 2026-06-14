@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { ListFilter } from "lucide-react";
+import { CalendarClock, Loader2, ListFilter } from "lucide-react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import PageMeta from "@/components/common/PageMeta";
 import { JobCard } from "./JobCard";
@@ -15,15 +15,21 @@ import { jobService } from "@/services/jobService";
 import { useAuthStore } from "@/stores/authStore";
 import { jobsData as fallbackJobs } from "@/data/jobsData";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { getJobDisplayStatus, isJobExpired } from "@/lib/jobStatus";
 
-// JobsGrid chịu trách nhiệm lấy dữ liệu và hiển thị danh sách việc làm có bộ lọc.
+// JobsGrid chá»‹u trÃ¡ch nhiá»‡m láº¥y dá»¯ liá»‡u vÃ  hiá»ƒn thá»‹ danh sÃ¡ch viá»‡c lÃ m cÃ³ bá»™ lá»c.
 
 const normalizeKey = (value: string) =>
-  // Chuẩn hóa chuỗi về dạng UPPER_SNAKE để so sánh với enum đã định nghĩa.
+  // Chuáº©n hÃ³a chuá»—i vá» dáº¡ng UPPER_SNAKE Ä‘á»ƒ so sÃ¡nh vá»›i enum Ä‘Ã£ Ä‘á»‹nh nghÄ©a.
   value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[’'`]/g, "")
+    .replace(/[â€™'`]/g, "")
     .replace(/[\s&/-]+/g, "_")
     .toUpperCase();
 
@@ -95,7 +101,7 @@ const normalizeSkillIds = (skills: unknown): Job["skills"] => {
     return skills
       .map((skill) => {
         if (typeof skill === "string") {
-          // Backend có thể trả về mảng string, map sang đối tượng { id, name }.
+          // Backend cÃ³ thá»ƒ tráº£ vá» máº£ng string, map sang Ä‘á»‘i tÆ°á»£ng { id, name }.
           return { id: skill, name: skill };
         }
 
@@ -103,7 +109,7 @@ const normalizeSkillIds = (skills: unknown): Job["skills"] => {
           const skillObj = skill as { id?: string; name?: string };
           const id = skillObj.id ?? skillObj.name;
           if (!id) return undefined;
-          // Khi cả id và name có thể thiếu, dùng id làm fallback cho name.
+          // Khi cáº£ id vÃ  name cÃ³ thá»ƒ thiáº¿u, dÃ¹ng id lÃ m fallback cho name.
           return { id, name: skillObj.name ?? id };
         }
 
@@ -123,7 +129,7 @@ const generateId = () => {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
-// Chuẩn hóa dữ liệu job từ API về model chuẩn dùng trong UI.
+// Chuáº©n hÃ³a dá»¯ liá»‡u job tá»« API vá» model chuáº©n dÃ¹ng trong UI.
 const normalizeJob = (raw: Record<string, unknown>): Job => {
   const employmentType = toEmploymentType(
     (raw.employmentType ?? raw.type ?? "") as string | undefined
@@ -139,10 +145,16 @@ const normalizeJob = (raw: Record<string, unknown>): Job => {
     | number
     | undefined;
   const id = idValue ? String(idValue) : generateId();
+  const expiryDate = (raw.expiryDate as string) ?? undefined;
+  const rawStatus = toStatus((raw.status as string) ?? undefined);
+  const normalizedStatus =
+    rawStatus === Status.ACTIVE && isJobExpired(expiryDate)
+      ? Status.CLOSED
+      : rawStatus;
 
   return {
     id,
-    title: (raw.title as string) ?? "Tin tuyển dụng",
+    title: (raw.title as string) ?? "Tin tuyá»ƒn dá»¥ng",
     description: (raw.description as string) ?? "",
     department:
       (raw.department as string) ??
@@ -175,13 +187,13 @@ const normalizeJob = (raw: Record<string, unknown>): Job => {
       typeof raw.numberOfPositions === "number"
         ? raw.numberOfPositions
         : undefined,
-    expiryDate: (raw.expiryDate as string) ?? undefined,
+    expiryDate,
     skills: normalizeSkillIds(raw.skills ?? raw.skillIds),
     applicationRequirements:
       (raw.applicationRequirements as Job["applicationRequirements"]) ??
       undefined,
     promotionType: (raw.promotionType as Job["promotionType"]) ?? undefined,
-    status: toStatus((raw.status as string) ?? undefined),
+    status: normalizedStatus,
     postedDate: raw.postedDate
       ? new Date(raw.postedDate as string)
       : raw.createdAt
@@ -227,27 +239,62 @@ const extractJobsFromResponse = (
 const SKELETON_COUNT = 6;
 const PAGE_SIZE = 9;
 
+const pad2 = (value: number) => String(value).padStart(2, "0");
+
+const toDateInputValue = (value?: string | null) => {
+  if (!value || !value.trim()) return "";
+
+  const normalized = value.trim();
+  const dateOnly = normalized.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (dateOnly) {
+    return `${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}`;
+  }
+
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  return `${parsed.getFullYear()}-${pad2(parsed.getMonth() + 1)}-${pad2(
+    parsed.getDate()
+  )}`;
+};
+
+const getTodayDateInputValue = () => {
+  const today = new Date();
+  return `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(
+    today.getDate()
+  )}`;
+};
+
+const addDaysToDateInput = (days: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+};
+
 export default function JobsGrid() {
   const navigate = useNavigate();
   const { accessToken, company, user } = useAuthStore();
 
-  // Trạng thái cục bộ theo dõi danh sách job, bộ lọc và tiến trình tải.
+  // Tráº¡ng thÃ¡i cá»¥c bá»™ theo dÃµi danh sÃ¡ch job, bá»™ lá»c vÃ  tiáº¿n trÃ¬nh táº£i.
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<JobFilterState>({
     ...initialJobFilterState,
   });
-  // searchTerm: giá trị người dùng nhập; debouncedSearch: giá trị delay dùng gọi API.
+  // searchTerm: giÃ¡ trá»‹ ngÆ°á»i dÃ¹ng nháº­p; debouncedSearch: giÃ¡ trá»‹ delay dÃ¹ng gá»i API.
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [totalResults, setTotalResults] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [expiryDialogJob, setExpiryDialogJob] = useState<Job | null>(null);
+  const [expiryDateValue, setExpiryDateValue] = useState("");
+  const [isUpdatingExpiry, setIsUpdatingExpiry] = useState(false);
 
   const companyId = company?.id ?? user?.companyId ?? null;
 
   useEffect(() => {
-    // Debounce 300ms giúp gom chuỗi gõ liên tiếp trước khi gọi API.
+    // Debounce 300ms giÃºp gom chuá»—i gÃµ liÃªn tiáº¿p trÆ°á»›c khi gá»i API.
     const handler = window.setTimeout(() => {
       setDebouncedSearch(searchTerm.trim());
     }, 300);
@@ -258,7 +305,7 @@ export default function JobsGrid() {
   }, [searchTerm]);
 
   useEffect(() => {
-    // Khi có đủ thông tin xác thực thì gọi dịch vụ tìm kiếm job.
+    // Khi cÃ³ Ä‘á»§ thÃ´ng tin xÃ¡c thá»±c thÃ¬ gá»i dá»‹ch vá»¥ tÃ¬m kiáº¿m job.
     if (!accessToken || !companyId) {
       setJobs([]);
       setTotalResults(0);
@@ -273,7 +320,7 @@ export default function JobsGrid() {
       setLoading(true);
 
       try {
-        // Gọi API với query trên params và các bộ lọc trong body.
+        // Gá»i API vá»›i query trÃªn params vÃ  cÃ¡c bá»™ lá»c trong body.
         const response = await jobService.searchJobs(
           companyId,
           {
@@ -299,7 +346,7 @@ export default function JobsGrid() {
             : normalizedJobs.length;
 
         if (active) {
-          // Chỉ update state khi effect chưa bị hủy.
+          // Chá»‰ update state khi effect chÆ°a bá»‹ há»§y.
           setJobs(normalizedJobs);
           setTotalResults(total);
           setTotalPages(
@@ -313,7 +360,7 @@ export default function JobsGrid() {
         }
 
         if (active) {
-          // Nếu lỗi thì dùng dữ liệu mặc định để tránh giao diện trống.
+          // Náº¿u lá»—i thÃ¬ dÃ¹ng dá»¯ liá»‡u máº·c Ä‘á»‹nh Ä‘á»ƒ trÃ¡nh giao diá»‡n trá»‘ng.
           const fallbackSlice = fallbackJobs.slice(
             page * PAGE_SIZE,
             page * PAGE_SIZE + PAGE_SIZE
@@ -358,7 +405,7 @@ export default function JobsGrid() {
 
   const handleSelectJob = useCallback(
     (jobId: string) => {
-      // Khi chọn job thì điều hướng sang trang kanban tương ứng.
+      // Khi chá»n job thÃ¬ Ä‘iá»u hÆ°á»›ng sang trang kanban tÆ°Æ¡ng á»©ng.
       navigate(`/kanbans/${jobId}`);
     },
     [navigate]
@@ -371,9 +418,70 @@ export default function JobsGrid() {
     [navigate]
   );
 
+  const openExpiryDialog = useCallback((job: Job) => {
+    const fallbackDate = addDaysToDateInput(30);
+    setExpiryDialogJob(job);
+    setExpiryDateValue(toDateInputValue(job.expiryDate) || fallbackDate);
+  }, []);
+
+  const closeExpiryDialog = useCallback(() => {
+    setExpiryDialogJob(null);
+    setExpiryDateValue("");
+  }, []);
+
+  const handleSaveExpiryDate = useCallback(async () => {
+    if (!expiryDialogJob) return;
+    if (!expiryDateValue) {
+      toast.error("Vui l\u00f2ng ch\u1ecdn ng\u00e0y k\u1ebft th\u00fac m\u1edbi.");
+      return;
+    }
+
+    const statusInfo = getJobDisplayStatus(
+      expiryDialogJob.status,
+      expiryDialogJob.expiryDate
+    );
+    const shouldReopen =
+      statusInfo.requiresReopen || isJobExpired(expiryDialogJob.expiryDate);
+
+    setIsUpdatingExpiry(true);
+    try {
+      const updatedJobResponse = await jobService.updateJob(expiryDialogJob.id, {
+        ...expiryDialogJob,
+        expiryDate: expiryDateValue,
+      });
+
+      const activeJobResponse = shouldReopen
+        ? await jobService.activateJob(expiryDialogJob.id)
+        : updatedJobResponse;
+
+      const normalizedJob = normalizeJob(
+        activeJobResponse as Record<string, unknown>
+      );
+
+      setJobs((prev) =>
+        prev.map((job) => (job.id === normalizedJob.id ? normalizedJob : job))
+      );
+
+      toast.success(
+        shouldReopen
+          ? "\u0110\u00e3 m\u1edf l\u1ea1i job v\u00e0 c\u1eadp nh\u1eadt ng\u00e0y k\u1ebft th\u00fac."
+          : "\u0110\u00e3 c\u1eadp nh\u1eadt ng\u00e0y k\u1ebft th\u00fac job."
+      );
+      closeExpiryDialog();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Kh\u00f4ng th\u1ec3 c\u1eadp nh\u1eadt ng\u00e0y k\u1ebft th\u00fac.";
+      toast.error(message);
+    } finally {
+      setIsUpdatingExpiry(false);
+    }
+  }, [closeExpiryDialog, expiryDateValue, expiryDialogJob]);
+
   const handleFilterChange = useCallback(
     (nextFilters: JobFilterState) => {
-      // Cập nhật bộ lọc khi người dùng thay đổi các checkbox.
+      // Cáº­p nháº­t bá»™ lá»c khi ngÆ°á»i dÃ¹ng thay Ä‘á»•i cÃ¡c checkbox.
       setFilters(nextFilters);
       setPage(0);
     },
@@ -381,14 +489,14 @@ export default function JobsGrid() {
   );
 
   const handleResetFilters = useCallback(() => {
-    // Đặt lại tất cả điều kiện lọc và từ khóa tìm kiếm.
+    // Äáº·t láº¡i táº¥t cáº£ Ä‘iá»u kiá»‡n lá»c vÃ  tá»« khÃ³a tÃ¬m kiáº¿m.
     setFilters({ ...initialJobFilterState });
     setSearchTerm("");
     setPage(0);
   }, []);
 
   const handleSearchChange = useCallback((value: string) => {
-    // Đồng bộ ô tìm kiếm với state để kích hoạt debounce.
+    // Äá»“ng bá»™ Ã´ tÃ¬m kiáº¿m vá»›i state Ä‘á»ƒ kÃ­ch hoáº¡t debounce.
     setSearchTerm(value);
     setPage(0);
   }, []);
@@ -443,7 +551,7 @@ export default function JobsGrid() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-muted/20 to-background">
-      {/* Bố cục trang việc làm gồm breadcrumb, bộ lọc và danh sách kết quả. */}
+      {/* Bá»‘ cá»¥c trang viá»‡c lÃ m gá»“m breadcrumb, bá»™ lá»c vÃ  danh sÃ¡ch káº¿t quáº£. */}
       {/* Page metadata */}
       <PageMeta title="HR - CareerGraph" description="HR - CareerGraph" />
       {/* Breadcrumb */}
@@ -467,7 +575,11 @@ export default function JobsGrid() {
               <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {jobs.map((job) => (
                   <div key={job.id} className="space-y-2">
-                    <JobCard job={job} onSelectJob={() => handleSelectJob(job.id)} />
+                    <JobCard
+                      job={job}
+                      onSelectJob={() => handleSelectJob(job.id)}
+                      onManageExpiry={() => openExpiryDialog(job)}
+                    />
                     {job.status === Status.DRAFT && (
                       <Button
                         variant="outline"
@@ -483,12 +595,8 @@ export default function JobsGrid() {
               </div>
             ) : (
               <div className="rounded-3xl border border-dashed border-border bg-muted/20 p-10 text-center dark:bg-slate-800/50">
-                <h3 className="text-lg font-semibold text-foreground dark:text-slate-100">
-                  Không tìm thấy công việc phù hợp
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground dark:text-slate-300">
-                  Thử thay đổi từ khóa hoặc đặt lại bộ lọc để xem thêm kết quả.
-                </p>
+                <h3 className="text-lg font-semibold text-foreground dark:text-slate-100">Không tìm thấy công việc phù hợp</h3>
+                <p className="mt-2 text-sm text-muted-foreground dark:text-slate-300">Thử thay đổi từ khóa hoặc đặt lại bộ lọc để xem thêm kết quả.</p>
                 <Button
                   variant="outline"
                   className="mt-6 gap-2"
@@ -500,19 +608,111 @@ export default function JobsGrid() {
               </div>
             )}
 
+            <Dialog
+              open={Boolean(expiryDialogJob)}
+              onOpenChange={(open) => {
+                if (!open && !isUpdatingExpiry) {
+                  closeExpiryDialog();
+                }
+              }}
+            >
+              <DialogContent className="sm:max-w-xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    {expiryDialogJob &&
+                    getJobDisplayStatus(
+                      expiryDialogJob.status,
+                      expiryDialogJob.expiryDate
+                    ).requiresReopen
+                      ? "Mở lại job"
+                      : "Cập nhật hạn job"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Chọn ngày kết thúc mới để gia hạn hoặc mở lại tin tuyển dụng.
+                  </DialogDescription>
+                </DialogHeader>
+
+                {expiryDialogJob && (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-border/60 bg-muted/30 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {expiryDialogJob.title}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {expiryDialogJob.city ||
+                              expiryDialogJob.department ||
+                              "Job không có mô tả vị trí cụ thể"}
+                          </p>
+                        </div>
+                        <Badge
+                          className={
+                            isJobExpired(expiryDialogJob.expiryDate)
+                              ? "bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"
+                              : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+                          }
+                        >
+                          {isJobExpired(expiryDialogJob.expiryDate)
+                            ? "Đã hết hạn"
+                            : "Đang hoạt động"}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="expiry-date">Ngày kết thúc mới</Label>
+                      <div className="relative">
+                        <CalendarClock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="expiry-date"
+                          type="date"
+                          value={expiryDateValue}
+                          min={getTodayDateInputValue()}
+                          onChange={(event) =>
+                            setExpiryDateValue(event.target.value)
+                          }
+                          className="h-11 rounded-xl pl-10"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Job sẽ hiển thị đang tuyển lại khi ngày kết thúc mới còn hiệu lực.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button
+                    variant="outline"
+                    onClick={closeExpiryDialog}
+                    disabled={isUpdatingExpiry}
+                  >
+                    Hủy
+                  </Button>
+                  <Button onClick={handleSaveExpiryDate} disabled={isUpdatingExpiry}>
+                    {isUpdatingExpiry && (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )}
+                    {expiryDialogJob &&
+                    getJobDisplayStatus(
+                      expiryDialogJob.status,
+                      expiryDialogJob.expiryDate
+                    ).requiresReopen
+                      ? "Mở lại job"
+                      : "Cập nhật hạn"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
             {loading && hasJobs && (
-              <div className="rounded-3xl border border-dashed border-border bg-muted/10 px-4 py-3 text-sm text-muted-foreground dark:bg-slate-800/40">
-                Đang cập nhật danh sách công việc...
-              </div>
+              <div className="rounded-3xl border border-dashed border-border bg-muted/10 px-4 py-3 text-sm text-muted-foreground dark:bg-slate-800/40">Đang cập nhật danh sách công việc...</div>
             )}
 
             {hasPagination && (
               <div className="flex flex-col gap-4 rounded-3xl border border-border bg-card/40 p-4 backdrop-blur-xl dark:bg-slate-900/40 sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-sm font-medium text-muted-foreground">
-                  Hiển thị {startItem.toLocaleString("vi-VN")} - {endItem.toLocaleString("vi-VN")} trong {(
-                    totalResults as number
-                  ).toLocaleString("vi-VN")} công việc
-                </span>
+                <span className="text-sm font-medium text-muted-foreground">Hiển thị {startItem.toLocaleString("vi-VN")} - {endItem.toLocaleString("vi-VN")} trong {( totalResults as number ).toLocaleString("vi-VN")} công việc</span>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -520,7 +720,7 @@ export default function JobsGrid() {
                     disabled={!canGoPrevious}
                     onClick={() => handlePageChange(page - 1)}
                   >
-                    Trước
+                    TrÆ°á»›c
                   </Button>
                   {pageNumbers.map((pageNumber) => (
                     <Button
@@ -550,3 +750,4 @@ export default function JobsGrid() {
     </div>
   );
 }
+

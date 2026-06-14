@@ -215,6 +215,24 @@ const jobService = {
     return unwrapResponse(response.data);
   },
 
+  activateJob: async (jobId: string) => {
+    if (!jobId) {
+      throw new Error("Thiếu mã công việc để kích hoạt.");
+    }
+
+    const response = await api.patch(`/jobs/${jobId}/activate`);
+    return unwrapResponse(response.data);
+  },
+
+  deactivateJob: async (jobId: string) => {
+    if (!jobId) {
+      throw new Error("Thiếu mã công việc để tạm dừng.");
+    }
+
+    const response = await api.patch(`/jobs/${jobId}/deactivate`);
+    return unwrapResponse(response.data);
+  },
+
   updateRecruitment: async ({
     jobId,
     coverLetter,
