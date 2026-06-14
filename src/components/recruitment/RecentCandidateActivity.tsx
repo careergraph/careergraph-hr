@@ -21,10 +21,10 @@ type RecentCandidateActivityProps = {
 };
 
 const statusLabelMap: Record<string, string> = {
-  INTERVIEW: "Interview",
-  OFFERED: "Offered",
-  REJECTED: "Rejected",
-  HIRED: "Hired",
+  INTERVIEW: "Phỏng vấn",
+  OFFERED: "Đã mời nhận việc",
+  REJECTED: "Từ chối",
+  HIRED: "Đã tuyển",
 };
 
 const badgeColorMap: Record<string, "success" | "info" | "warning" | "error"> = {
@@ -71,7 +71,7 @@ export default function RecentCandidateActivity({
   if (!data || data.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-600 dark:border-gray-700 dark:bg-white/2 dark:text-gray-300">
-        Chưa có hoạt động pipeline nào trong khoảng thời gian đã chọn.
+        Chưa có hoạt động tuyển dụng nào trong khoảng thời gian đã chọn.
       </div>
     );
   }
@@ -119,10 +119,10 @@ function RecentCandidateActivityInner({
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90 md:text-lg">
-            Cập nhật pipeline mới nhất
+            Hoạt động tuyển dụng mới nhất
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Tổng hợp thay đổi theo khoảng thời gian đã chọn giữa các giai đoạn tuyển dụng
+            Tổng hợp các thay đổi trạng thái ứng viên theo khoảng thời gian đã chọn
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-xs font-medium text-gray-600 shadow-theme-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
@@ -186,7 +186,7 @@ function RecentCandidateActivityInner({
                       size="sm"
                       color={badgeColorMap[activity.statusTag] ?? "info"}
                     >
-                      {statusLabelMap[activity.statusTag] ?? "Interview"}
+                      {statusLabelMap[activity.statusTag] ?? "Phỏng vấn"}
                     </Badge>
                   </div>
                   <p className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">
@@ -281,7 +281,7 @@ function RecentCandidateActivityInner({
                     size="sm"
                     color={badgeColorMap[activity.statusTag] ?? "info"}
                   >
-                    {statusLabelMap[activity.statusTag] ?? "Interview"}
+                    {statusLabelMap[activity.statusTag] ?? "Phỏng vấn"}
                   </Badge>
                 </TableCell>
               </TableRow>

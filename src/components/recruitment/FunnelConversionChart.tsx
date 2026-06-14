@@ -31,7 +31,7 @@ export default function FunnelConversionChart({
       data: data?.monthly.map((item) => item.interviewsCompleted) ?? [],
     },
     {
-      name: "Offer gửi đi",
+      name: "Thư mời nhận việc đã gửi",
       data: data?.monthly.map((item) => item.offersSent) ?? [],
     },
   ];
@@ -76,7 +76,7 @@ export default function FunnelConversionChart({
       enabled: true,
       y: {
         formatter: (value: number, opts) =>
-          `${value} ${opts.seriesIndex === 0 ? "buổi phỏng vấn" : "offer"}`,
+          `${value} ${opts.seriesIndex === 0 ? "buổi phỏng vấn" : "thư mời nhận việc"}`,
       },
     },
     xaxis: {
@@ -107,7 +107,7 @@ export default function FunnelConversionChart({
   if (error) {
     return (
       <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50/70 p-5 text-sm text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
-        Không thể tải biểu đồ chuyển đổi funnel. {error}
+        Không thể tải biểu đồ phễu chuyển đổi. {error}
       </div>
     );
   }
@@ -115,7 +115,7 @@ export default function FunnelConversionChart({
   if (isFunnelEmpty(data)) {
     return (
       <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-600 dark:border-gray-700 dark:bg-white/2 dark:text-gray-300">
-        Chưa có dữ liệu chuyển đổi phỏng vấn và offer trong khoảng thời gian đã chọn.
+        Chưa có dữ liệu chuyển đổi phỏng vấn và thư mời nhận việc trong khoảng thời gian đã chọn.
       </div>
     );
   }
@@ -125,10 +125,10 @@ export default function FunnelConversionChart({
       <div className="mb-6 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90 md:text-lg">
-            Chuyển đổi pipeline tuyển dụng
+            Phễu chuyển đổi tuyển dụng
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            So sánh số buổi phỏng vấn hoàn tất và offer gửi đi theo từng tháng
+            So sánh số buổi phỏng vấn hoàn tất và thư mời nhận việc đã gửi theo từng tháng
           </p>
         </div>
       </div>

@@ -9,7 +9,6 @@ import {
   CalendarClock,
   MapPin,
   Sparkles,
-  Users,
 } from "lucide-react";
 import { OverviewTab } from "./CandidateTab/OverviewTab";
 import { ExperienceTab } from "./CandidateTab/ExperienceTab";
@@ -82,12 +81,12 @@ export function CandidateDetail({
               icon: <CalendarClock className="h-4 w-4" />,
               accent: "bg-sky-100 text-sky-600",
             },
-            {
-              label: "Người phụ trách",
-              value: candidate.assignee?.name ?? "Chưa phân công",
-              icon: <Users className="h-4 w-4" />,
-              accent: "bg-emerald-100 text-emerald-600",
-            },
+            // {
+            //   label: "Người phụ trách",
+            //   value: candidate.assignee?.name ?? "Chưa phân công",
+            //   icon: <Users className="h-4 w-4" />,
+            //   accent: "bg-emerald-100 text-emerald-600",
+            // },
           ]
         : [],
     [candidate]
@@ -258,7 +257,7 @@ export function CandidateDetail({
                 </div>
               </div>
 
-              <div className="mt-4 flex gap-3 overflow-x-auto pb-1 sm:mt-5 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3">
+              <div className="mt-4 flex gap-3 overflow-x-auto pb-1 sm:mt-5 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-2">
                 {highlightCards.map((item) => (
                   <div
                     key={item.label}
@@ -293,7 +292,7 @@ export function CandidateDetail({
               >
                 <TabsList className="sticky top-0 z-10 flex w-full flex-nowrap justify-start gap-2 overflow-x-auto rounded-none border-b border-slate-100 bg-white/95 px-4 py-3 sm:px-8">
                   <TabsTrigger value="overview">Thông tin chi tiết</TabsTrigger>
-                  <TabsTrigger value="experience">Kinh nghiệm</TabsTrigger>
+                  <TabsTrigger value="experience">Kinh nghiệm - Lịch sử</TabsTrigger>
                   <TabsTrigger value="cv">CV</TabsTrigger>
                   <TabsTrigger value="interview-review">Đánh giá phỏng vấn</TabsTrigger>
                   <TabsTrigger value="messages">Tin nhắn</TabsTrigger>

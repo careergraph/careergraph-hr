@@ -1,31 +1,35 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { CalendarClock, Loader2, ListFilter } from "lucide-react";
+import { CalendarClock, ListFilter, Loader2 } from "lucide-react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import PageMeta from "@/components/common/PageMeta";
-import { JobCard } from "./JobCard";
-import JobFilters, {
-  JobFilterState,
-  initialJobFilterState,
-} from "./JobFilters";
-import { Job } from "@/types/job";
-import { EmploymentType, JobCategory } from "@/enums/workEnum";
-import { Status } from "@/enums/commonEnum";
-import { jobService } from "@/services/jobService";
-import { useAuthStore } from "@/stores/authStore";
-import { jobsData as fallbackJobs } from "@/data/jobsData";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { Status } from "@/enums/commonEnum";
+import { EmploymentType, JobCategory } from "@/enums/workEnum";
+import { jobsData as fallbackJobs } from "@/data/jobsData";
 import { getJobDisplayStatus, isJobExpired } from "@/lib/jobStatus";
-
-// JobsGrid chá»‹u trÃ¡ch nhiá»‡m láº¥y dá»¯ liá»‡u vÃ  hiá»ƒn thá»‹ danh sÃ¡ch viá»‡c lÃ m cÃ³ bá»™ lá»c.
+import { jobService } from "@/services/jobService";
+import { useAuthStore } from "@/stores/authStore";
+import { Job } from "@/types/job";
+import { toast } from "sonner";
+import { JobCard } from "./JobCard";
+import JobFilters, {
+  initialJobFilterState,
+  JobFilterState,
+} from "./JobFilters";
 
 const normalizeKey = (value: string) =>
-  // Chuáº©n hÃ³a chuá»—i vá» dáº¡ng UPPER_SNAKE Ä‘á»ƒ so sÃ¡nh vá»›i enum Ä‘Ã£ Ä‘á»‹nh nghÄ©a.
   value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -78,47 +82,38 @@ const toEmploymentType = (
   value?: string | null
 ): EmploymentType | undefined => {
   if (!value) return undefined;
-  const key = normalizeKey(value);
-  return employmentTypeMap[key] ?? undefined;
+  return employmentTypeMap[normalizeKey(value)] ?? undefined;
 };
 
 const toStatus = (value?: string | null): Status => {
   if (!value) return Status.ACTIVE;
-  const key = normalizeKey(value);
-  return statusMap[key] ?? Status.ACTIVE;
+  return statusMap[normalizeKey(value)] ?? Status.ACTIVE;
 };
 
 const toJobCategory = (value?: string | null): JobCategory | undefined => {
   if (!value) return undefined;
-  const key = normalizeKey(value);
-  return jobCategoryMap[key] ?? undefined;
+  return jobCategoryMap[normalizeKey(value)] ?? undefined;
 };
 
 const normalizeSkillIds = (skills: unknown): Job["skills"] => {
-  if (!skills) return [];
+  if (!skills || !Array.isArray(skills)) return [];
 
-  if (Array.isArray(skills)) {
-    return skills
-      .map((skill) => {
-        if (typeof skill === "string") {
-          // Backend cÃ³ thá»ƒ tráº£ vá» máº£ng string, map sang Ä‘á»‘i tÆ°á»£ng { id, name }.
-          return { id: skill, name: skill };
-        }
+  return skills
+    .map((skill) => {
+      if (typeof skill === "string") {
+        return { id: skill, name: skill };
+      }
 
-        if (skill && typeof skill === "object") {
-          const skillObj = skill as { id?: string; name?: string };
-          const id = skillObj.id ?? skillObj.name;
-          if (!id) return undefined;
-          // Khi cáº£ id vÃ  name cÃ³ thá»ƒ thiáº¿u, dÃ¹ng id lÃ m fallback cho name.
-          return { id, name: skillObj.name ?? id };
-        }
+      if (skill && typeof skill === "object") {
+        const skillObj = skill as { id?: string; name?: string };
+        const id = skillObj.id ?? skillObj.name;
+        if (!id) return undefined;
+        return { id, name: skillObj.name ?? id };
+      }
 
-        return undefined;
-      })
-      .filter((item): item is { id: string; name: string } => Boolean(item));
-  }
-
-  return [];
+      return undefined;
+    })
+    .filter((item): item is { id: string; name: string } => Boolean(item));
 };
 
 const generateId = () => {
@@ -129,7 +124,6 @@ const generateId = () => {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
-// Chuáº©n hÃ³a dá»¯ liá»‡u job tá»« API vá» model chuáº©n dÃ¹ng trong UI.
 const normalizeJob = (raw: Record<string, unknown>): Job => {
   const employmentType = toEmploymentType(
     (raw.employmentType ?? raw.type ?? "") as string | undefined
@@ -139,7 +133,6 @@ const normalizeJob = (raw: Record<string, unknown>): Job => {
       | string
       | undefined
   );
-
   const idValue = (raw.id ?? raw.jobId ?? raw.uuid) as
     | string
     | number
@@ -154,7 +147,7 @@ const normalizeJob = (raw: Record<string, unknown>): Job => {
 
   return {
     id,
-    title: (raw.title as string) ?? "Tin tuyá»ƒn dá»¥ng",
+    title: (raw.title as string) ?? "Tin tuyển dụng",
     description: (raw.description as string) ?? "",
     department:
       (raw.department as string) ??
@@ -171,7 +164,7 @@ const normalizeJob = (raw: Record<string, unknown>): Job => {
     experienceLevel:
       (raw.experienceLevel as Job["experienceLevel"]) ?? undefined,
     jobCategory,
-    employmentType: employmentType,
+    employmentType,
     type: employmentType,
     education: (raw.education as Job["education"]) ?? undefined,
     state: (raw.state as string) ?? undefined,
@@ -194,11 +187,12 @@ const normalizeJob = (raw: Record<string, unknown>): Job => {
       undefined,
     promotionType: (raw.promotionType as Job["promotionType"]) ?? undefined,
     status: normalizedStatus,
+    aiScreeningEnabled: Boolean(raw.aiScreeningEnabled),
     postedDate: raw.postedDate
       ? new Date(raw.postedDate as string)
       : raw.createdAt
-      ? new Date(raw.createdAt as string)
-      : new Date(),
+        ? new Date(raw.createdAt as string)
+        : new Date(),
     applicants: typeof raw.applicants === "number" ? raw.applicants : 0,
     views: typeof raw.views === "number" ? raw.views : 0,
     saved: typeof raw.saved === "number" ? raw.saved : 0,
@@ -212,22 +206,16 @@ const extractJobsFromResponse = (
   response: unknown
 ): Record<string, unknown>[] => {
   if (!response) return [];
-
-  if (Array.isArray(response)) {
-    return response as Record<string, unknown>[];
-  }
+  if (Array.isArray(response)) return response as Record<string, unknown>[];
 
   if (typeof response === "object") {
     const dataObject = response as Record<string, unknown>;
-
     if (Array.isArray(dataObject.content)) {
       return dataObject.content as Record<string, unknown>[];
     }
-
     if (Array.isArray(dataObject.items)) {
       return dataObject.items as Record<string, unknown>[];
     }
-
     if (Array.isArray(dataObject.results)) {
       return dataObject.results as Record<string, unknown>[];
     }
@@ -268,20 +256,20 @@ const getTodayDateInputValue = () => {
 const addDaysToDateInput = (days: number) => {
   const date = new Date();
   date.setDate(date.getDate() + days);
-  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(
+    date.getDate()
+  )}`;
 };
 
 export default function JobsGrid() {
   const navigate = useNavigate();
   const { accessToken, company, user } = useAuthStore();
 
-  // Tráº¡ng thÃ¡i cá»¥c bá»™ theo dÃµi danh sÃ¡ch job, bá»™ lá»c vÃ  tiáº¿n trÃ¬nh táº£i.
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<JobFilterState>({
     ...initialJobFilterState,
   });
-  // searchTerm: giÃ¡ trá»‹ ngÆ°á»i dÃ¹ng nháº­p; debouncedSearch: giÃ¡ trá»‹ delay dÃ¹ng gá»i API.
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [totalResults, setTotalResults] = useState<number | null>(null);
@@ -290,11 +278,11 @@ export default function JobsGrid() {
   const [expiryDialogJob, setExpiryDialogJob] = useState<Job | null>(null);
   const [expiryDateValue, setExpiryDateValue] = useState("");
   const [isUpdatingExpiry, setIsUpdatingExpiry] = useState(false);
+  const [actionJobId, setActionJobId] = useState<string | null>(null);
 
   const companyId = company?.id ?? user?.companyId ?? null;
 
   useEffect(() => {
-    // Debounce 300ms giÃºp gom chuá»—i gÃµ liÃªn tiáº¿p trÆ°á»›c khi gá»i API.
     const handler = window.setTimeout(() => {
       setDebouncedSearch(searchTerm.trim());
     }, 300);
@@ -305,7 +293,6 @@ export default function JobsGrid() {
   }, [searchTerm]);
 
   useEffect(() => {
-    // Khi cÃ³ Ä‘á»§ thÃ´ng tin xÃ¡c thá»±c thÃ¬ gá»i dá»‹ch vá»¥ tÃ¬m kiáº¿m job.
     if (!accessToken || !companyId) {
       setJobs([]);
       setTotalResults(0);
@@ -320,7 +307,6 @@ export default function JobsGrid() {
       setLoading(true);
 
       try {
-        // Gá»i API vá»›i query trÃªn params vÃ  cÃ¡c bá»™ lá»c trong body.
         const response = await jobService.searchJobs(
           companyId,
           {
@@ -342,25 +328,20 @@ export default function JobsGrid() {
           "number"
             ? (response as { totalElements: number }).totalElements
             : typeof (response as { total?: number }).total === "number"
-            ? (response as { total: number }).total
-            : normalizedJobs.length;
+              ? (response as { total: number }).total
+              : normalizedJobs.length;
 
         if (active) {
-          // Chá»‰ update state khi effect chÆ°a bá»‹ há»§y.
           setJobs(normalizedJobs);
           setTotalResults(total);
-          setTotalPages(
-            total > 0 ? Math.ceil(total / PAGE_SIZE) : 0
-          );
+          setTotalPages(total > 0 ? Math.ceil(total / PAGE_SIZE) : 0);
         }
       } catch (err) {
         if (controller.signal.aborted) {
-          console.log(`Fetch jobs request was aborted: ${err}`);
           return;
         }
 
         if (active) {
-          // Náº¿u lá»—i thÃ¬ dÃ¹ng dá»¯ liá»‡u máº·c Ä‘á»‹nh Ä‘á»ƒ trÃ¡nh giao diá»‡n trá»‘ng.
           const fallbackSlice = fallbackJobs.slice(
             page * PAGE_SIZE,
             page * PAGE_SIZE + PAGE_SIZE
@@ -372,6 +353,7 @@ export default function JobsGrid() {
               ? Math.ceil(fallbackJobs.length / PAGE_SIZE)
               : 0
           );
+          console.log(`Fetch jobs failed, using fallback data: ${err}`);
         }
       } finally {
         if (active) {
@@ -405,7 +387,6 @@ export default function JobsGrid() {
 
   const handleSelectJob = useCallback(
     (jobId: string) => {
-      // Khi chá»n job thÃ¬ Ä‘iá»u hÆ°á»›ng sang trang kanban tÆ°Æ¡ng á»©ng.
       navigate(`/kanbans/${jobId}`);
     },
     [navigate]
@@ -432,7 +413,7 @@ export default function JobsGrid() {
   const handleSaveExpiryDate = useCallback(async () => {
     if (!expiryDialogJob) return;
     if (!expiryDateValue) {
-      toast.error("Vui l\u00f2ng ch\u1ecdn ng\u00e0y k\u1ebft th\u00fac m\u1edbi.");
+      toast.error("Vui lòng chọn ngày kết thúc mới.");
       return;
     }
 
@@ -450,12 +431,12 @@ export default function JobsGrid() {
         expiryDate: expiryDateValue,
       });
 
-      const activeJobResponse = shouldReopen
+      const finalJobResponse = shouldReopen
         ? await jobService.activateJob(expiryDialogJob.id)
         : updatedJobResponse;
 
       const normalizedJob = normalizeJob(
-        activeJobResponse as Record<string, unknown>
+        finalJobResponse as Record<string, unknown>
       );
 
       setJobs((prev) =>
@@ -464,52 +445,64 @@ export default function JobsGrid() {
 
       toast.success(
         shouldReopen
-          ? "\u0110\u00e3 m\u1edf l\u1ea1i job v\u00e0 c\u1eadp nh\u1eadt ng\u00e0y k\u1ebft th\u00fac."
-          : "\u0110\u00e3 c\u1eadp nh\u1eadt ng\u00e0y k\u1ebft th\u00fac job."
+          ? "Đã mở lại job và cập nhật ngày kết thúc."
+          : "Đã cập nhật ngày kết thúc job."
       );
       closeExpiryDialog();
     } catch (error) {
-      const message =
+      toast.error(
         error instanceof Error
           ? error.message
-          : "Kh\u00f4ng th\u1ec3 c\u1eadp nh\u1eadt ng\u00e0y k\u1ebft th\u00fac.";
-      toast.error(message);
+          : "Không thể cập nhật ngày kết thúc."
+      );
     } finally {
       setIsUpdatingExpiry(false);
     }
   }, [closeExpiryDialog, expiryDateValue, expiryDialogJob]);
 
-  const handleFilterChange = useCallback(
-    (nextFilters: JobFilterState) => {
-      // Cáº­p nháº­t bá»™ lá»c khi ngÆ°á»i dÃ¹ng thay Ä‘á»•i cÃ¡c checkbox.
-      setFilters(nextFilters);
-      setPage(0);
-    },
-    []
-  );
+  const handleFilterChange = useCallback((nextFilters: JobFilterState) => {
+    setFilters(nextFilters);
+    setPage(0);
+  }, []);
 
   const handleResetFilters = useCallback(() => {
-    // Äáº·t láº¡i táº¥t cáº£ Ä‘iá»u kiá»‡n lá»c vÃ  tá»« khÃ³a tÃ¬m kiáº¿m.
     setFilters({ ...initialJobFilterState });
     setSearchTerm("");
     setPage(0);
   }, []);
 
   const handleSearchChange = useCallback((value: string) => {
-    // Äá»“ng bá»™ Ã´ tÃ¬m kiáº¿m vá»›i state Ä‘á»ƒ kÃ­ch hoáº¡t debounce.
     setSearchTerm(value);
     setPage(0);
   }, []);
 
   const handlePageChange = useCallback(
     (nextPage: number) => {
-      if (nextPage === page) return;
-      if (nextPage < 0) return;
+      if (nextPage === page || nextPage < 0) return;
       if (totalPages > 0 && nextPage >= totalPages) return;
       setPage(nextPage);
     },
     [page, totalPages]
   );
+
+  const handleCloseJob = useCallback(async (jobId: string) => {
+    setActionJobId(jobId);
+    try {
+      await jobService.closeJob(jobId);
+      setJobs((prev) =>
+        prev.map((job) =>
+          job.id === jobId ? { ...job, status: Status.CLOSED } : job
+        )
+      );
+      toast.success("Đã đóng công việc. Ứng viên không thể ứng tuyển thêm.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Không thể đóng công việc."
+      );
+    } finally {
+      setActionJobId(null);
+    }
+  }, []);
 
   const pageNumbers = useMemo(() => {
     if (totalPages <= 0) return [] as number[];
@@ -524,15 +517,16 @@ export default function JobsGrid() {
       start = Math.max(0, end - visiblePages + 1);
     }
 
-    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+    return Array.from(
+      { length: end - start + 1 },
+      (_, index) => start + index
+    );
   }, [page, totalPages]);
 
   const canGoPrevious = page > 0;
   const canGoNext = totalPages > 0 && page < totalPages - 1;
-
   const hasPagination =
     typeof totalResults === "number" && totalResults > 0 && totalPages > 0;
-
   const startItem = hasPagination ? page * PAGE_SIZE + 1 : 0;
   const endItem = hasPagination
     ? Math.min(totalResults as number, startItem + jobs.length - 1)
@@ -543,7 +537,7 @@ export default function JobsGrid() {
       {[...Array(SKELETON_COUNT)].map((_, index) => (
         <div
           key={index}
-          className="h-56 rounded-2xl border border-border bg-card/80 animate-pulse"
+          className="h-56 animate-pulse rounded-2xl border border-border bg-card/80"
         />
       ))}
     </div>
@@ -551,13 +545,11 @@ export default function JobsGrid() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-muted/20 to-background">
-      {/* Bá»‘ cá»¥c trang viá»‡c lÃ m gá»“m breadcrumb, bá»™ lá»c vÃ  danh sÃ¡ch káº¿t quáº£. */}
-      {/* Page metadata */}
       <PageMeta title="HR - CareerGraph" description="HR - CareerGraph" />
-      {/* Breadcrumb */}
       <PageBreadcrumb pageTitle="Công việc" />
+
       <div className="container mx-auto px-4 pb-12">
-        <div className="mx-auto max-w-6xl lg:max-w-7xl space-y-8">
+        <div className="mx-auto max-w-6xl space-y-8 lg:max-w-7xl">
           <JobFilters
             value={filters}
             onChange={handleFilterChange}
@@ -579,6 +571,8 @@ export default function JobsGrid() {
                       job={job}
                       onSelectJob={() => handleSelectJob(job.id)}
                       onManageExpiry={() => openExpiryDialog(job)}
+                      onCloseJob={handleCloseJob}
+                      isActionLoading={actionJobId === job.id}
                     />
                     {job.status === Status.DRAFT && (
                       <Button
@@ -595,8 +589,12 @@ export default function JobsGrid() {
               </div>
             ) : (
               <div className="rounded-3xl border border-dashed border-border bg-muted/20 p-10 text-center dark:bg-slate-800/50">
-                <h3 className="text-lg font-semibold text-foreground dark:text-slate-100">Không tìm thấy công việc phù hợp</h3>
-                <p className="mt-2 text-sm text-muted-foreground dark:text-slate-300">Thử thay đổi từ khóa hoặc đặt lại bộ lọc để xem thêm kết quả.</p>
+                <h3 className="text-lg font-semibold text-foreground dark:text-slate-100">
+                  Không tìm thấy công việc phù hợp
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground dark:text-slate-300">
+                  Thử thay đổi từ khóa hoặc đặt lại bộ lọc để xem thêm kết quả.
+                </p>
                 <Button
                   variant="outline"
                   className="mt-6 gap-2"
@@ -676,7 +674,8 @@ export default function JobsGrid() {
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Job sẽ hiển thị đang tuyển lại khi ngày kết thúc mới còn hiệu lực.
+                        Job sẽ hiển thị đang tuyển lại khi ngày kết thúc mới còn
+                        hiệu lực.
                       </p>
                     </div>
                   </div>
@@ -690,7 +689,10 @@ export default function JobsGrid() {
                   >
                     Hủy
                   </Button>
-                  <Button onClick={handleSaveExpiryDate} disabled={isUpdatingExpiry}>
+                  <Button
+                    onClick={handleSaveExpiryDate}
+                    disabled={isUpdatingExpiry}
+                  >
                     {isUpdatingExpiry && (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     )}
@@ -707,12 +709,18 @@ export default function JobsGrid() {
             </Dialog>
 
             {loading && hasJobs && (
-              <div className="rounded-3xl border border-dashed border-border bg-muted/10 px-4 py-3 text-sm text-muted-foreground dark:bg-slate-800/40">Đang cập nhật danh sách công việc...</div>
+              <div className="rounded-3xl border border-dashed border-border bg-muted/10 px-4 py-3 text-sm text-muted-foreground dark:bg-slate-800/40">
+                Đang cập nhật danh sách công việc...
+              </div>
             )}
 
             {hasPagination && (
               <div className="flex flex-col gap-4 rounded-3xl border border-border bg-card/40 p-4 backdrop-blur-xl dark:bg-slate-900/40 sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Hiển thị {startItem.toLocaleString("vi-VN")} - {endItem.toLocaleString("vi-VN")} trong {( totalResults as number ).toLocaleString("vi-VN")} công việc</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Hiển thị {startItem.toLocaleString("vi-VN")} -{" "}
+                  {endItem.toLocaleString("vi-VN")} trong{" "}
+                  {(totalResults as number).toLocaleString("vi-VN")} công việc
+                </span>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -720,7 +728,7 @@ export default function JobsGrid() {
                     disabled={!canGoPrevious}
                     onClick={() => handlePageChange(page - 1)}
                   >
-                    TrÆ°á»›c
+                    Trước
                   </Button>
                   {pageNumbers.map((pageNumber) => (
                     <Button
@@ -750,4 +758,3 @@ export default function JobsGrid() {
     </div>
   );
 }
-

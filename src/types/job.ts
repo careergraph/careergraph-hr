@@ -63,6 +63,9 @@ type Job = {
 
   // Promotion
   promotionType?: "free" | "paid";
+
+  /** Bật sàng lọc AI tự động cho tin tuyển dụng này */
+  aiScreeningEnabled?: boolean;
 };
 
 interface JobTimelineEvent {

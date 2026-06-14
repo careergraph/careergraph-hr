@@ -374,6 +374,24 @@ const jobService = {
     const response = await api.get("/jobs/enums");
     return unwrapResponse(response.data) as JobEnumMetadataResponse;
   },
+
+  closeJob: async (jobId: string) => {
+    if (!jobId) {
+      throw new Error("Thiếu mã công việc để đóng tin tuyển dụng.");
+    }
+    const response = await api.delete(`/jobs/${jobId}`);
+    return unwrapResponse(response.data);
+  },
+
+  updateAiScreening: async (jobId: string, aiScreeningEnabled: boolean) => {
+    if (!jobId) {
+      throw new Error("Thiếu mã công việc để cập nhật sàng lọc AI.");
+    }
+    const response = await api.patch(`/jobs/${jobId}/settings`, {
+      aiScreeningEnabled,
+    });
+    return unwrapResponse(response.data);
+  },
 };
 
 export { jobService, mapJobToPayload };

@@ -152,7 +152,7 @@ export default function Home() {
       return "Khoảng thời gian tùy chọn";
     }
 
-    return `${dateRange.from} -> ${dateRange.to}`;
+    return `${dateRange.from} đến ${dateRange.to}`;
   }, [dateRange.from, dateRange.to]);
 
   const resetToLast30Days = () => {
@@ -178,12 +178,12 @@ export default function Home() {
     }
 
     setRefreshTick((value) => value + 1);
-    toast.success("Đã cập nhật pipeline mới nhất");
+    toast.success("Đã cập nhật dữ liệu mới nhất");
   };
 
   const handleCopyFilterLink = async () => {
     if (!isValidInputDate(dateRange.from) || !isValidInputDate(dateRange.to)) {
-      toast.error("Chỉ có thể chia sẻ link khi đã chọn đủ ngày bắt đầu và kết thúc.");
+      toast.error("Chỉ có thể chia sẻ liên kết khi đã chọn đủ ngày bắt đầu và kết thúc.");
       return;
     }
 
@@ -191,9 +191,9 @@ export default function Home() {
     const copied = await copyToClipboard(shareUrl);
 
     if (copied) {
-      toast.success("Đã sao chép link bộ lọc. Bạn có thể gửi link này để chia sẻ dashboard.");
+      toast.success("Đã sao chép liên kết bộ lọc. Bạn có thể gửi cho đồng nghiệp để xem cùng dữ liệu.");
     } else {
-      toast.error("Không thể sao chép link bộ lọc vào clipboard");
+      toast.error("Không thể sao chép liên kết vào bộ nhớ tạm");
     }
   };
 
@@ -216,21 +216,21 @@ export default function Home() {
     });
 
     const report = [
-      "Bao cao pipeline 24h",
-      `Khoang du lieu dashboard: ${data.from} -> ${data.to}`,
-      `Tong thay doi 24h: ${changes24h.length}`,
-      `Ung vien: ${data.kpi.candidates.value}`,
-      `Don ung tuyen moi: ${data.kpi.newApplications.value}`,
-      `Lich phong van da len: ${data.kpi.scheduledInterviews.value}`,
+      "Báo cáo quy trình tuyển dụng 24 giờ",
+      `Khoảng thời gian: ${data.from} đến ${data.to}`,
+      `Tổng thay đổi trong 24 giờ: ${changes24h.length}`,
+      `Ứng viên: ${data.kpi.candidates.value}`,
+      `Hồ sơ mới: ${data.kpi.newApplications.value}`,
+      `Lịch phỏng vấn đã lên: ${data.kpi.scheduledInterviews.value}`,
     ].join("\n");
 
     const copied = await copyToClipboard(report);
     if (copied) {
       setLastCopiedReport(report);
       setLastCopiedAt(formatDateTimeYMDHM(new Date()));
-      toast.success("Đã sao chép báo cáo 24h, sẵn sàng gửi cho stakeholder");
+      toast.success("Đã sao chép báo cáo 24 giờ, sẵn sàng gửi cho ban lãnh đạo");
     } else {
-      toast.error("Không thể sao chép báo cáo vào clipboard");
+      toast.error("Không thể sao chép báo cáo vào bộ nhớ tạm");
     }
   };
 
@@ -240,18 +240,18 @@ export default function Home() {
     <>
       {/* Bố cục dashboard kết hợp thẻ KPI và biểu đồ cung cấp thông tin nhanh. */}
       <PageMeta
-        title="HR - CareerGraph"
-        description="HR - CareerGraph"
+        title="Tổng quan tuyển dụng | CareerGraph"
+        description="Theo dõi quy trình tuyển dụng và hiệu suất HR trên CareerGraph"
       />
 
       <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/3 sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-base font-semibold text-gray-800 dark:text-white/90">
-              Bộ lọc thời gian dashboard
+              Lọc theo thời gian
             </h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Dữ liệu tuyển dụng được tổng hợp theo applied_date trong khoảng đã chọn. Bấm vào ô ngày hoặc biểu tượng lịch để mở calendar.
+              Dữ liệu được tổng hợp theo ngày ứng tuyển trong khoảng thời gian đã chọn. Nhấn vào ô ngày hoặc biểu tượng lịch để chọn.
             </p>
           </div>
 
@@ -343,7 +343,7 @@ export default function Home() {
             onClick={handleRefreshPipeline}
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-white/5"
           >
-            Cập nhật pipeline mới nhất
+            Cập nhật dữ liệu mới nhất
           </button>
           <button
             type="button"
@@ -351,7 +351,7 @@ export default function Home() {
             className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-white/5"
           >
             <Link2 className="h-4 w-4" />
-            Sao chép link bộ lọc
+            Sao chép liên kết bộ lọc
           </button>
           <button
             type="button"
@@ -359,7 +359,7 @@ export default function Home() {
             className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600"
           >
             <ClipboardCheck className="h-4 w-4" />
-            Sao chép nội dung báo cáo 24h
+            Sao chép báo cáo 24 giờ
           </button>
           {/* <p className="w-full text-xs text-gray-500 dark:text-gray-400">
             Link bộ lọc được đồng bộ vào URL để có thể chia sẻ. Nút báo cáo 24h sẽ sao chép nội dung tổng hợp vào clipboard để dán vào email hoặc chat nhóm.

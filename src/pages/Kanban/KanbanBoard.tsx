@@ -582,8 +582,8 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
 
     // PREVENT INVALID MOVES:
     // Candidates may only move to the next adjacent column (no skipping),
-    // and cannot move backwards.
-    if (dragSourceStatus) {
+    // and cannot move backwards — except when moving to the rejected column.
+    if (dragSourceStatus && targetStatus !== "rejected") {
       const sourceIndex = pipelineColumns.findIndex((c) => c.id === dragSourceStatus);
       const targetIndex = pipelineColumns.findIndex((c) => c.id === targetStatus);
       if (sourceIndex > -1 && targetIndex > -1 && targetIndex < sourceIndex) {

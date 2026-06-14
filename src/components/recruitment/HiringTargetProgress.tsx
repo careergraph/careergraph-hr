@@ -210,7 +210,7 @@ export default function HiringTargetProgress({
             Đề xuất sắp tới
           </p>
           <p className="mt-1 text-base font-semibold text-gray-800 dark:text-white/90">
-            {(data?.pendingOffers ?? 0).toLocaleString("vi-VN")} offer chờ ký
+            {(data?.pendingOffers ?? 0).toLocaleString("vi-VN")} thư mời nhận việc chờ ký
           </p>
         </div>
       </div>
@@ -219,22 +219,22 @@ export default function HiringTargetProgress({
         <div className="no-scrollbar relative w-full max-w-[680px] overflow-y-auto rounded-3xl bg-white p-6 dark:bg-gray-900 lg:p-8">
           <h4 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Chi tiết kế hoạch tuyển dụng</h4>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Tập trung theo dõi KPI chính để điều chỉnh tốc độ pipeline và tỷ lệ chốt offer.
+            Tập trung theo dõi các chỉ số chính để điều chỉnh tốc độ tuyển dụng và tỷ lệ chốt thư mời nhận việc.
           </p>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <MetricCard title="Mục tiêu quý" value={`${(data?.quarterTargetPositions ?? 0).toLocaleString("vi-VN")} vị trí`} />
             <MetricCard title="Tỷ lệ hoàn thành" value={`${(data?.completionPercent ?? 0).toFixed(1)}%`} />
             <MetricCard title="Đã tuyển tuần này" value={`${(data?.hiredThisWeek ?? 0).toLocaleString("vi-VN")} ứng viên`} />
-            <MetricCard title="Offer chờ ký" value={`${(data?.pendingOffers ?? 0).toLocaleString("vi-VN")} offer`} />
+            <MetricCard title="Thư mời nhận việc chờ ký" value={`${(data?.pendingOffers ?? 0).toLocaleString("vi-VN")} thư`} />
           </div>
 
           <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
             <h5 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Gợi ý hành động</h5>
             <ul className="mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
               <li>- Đẩy nhanh lịch phỏng vấn với các vị trí đang chậm hơn kế hoạch.</li>
-              <li>- Ưu tiên xử lý offer tồn để giảm tỷ lệ rớt cuối pipeline.</li>
-              <li>- Soát lại JD ở nhóm vị trí có chuyển đổi thấp trong 2 tuần gần nhất.</li>
+              <li>- Ưu tiên xử lý thư mời nhận việc còn tồn để giảm tỷ lệ rớt ở giai đoạn cuối.</li>
+              <li>- Rà soát lại mô tả công việc ở nhóm vị trí có tỷ lệ chuyển đổi thấp trong 2 tuần gần nhất.</li>
             </ul>
           </div>
 

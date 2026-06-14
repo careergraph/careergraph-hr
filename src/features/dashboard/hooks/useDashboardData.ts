@@ -34,21 +34,21 @@ const getDashboardErrorMessage = (err: unknown): string => {
     }
 
     if (status === 403) {
-      return "Bạn chưa có quyền xem dashboard tuyển dụng.";
+      return "Bạn chưa có quyền xem trang tổng quan tuyển dụng.";
     }
 
     if (status >= 500) {
       return "Hệ thống đang bận hoặc gặp sự cố. Vui lòng thử lại sau ít phút.";
     }
 
-    return backendMessage || "Không thể tải dữ liệu dashboard.";
+    return backendMessage || "Không thể tải dữ liệu tổng quan.";
   }
 
   if (err instanceof Error && err.message.trim()) {
     return err.message;
   }
 
-  return "Không thể tải dữ liệu dashboard.";
+  return "Không thể tải dữ liệu tổng quan.";
 };
 
 export function useDashboardData(dateRange: DashboardDateRange, refreshTick = 0): UseDashboardDataResult {

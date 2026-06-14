@@ -129,7 +129,7 @@ export default function PipelineVelocityChart({
   if (error) {
     return (
       <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50/70 p-5 text-sm text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
-        Không thể tải biểu đồ tốc độ pipeline. {error}
+        Không thể tải biểu đồ tốc độ quy trình tuyển dụng. {error}
       </div>
     );
   }
@@ -147,10 +147,10 @@ export default function PipelineVelocityChart({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90 md:text-lg">
-            Tốc độ pipeline theo tháng
+            Tốc độ quy trình tuyển dụng theo tháng
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Số ứng viên được chuyển sang bước tiếp theo trong mỗi tháng
+            Số ứng viên chuyển sang giai đoạn tiếp theo trong từng tháng
           </p>
         </div>
         <div className="relative inline-block self-end sm:self-auto">
