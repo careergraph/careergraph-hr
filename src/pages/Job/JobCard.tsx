@@ -5,22 +5,40 @@ import {
   Bookmark,
   ThumbsUp,
   Share2,
+  MoreVertical,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Job } from "@/types/job";
 import { Status } from "@/enums/commonEnum";
 import { EmploymentType, JOB_CATEGORY_OPTIONS, JobCategory } from "@/enums/workEnum";
-import { KeyboardEvent } from "react";
+import { KeyboardEvent, MouseEvent } from "react";
 import { formatDateYMD } from "@/lib/dateUtils";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // JobCard hiển thị thông tin tóm tắt của một job kèm các chỉ số tương tác.
 
 interface JobCardProps {
   job: Job;
   onSelectJob?: () => void;
+  onCloseJob?: (jobId: string) => void;
+  onToggleAiScreening?: (jobId: string, enabled: boolean) => void;
+  isActionLoading?: boolean;
 }
 
-export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
+export const JobCard = ({
+  job,
+  onSelectJob,
+  onCloseJob,
+  onToggleAiScreening,
+  isActionLoading = false,
+}: JobCardProps) => {
   // Màu cho từng loại công việc giúp người xem nhận diện nhanh.
   const typeColors = {
     [EmploymentType.FULL_TIME]: {
@@ -70,6 +88,7 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
 
   // Nếu job không có trạng thái thì mặc định ACTIVE để hiển thị badge.
   const currentStatus = job.status ?? Status.ACTIVE;
+  const isClosed = currentStatus === Status.CLOSED;
 
   const typeLabelMap: Partial<Record<EmploymentType, string>> = {
     [EmploymentType.FULL_TIME]: "Toàn thời gian",
@@ -102,6 +121,10 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
     }
   };
 
+  const stopCardNavigation = (event: MouseEvent) => {
+    event.stopPropagation();
+  };
+
   // Màu cho trạng thái hiển thị badge tương ứng.
   const statusColor =
     currentStatus === Status.ACTIVE
@@ -123,9 +146,42 @@ export const JobCard = ({ job, onSelectJob }: JobCardProps) => {
       <div
         className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${color.gradient} opacity-60 transition-opacity duration-300 group-hover:opacity-80`}
       />
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label="Tùy chọn công việc"
+            disabled={isActionLoading}
+            onClick={stopCardNavigation}
+            className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-background/90 text-muted-foreground shadow-sm transition hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56 !bg-popover !border !border-border !shadow-md" onClick={stopCardNavigation}>
+          <DropdownMenuItem
+            disabled={isClosed || isActionLoading}
+            onClick={() => onCloseJob?.(job.id)}
+            className="text-red-600 focus:text-red-600 dark:text-red-400"
+          >
+            Đóng công việc
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuCheckboxItem
+            checked={Boolean(job.aiScreeningEnabled)}
+            disabled={isClosed || isActionLoading}
+            onSelect={(event) => event.preventDefault()}
+            onCheckedChange={(checked) => onToggleAiScreening?.(job.id, checked)}
+          >
+            Cho phép AI sàng lọc
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       {/* Thẻ hiển thị thông tin chính và hành động nhanh cho job. */}
       {/* Phần đầu: biểu tượng và badge loại công việc */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 pr-8">
         <div className={`p-2.5 rounded-xl ${color.bg}`}>
           <Briefcase className={`w-5 h-5 ${color.icon}`} />
         </div>

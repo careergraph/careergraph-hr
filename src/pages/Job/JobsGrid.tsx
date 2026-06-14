@@ -15,6 +15,7 @@ import { jobService } from "@/services/jobService";
 import { useAuthStore } from "@/stores/authStore";
 import { jobsData as fallbackJobs } from "@/data/jobsData";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 // JobsGrid chịu trách nhiệm lấy dữ liệu và hiển thị danh sách việc làm có bộ lọc.
 
@@ -182,6 +183,7 @@ const normalizeJob = (raw: Record<string, unknown>): Job => {
       undefined,
     promotionType: (raw.promotionType as Job["promotionType"]) ?? undefined,
     status: toStatus((raw.status as string) ?? undefined),
+    aiScreeningEnabled: Boolean(raw.aiScreeningEnabled),
     postedDate: raw.postedDate
       ? new Date(raw.postedDate as string)
       : raw.createdAt
@@ -243,6 +245,7 @@ export default function JobsGrid() {
   const [totalResults, setTotalResults] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [actionJobId, setActionJobId] = useState<string | null>(null);
 
   const companyId = company?.id ?? user?.companyId ?? null;
 
@@ -403,6 +406,53 @@ export default function JobsGrid() {
     [page, totalPages]
   );
 
+  const handleCloseJob = useCallback(async (jobId: string) => {
+    setActionJobId(jobId);
+    try {
+      await jobService.closeJob(jobId);
+      setJobs((prev) =>
+        prev.map((job) =>
+          job.id === jobId ? { ...job, status: Status.CLOSED } : job
+        )
+      );
+      toast.success("Đã đóng công việc. Ứng viên không thể ứng tuyển thêm.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Không thể đóng công việc.";
+      toast.error(message);
+    } finally {
+      setActionJobId(null);
+    }
+  }, []);
+
+  const handleToggleAiScreening = useCallback(
+    async (jobId: string, enabled: boolean) => {
+      setActionJobId(jobId);
+      try {
+        await jobService.updateAiScreening(jobId, enabled);
+        setJobs((prev) =>
+          prev.map((job) =>
+            job.id === jobId ? { ...job, aiScreeningEnabled: enabled } : job
+          )
+        );
+        toast.success(
+          enabled
+            ? "Đã bật sàng lọc AI cho công việc này."
+            : "Đã tắt sàng lọc AI cho công việc này."
+        );
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Không thể cập nhật sàng lọc AI.";
+        toast.error(message);
+      } finally {
+        setActionJobId(null);
+      }
+    },
+    []
+  );
+
   const pageNumbers = useMemo(() => {
     if (totalPages <= 0) return [] as number[];
 
@@ -467,7 +517,13 @@ export default function JobsGrid() {
               <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {jobs.map((job) => (
                   <div key={job.id} className="space-y-2">
-                    <JobCard job={job} onSelectJob={() => handleSelectJob(job.id)} />
+                    <JobCard
+                      job={job}
+                      onSelectJob={() => handleSelectJob(job.id)}
+                      onCloseJob={handleCloseJob}
+                      onToggleAiScreening={handleToggleAiScreening}
+                      isActionLoading={actionJobId === job.id}
+                    />
                     {job.status === Status.DRAFT && (
                       <Button
                         variant="outline"

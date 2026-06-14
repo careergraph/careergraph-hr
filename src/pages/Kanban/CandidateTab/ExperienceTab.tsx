@@ -11,6 +11,7 @@ import type {
 import { useEffect, useState } from "react";
 import candidateService from "@/services/candidateService";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { STAGE_LABELS, type ApplicationStageCode } from "@/lib/recruitmentPipeline";
 
 // ExperienceTab liệt kê timeline tương tác và mô tả kinh nghiệm ứng viên.
 
@@ -93,6 +94,12 @@ export function ExperienceTab({
   const [isLoading, setIsLoading] = useState(false);
   const [overviewExperiences, setOverviewExperiences] =
     useState<OverviewExperience | null>(null);
+  const appliedJobTitle = candidate.position?.trim() || "Chưa xác định";
+
+  const formatStageAction = (stage?: string): string => {
+    if (!stage) return "Cập nhật trạng thái";
+    return STAGE_LABELS[stage as ApplicationStageCode] ?? stage;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -174,10 +181,10 @@ export function ExperienceTab({
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
-            Lộ trình tuyển dụng
+            Lộ trình tuyển dụng đối với công ty
           </h3>
           <p className="mt-1 text-sm text-slate-500">
-            Theo dõi nhanh các hoạt động đã diễn ra với ứng viên này.
+            Theo dõi nhanh các hoạt động đã diễn ra với ứng viên này đối với các công việc mà công ty đang đăng tuyển.
           </p>
         </div>
         <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
@@ -190,14 +197,15 @@ export function ExperienceTab({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h4 className="text-sm font-semibold text-slate-700">
-                      {event.action}
+                      {formatStageAction(event.action)}
                     </h4>
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                       {event.date}
                     </p>
                   </div>
-                  <span className="text-xs text-slate-500">
-                    Người thực hiện: {event.user}
+                  <span className="max-w-[220px] text-right text-xs text-slate-500">
+                    Vị trí ứng tuyển:{" "}
+                    <span className="font-medium text-slate-700">{appliedJobTitle}</span>
                   </span>
                 </div>
                 <p className="mt-2 text-sm text-slate-600">

@@ -91,7 +91,7 @@ export default function RecruitmentKpiCards({
   if (error) {
     return (
       <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50/70 p-5 text-sm text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
-        Không thể tải KPI dashboard. {error}
+        Không thể tải chỉ số tuyển dụng. {error}
       </div>
     );
   }
@@ -99,7 +99,7 @@ export default function RecruitmentKpiCards({
   if (isKpiEmpty(data)) {
     return (
       <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-600 dark:border-gray-700 dark:bg-white/2 dark:text-gray-300">
-        Chưa có dữ liệu KPI trong khoảng thời gian đã chọn.
+        Chưa có chỉ số tuyển dụng trong khoảng thời gian đã chọn.
       </div>
     );
   }

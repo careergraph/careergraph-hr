@@ -18,8 +18,6 @@ import {
   Briefcase,
   User,
   Clock,
-  Heart,
-  Share2,
   MapPin,
   CheckCircle,
   XCircle,
@@ -28,7 +26,6 @@ import {
   Loader2,
   MessageCircle,
   FileText,
-  ExternalLink,
 } from "lucide-react";
 
 type CandidateDetailProps = {
@@ -136,10 +133,6 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
     const end = isCurrent ? "Hiện tại" : formatDate(endDate);
     if (!start && !end) return "";
     return `${start} - ${end}`;
-  };
-
-  const handleOpenProfile = () => {
-    navigate(candidate.profileUrl || `/candidates?candidateId=${candidate.id}`);
   };
 
   const handleStartChat = async () => {
@@ -342,20 +335,6 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
                 <MessageCircle className="h-4 w-4" />
               )}
               Chat
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              <Heart className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              <Share2 className="h-4 w-4" />
             </Button>
             {/* <Button className="px-5">Mua thông tin liên hệ</Button> */}
           </div>
