@@ -3,28 +3,26 @@ import { useNavigate } from "react-router";
 import { ListFilter } from "lucide-react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import PageMeta from "@/components/common/PageMeta";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { JobCard } from "./JobCard";
+import { JobExpiryDialog } from "./JobExpiryDialog";
 import JobFilters, {
   JobFilterState,
   initialJobFilterState,
 } from "./JobFilters";
 import { Job } from "@/types/job";
-import { EmploymentType, JobCategory } from "@/enums/workEnum";
 import { Status } from "@/enums/commonEnum";
-import { jobService } from "@/services/jobService";
+import { EmploymentType, JobCategory } from "@/enums/workEnum";
+import { jobService, type JobSettingsPayload } from "@/services/jobService";
 import { useAuthStore } from "@/stores/authStore";
 import { jobsData as fallbackJobs } from "@/data/jobsData";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-
-// JobsGrid chịu trách nhiệm lấy dữ liệu và hiển thị danh sách việc làm có bộ lọc.
 
 const normalizeKey = (value: string) =>
-  // Chuẩn hóa chuỗi về dạng UPPER_SNAKE để so sánh với enum đã định nghĩa.
   value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[’'`]/g, "")
+    .replace(/[â€™'`]/g, "")
     .replace(/[\s&/-]+/g, "_")
     .toUpperCase();
 
@@ -73,20 +71,17 @@ const toEmploymentType = (
   value?: string | null
 ): EmploymentType | undefined => {
   if (!value) return undefined;
-  const key = normalizeKey(value);
-  return employmentTypeMap[key] ?? undefined;
+  return employmentTypeMap[normalizeKey(value)] ?? undefined;
 };
 
 const toStatus = (value?: string | null): Status => {
   if (!value) return Status.ACTIVE;
-  const key = normalizeKey(value);
-  return statusMap[key] ?? Status.ACTIVE;
+  return statusMap[normalizeKey(value)] ?? Status.ACTIVE;
 };
 
 const toJobCategory = (value?: string | null): JobCategory | undefined => {
   if (!value) return undefined;
-  const key = normalizeKey(value);
-  return jobCategoryMap[key] ?? undefined;
+  return jobCategoryMap[normalizeKey(value)] ?? undefined;
 };
 
 const normalizeSkillIds = (skills: unknown): Job["skills"] => {
@@ -96,7 +91,6 @@ const normalizeSkillIds = (skills: unknown): Job["skills"] => {
     return skills
       .map((skill) => {
         if (typeof skill === "string") {
-          // Backend có thể trả về mảng string, map sang đối tượng { id, name }.
           return { id: skill, name: skill };
         }
 
@@ -104,7 +98,6 @@ const normalizeSkillIds = (skills: unknown): Job["skills"] => {
           const skillObj = skill as { id?: string; name?: string };
           const id = skillObj.id ?? skillObj.name;
           if (!id) return undefined;
-          // Khi cả id và name có thể thiếu, dùng id làm fallback cho name.
           return { id, name: skillObj.name ?? id };
         }
 
@@ -124,7 +117,6 @@ const generateId = () => {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
-// Chuẩn hóa dữ liệu job từ API về model chuẩn dùng trong UI.
 const normalizeJob = (raw: Record<string, unknown>): Job => {
   const employmentType = toEmploymentType(
     (raw.employmentType ?? raw.type ?? "") as string | undefined
@@ -160,7 +152,7 @@ const normalizeJob = (raw: Record<string, unknown>): Job => {
     experienceLevel:
       (raw.experienceLevel as Job["experienceLevel"]) ?? undefined,
     jobCategory,
-    employmentType: employmentType,
+    employmentType,
     type: employmentType,
     education: (raw.education as Job["education"]) ?? undefined,
     state: (raw.state as string) ?? undefined,
@@ -232,25 +224,22 @@ const PAGE_SIZE = 9;
 export default function JobsGrid() {
   const navigate = useNavigate();
   const { accessToken, company, user } = useAuthStore();
+  const companyId = company?.id ?? user?.companyId ?? null;
 
-  // Trạng thái cục bộ theo dõi danh sách job, bộ lọc và tiến trình tải.
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<JobFilterState>({
     ...initialJobFilterState,
   });
-  // searchTerm: giá trị người dùng nhập; debouncedSearch: giá trị delay dùng gọi API.
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [totalResults, setTotalResults] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [actionJobId, setActionJobId] = useState<string | null>(null);
-
-  const companyId = company?.id ?? user?.companyId ?? null;
+  const [expiryDialogJob, setExpiryDialogJob] = useState<Job | null>(null);
 
   useEffect(() => {
-    // Debounce 300ms giúp gom chuỗi gõ liên tiếp trước khi gọi API.
     const handler = window.setTimeout(() => {
       setDebouncedSearch(searchTerm.trim());
     }, 300);
@@ -261,7 +250,6 @@ export default function JobsGrid() {
   }, [searchTerm]);
 
   useEffect(() => {
-    // Khi có đủ thông tin xác thực thì gọi dịch vụ tìm kiếm job.
     if (!accessToken || !companyId) {
       setJobs([]);
       setTotalResults(0);
@@ -276,7 +264,6 @@ export default function JobsGrid() {
       setLoading(true);
 
       try {
-        // Gọi API với query trên params và các bộ lọc trong body.
         const response = await jobService.searchJobs(
           companyId,
           {
@@ -292,7 +279,6 @@ export default function JobsGrid() {
 
         const rawJobs = extractJobsFromResponse(response);
         const normalizedJobs = rawJobs.map(normalizeJob);
-
         const total =
           typeof (response as { totalElements?: number }).totalElements ===
           "number"
@@ -302,21 +288,17 @@ export default function JobsGrid() {
             : normalizedJobs.length;
 
         if (active) {
-          // Chỉ update state khi effect chưa bị hủy.
           setJobs(normalizedJobs);
           setTotalResults(total);
-          setTotalPages(
-            total > 0 ? Math.ceil(total / PAGE_SIZE) : 0
-          );
+          setTotalPages(total > 0 ? Math.ceil(total / PAGE_SIZE) : 0);
         }
-      } catch (err) {
+      } catch (error) {
         if (controller.signal.aborted) {
-          console.log(`Fetch jobs request was aborted: ${err}`);
+          console.log(`Fetch jobs request was aborted: ${error}`);
           return;
         }
 
         if (active) {
-          // Nếu lỗi thì dùng dữ liệu mặc định để tránh giao diện trống.
           const fallbackSlice = fallbackJobs.slice(
             page * PAGE_SIZE,
             page * PAGE_SIZE + PAGE_SIZE
@@ -342,7 +324,7 @@ export default function JobsGrid() {
       active = false;
       controller.abort();
     };
-  }, [accessToken, companyId, filters, debouncedSearch, page]);
+  }, [accessToken, companyId, debouncedSearch, filters, page]);
 
   useEffect(() => {
     if (totalPages === 0) {
@@ -359,9 +341,18 @@ export default function JobsGrid() {
 
   const hasJobs = jobs.length > 0;
 
+  const upsertJob = useCallback((updatedJob: unknown) => {
+    const normalized = normalizeJob(updatedJob as Record<string, unknown>);
+    setJobs((prev) =>
+      prev.map((job) => (job.id === normalized.id ? { ...job, ...normalized } : job))
+    );
+    setExpiryDialogJob((prev) =>
+      prev?.id === normalized.id ? { ...prev, ...normalized } : prev
+    );
+  }, []);
+
   const handleSelectJob = useCallback(
     (jobId: string) => {
-      // Khi chọn job thì điều hướng sang trang kanban tương ứng.
       navigate(`/kanbans/${jobId}`);
     },
     [navigate]
@@ -374,24 +365,18 @@ export default function JobsGrid() {
     [navigate]
   );
 
-  const handleFilterChange = useCallback(
-    (nextFilters: JobFilterState) => {
-      // Cập nhật bộ lọc khi người dùng thay đổi các checkbox.
-      setFilters(nextFilters);
-      setPage(0);
-    },
-    []
-  );
+  const handleFilterChange = useCallback((nextFilters: JobFilterState) => {
+    setFilters(nextFilters);
+    setPage(0);
+  }, []);
 
   const handleResetFilters = useCallback(() => {
-    // Đặt lại tất cả điều kiện lọc và từ khóa tìm kiếm.
     setFilters({ ...initialJobFilterState });
     setSearchTerm("");
     setPage(0);
   }, []);
 
   const handleSearchChange = useCallback((value: string) => {
-    // Đồng bộ ô tìm kiếm với state để kích hoạt debounce.
     setSearchTerm(value);
     setPage(0);
   }, []);
@@ -406,35 +391,39 @@ export default function JobsGrid() {
     [page, totalPages]
   );
 
-  const handleCloseJob = useCallback(async (jobId: string) => {
-    setActionJobId(jobId);
-    try {
-      await jobService.closeJob(jobId);
-      setJobs((prev) =>
-        prev.map((job) =>
-          job.id === jobId ? { ...job, status: Status.CLOSED } : job
-        )
-      );
-      toast.success("Đã đóng công việc. Ứng viên không thể ứng tuyển thêm.");
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Không thể đóng công việc.";
-      toast.error(message);
-    } finally {
-      setActionJobId(null);
-    }
+  const handleOpenExpiryDialog = useCallback((job: Job) => {
+    setExpiryDialogJob(job);
   }, []);
+
+  const handleCloseExpiryDialog = useCallback(() => {
+    if (actionJobId) return;
+    setExpiryDialogJob(null);
+  }, [actionJobId]);
+
+  const handleCloseJob = useCallback(
+    async (jobId: string) => {
+      setActionJobId(jobId);
+      try {
+        const updatedJob = await jobService.closeJob(jobId);
+        upsertJob(updatedJob);
+        toast.success("Đã đóng công việc. Ứng viên không thể ứng tuyển thêm.");
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Không thể đóng công việc.";
+        toast.error(message);
+      } finally {
+        setActionJobId(null);
+      }
+    },
+    [upsertJob]
+  );
 
   const handleToggleAiScreening = useCallback(
     async (jobId: string, enabled: boolean) => {
       setActionJobId(jobId);
       try {
-        await jobService.updateAiScreening(jobId, enabled);
-        setJobs((prev) =>
-          prev.map((job) =>
-            job.id === jobId ? { ...job, aiScreeningEnabled: enabled } : job
-          )
-        );
+        const updatedJob = await jobService.updateAiScreening(jobId, enabled);
+        upsertJob(updatedJob);
         toast.success(
           enabled
             ? "Đã bật sàng lọc AI cho công việc này."
@@ -450,7 +439,33 @@ export default function JobsGrid() {
         setActionJobId(null);
       }
     },
-    []
+    [upsertJob]
+  );
+
+  const handleSaveExpiry = useCallback(
+    async (jobId: string, payload: JobSettingsPayload) => {
+      setActionJobId(jobId);
+      try {
+        const updatedJob = await jobService.updateJobSettings(jobId, payload);
+        upsertJob(updatedJob);
+        setExpiryDialogJob(null);
+
+        if (payload.status === Status.ACTIVE) {
+          toast.success("Đã mở lại công việc và cập nhật hạn tuyển dụng.");
+        } else {
+          toast.success("Đã gia hạn công việc.");
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Không thể cập nhật ngày kết thúc.";
+        toast.error(message);
+      } finally {
+        setActionJobId(null);
+      }
+    },
+    [upsertJob]
   );
 
   const pageNumbers = useMemo(() => {
@@ -471,10 +486,8 @@ export default function JobsGrid() {
 
   const canGoPrevious = page > 0;
   const canGoNext = totalPages > 0 && page < totalPages - 1;
-
   const hasPagination =
     typeof totalResults === "number" && totalResults > 0 && totalPages > 0;
-
   const startItem = hasPagination ? page * PAGE_SIZE + 1 : 0;
   const endItem = hasPagination
     ? Math.min(totalResults as number, startItem + jobs.length - 1)
@@ -485,7 +498,7 @@ export default function JobsGrid() {
       {[...Array(SKELETON_COUNT)].map((_, index) => (
         <div
           key={index}
-          className="h-56 rounded-2xl border border-border bg-card/80 animate-pulse"
+          className="h-56 animate-pulse rounded-2xl border border-border bg-card/80"
         />
       ))}
     </div>
@@ -493,13 +506,11 @@ export default function JobsGrid() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-muted/20 to-background">
-      {/* Bố cục trang việc làm gồm breadcrumb, bộ lọc và danh sách kết quả. */}
-      {/* Page metadata */}
       <PageMeta title="HR - CareerGraph" description="HR - CareerGraph" />
-      {/* Breadcrumb */}
       <PageBreadcrumb pageTitle="Công việc" />
+
       <div className="container mx-auto px-4 pb-12">
-        <div className="mx-auto max-w-6xl lg:max-w-7xl space-y-8">
+        <div className="mx-auto max-w-6xl space-y-8 lg:max-w-7xl">
           <JobFilters
             value={filters}
             onChange={handleFilterChange}
@@ -522,6 +533,7 @@ export default function JobsGrid() {
                       onSelectJob={() => handleSelectJob(job.id)}
                       onCloseJob={handleCloseJob}
                       onToggleAiScreening={handleToggleAiScreening}
+                      onOpenExpiryDialog={handleOpenExpiryDialog}
                       isActionLoading={actionJobId === job.id}
                     />
                     {job.status === Status.DRAFT && (
@@ -565,9 +577,9 @@ export default function JobsGrid() {
             {hasPagination && (
               <div className="flex flex-col gap-4 rounded-3xl border border-border bg-card/40 p-4 backdrop-blur-xl dark:bg-slate-900/40 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-sm font-medium text-muted-foreground">
-                  Hiển thị {startItem.toLocaleString("vi-VN")} - {endItem.toLocaleString("vi-VN")} trong {(
-                    totalResults as number
-                  ).toLocaleString("vi-VN")} công việc
+                  Hiển thị {startItem.toLocaleString("vi-VN")} -{" "}
+                  {endItem.toLocaleString("vi-VN")} trong{" "}
+                  {(totalResults as number).toLocaleString("vi-VN")} công việc
                 </span>
                 <div className="flex items-center gap-2">
                   <Button
@@ -603,6 +615,14 @@ export default function JobsGrid() {
           </section>
         </div>
       </div>
+
+      <JobExpiryDialog
+        open={Boolean(expiryDialogJob)}
+        job={expiryDialogJob}
+        isSubmitting={Boolean(actionJobId)}
+        onClose={handleCloseExpiryDialog}
+        onSave={handleSaveExpiry}
+      />
     </div>
   );
 }

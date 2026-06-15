@@ -1,34 +1,33 @@
+import { KeyboardEvent, MouseEvent, useEffect, useRef, useState } from "react";
 import {
-  Briefcase,
-  MapPin,
-  Eye,
+  Ban,
   Bookmark,
-  ThumbsUp,
-  Share2,
+  Briefcase,
+  CalendarDays,
+  Check,
+  Eye,
+  MapPin,
   MoreVertical,
+  Share2,
+  Sparkles,
+  ThumbsUp,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { formatDateYMD } from "@/lib/dateUtils";
 import { Job } from "@/types/job";
 import { Status } from "@/enums/commonEnum";
-import { EmploymentType, JOB_CATEGORY_OPTIONS, JobCategory } from "@/enums/workEnum";
-import { KeyboardEvent, MouseEvent } from "react";
-import { formatDateYMD } from "@/lib/dateUtils";
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-// JobCard hiển thị thông tin tóm tắt của một job kèm các chỉ số tương tác.
+  EmploymentType,
+  JOB_CATEGORY_OPTIONS,
+  JobCategory,
+} from "@/enums/workEnum";
 
 interface JobCardProps {
   job: Job;
   onSelectJob?: () => void;
   onCloseJob?: (jobId: string) => void;
   onToggleAiScreening?: (jobId: string, enabled: boolean) => void;
+  onOpenExpiryDialog?: (job: Job) => void;
   isActionLoading?: boolean;
 }
 
@@ -37,58 +36,71 @@ export const JobCard = ({
   onSelectJob,
   onCloseJob,
   onToggleAiScreening,
+  onOpenExpiryDialog,
   isActionLoading = false,
 }: JobCardProps) => {
-  // Màu cho từng loại công việc giúp người xem nhận diện nhanh.
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
   const typeColors = {
     [EmploymentType.FULL_TIME]: {
       badge: "text-cyan-700 bg-cyan-100 dark:text-cyan-300 dark:bg-cyan-950/30",
       icon: "text-cyan-600 dark:text-cyan-400",
       bg: "bg-cyan-100 dark:bg-cyan-950/30",
-      gradient: "from-cyan-500/20 via-transparent to-transparent dark:from-cyan-400/15 dark:via-transparent dark:to-transparent",
+      gradient:
+        "from-cyan-500/20 via-transparent to-transparent dark:from-cyan-400/15 dark:via-transparent dark:to-transparent",
     },
     [EmploymentType.PART_TIME]: {
       badge: "text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-950/30",
       icon: "text-blue-600 dark:text-blue-400",
       bg: "bg-blue-100 dark:bg-blue-950/30",
-      gradient: "from-sky-500/20 via-transparent to-transparent dark:from-sky-400/15 dark:via-transparent dark:to-transparent",
+      gradient:
+        "from-sky-500/20 via-transparent to-transparent dark:from-sky-400/15 dark:via-transparent dark:to-transparent",
     },
     [EmploymentType.CONTRACT]: {
       badge:
         "text-violet-700 bg-violet-100 dark:text-violet-300 dark:bg-violet-950/30",
       icon: "text-violet-600 dark:text-violet-400",
       bg: "bg-violet-100 dark:bg-violet-950/30",
-      gradient: "from-violet-500/20 via-transparent to-transparent dark:from-violet-500/15 dark:via-transparent dark:to-transparent",
+      gradient:
+        "from-violet-500/20 via-transparent to-transparent dark:from-violet-500/15 dark:via-transparent dark:to-transparent",
     },
     [EmploymentType.INTERNSHIP]: {
       badge:
         "text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-950/30",
       icon: "text-green-600 dark:text-green-400",
       bg: "bg-green-100 dark:bg-green-950/30",
-      gradient: "from-emerald-500/20 via-transparent to-transparent dark:from-emerald-400/15 dark:via-transparent dark:to-transparent",
+      gradient:
+        "from-emerald-500/20 via-transparent to-transparent dark:from-emerald-400/15 dark:via-transparent dark:to-transparent",
     },
     [EmploymentType.FREELANCE]: {
       badge:
         "text-orange-700 bg-orange-100 dark:text-orange-300 dark:bg-orange-950/30",
       icon: "text-orange-600 dark:text-orange-400",
       bg: "bg-orange-100 dark:bg-orange-950/30",
-      gradient: "from-amber-500/20 via-transparent to-transparent dark:from-amber-400/15 dark:via-transparent dark:to-transparent",
+      gradient:
+        "from-amber-500/20 via-transparent to-transparent dark:from-amber-400/15 dark:via-transparent dark:to-transparent",
     },
     [EmploymentType.TEMPORARY]: {
       badge: "text-pink-700 bg-pink-100 dark:text-pink-300 dark:bg-pink-950/30",
       icon: "text-pink-600 dark:text-pink-400",
       bg: "bg-pink-100 dark:bg-pink-950/30",
-      gradient: "from-pink-500/20 via-transparent to-transparent dark:from-pink-400/15 dark:via-transparent dark:to-transparent",
+      gradient:
+        "from-pink-500/20 via-transparent to-transparent dark:from-pink-400/15 dark:via-transparent dark:to-transparent",
     },
   } as const;
 
   const color =
-    typeColors[job.type as keyof typeof typeColors] ||
+    typeColors[job.type as keyof typeof typeColors] ??
     typeColors[EmploymentType.FULL_TIME];
 
-  // Nếu job không có trạng thái thì mặc định ACTIVE để hiển thị badge.
   const currentStatus = job.status ?? Status.ACTIVE;
+  const today = new Date().toISOString().slice(0, 10);
+  const expiryDate = job.expiryDate?.slice(0, 10) ?? "";
   const isClosed = currentStatus === Status.CLOSED;
+  const isExpired = Boolean(expiryDate) && expiryDate < today && !isClosed;
+  const extendActionLabel =
+    isClosed || isExpired ? "Mở lại công việc" : "Gia hạn công việc";
 
   const typeLabelMap: Partial<Record<EmploymentType, string>> = {
     [EmploymentType.FULL_TIME]: "Toàn thời gian",
@@ -99,7 +111,6 @@ export const JobCard = ({
     [EmploymentType.TEMPORARY]: "Tạm thời",
   };
 
-  // Bảng ánh xạ trạng thái sang nhãn tiếng Việt.
   const statusLabelMap: Record<Status, string> = {
     [Status.ACTIVE]: "Đang tuyển",
     [Status.INACTIVE]: "Tạm dừng",
@@ -108,12 +119,36 @@ export const JobCard = ({
   };
 
   const jobCategoryLabel =
-    JOB_CATEGORY_OPTIONS.find((option) => option.value === job.jobCategory)?.label ??
+    JOB_CATEGORY_OPTIONS.find((option) => option.value === job.jobCategory)
+      ?.label ??
     (job.jobCategory as JobCategory | undefined) ??
     "";
 
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isMenuOpen]);
+
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    // Cho phép mở job bằng phím Enter hoặc Space để đảm bảo accessibility.
     if (!onSelectJob) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -125,7 +160,6 @@ export const JobCard = ({
     event.stopPropagation();
   };
 
-  // Màu cho trạng thái hiển thị badge tương ứng.
   const statusColor =
     currentStatus === Status.ACTIVE
       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
@@ -135,71 +169,114 @@ export const JobCard = ({
       ? "bg-slate-200 text-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
       : "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-300";
 
+  const handleMenuAction = (action: () => void) => {
+    setIsMenuOpen(false);
+    action();
+  };
+
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onSelectJob}
       onKeyDown={handleKeyDown}
-      className="group relative overflow-hidden p-6 rounded-2xl border border-border bg-card dark:bg-slate-900 hover:bg-accent/50 dark:hover:bg-slate-800/70 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] flex flex-col justify-between cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 focus:ring-offset-background"
+      className="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all duration-300 hover:scale-[1.02] hover:bg-accent/50 hover:shadow-lg active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 focus:ring-offset-background dark:bg-slate-900 dark:hover:bg-slate-800/70"
     >
       <div
         className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${color.gradient} opacity-60 transition-opacity duration-300 group-hover:opacity-80`}
       />
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            aria-label="Tùy chọn công việc"
-            disabled={isActionLoading}
-            onClick={stopCardNavigation}
-            className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-background/90 text-muted-foreground shadow-sm transition hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <MoreVertical className="h-4 w-4" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56 !bg-popover !border !border-border !shadow-md" onClick={stopCardNavigation}>
-          <DropdownMenuItem
-            disabled={isClosed || isActionLoading}
-            onClick={() => onCloseJob?.(job.id)}
-            className="text-red-600 focus:text-red-600 dark:text-red-400"
-          >
-            Đóng công việc
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuCheckboxItem
-            checked={Boolean(job.aiScreeningEnabled)}
-            disabled={isClosed || isActionLoading}
-            onSelect={(event) => event.preventDefault()}
-            onCheckedChange={(checked) => onToggleAiScreening?.(job.id, checked)}
-          >
-            Cho phép AI sàng lọc
-          </DropdownMenuCheckboxItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div ref={menuRef} className="absolute right-3 top-3 z-20">
+        <button
+          type="button"
+          aria-label="Tùy chọn công việc"
+          aria-expanded={isMenuOpen}
+          disabled={isActionLoading}
+          onClick={(event) => {
+            stopCardNavigation(event);
+            setIsMenuOpen((prev) => !prev);
+          }}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-white text-muted-foreground shadow-sm transition hover:bg-slate-100 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-900"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
 
-      {/* Thẻ hiển thị thông tin chính và hành động nhanh cho job. */}
-      {/* Phần đầu: biểu tượng và badge loại công việc */}
-      <div className="flex items-center justify-between mb-3 pr-8">
-        <div className={`p-2.5 rounded-xl ${color.bg}`}>
-          <Briefcase className={`w-5 h-5 ${color.icon}`} />
+        {isMenuOpen && (
+          <div
+            className="absolute right-0 mt-2 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.24)] dark:border-slate-700 dark:bg-slate-950"
+            onClick={stopCardNavigation}
+          >
+            <button
+              type="button"
+              disabled={isClosed || isActionLoading}
+              onClick={() =>
+                handleMenuAction(() => {
+                  onCloseJob?.(job.id);
+                })
+              }
+              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-red-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-400 dark:hover:bg-slate-900"
+            >
+              <Ban className="h-4 w-4" />
+              <span>Đóng công việc</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={isClosed || isActionLoading}
+              onClick={() =>
+                handleMenuAction(() => {
+                  onToggleAiScreening?.(job.id, !Boolean(job.aiScreeningEnabled));
+                })
+              }
+              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-200 dark:hover:bg-slate-900"
+            >
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900">
+                {job.aiScreeningEnabled ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                )}
+              </span>
+              <span>Cho phép AI sàng lọc</span>
+            </button>
+
+            <div className="h-px bg-slate-200 dark:bg-slate-800" />
+
+            <button
+              type="button"
+              disabled={isActionLoading}
+              onClick={() =>
+                handleMenuAction(() => {
+                  onOpenExpiryDialog?.(job);
+                })
+              }
+              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-200 dark:hover:bg-slate-900"
+            >
+              <CalendarDays className="h-4 w-4" />
+              <span>{extendActionLabel}</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="mb-3 flex items-center justify-between pr-8">
+        <div className={`rounded-xl p-2.5 ${color.bg}`}>
+          <Briefcase className={`h-5 w-5 ${color.icon}`} />
         </div>
         <Badge className={`rounded-full px-2 py-1 text-sm ${color.badge}`}>
           {typeLabelMap[job.type as EmploymentType] ?? job.type}
         </Badge>
       </div>
 
-      {/* Tiêu đề, phòng ban và badge trạng thái */}
-      <div className="flex items-start justify-between mb-3 cursor-pointer">
-        <div className="flex-1 min-w-0">
+      <div className="mb-3 flex items-start justify-between">
+        <div className="min-w-0 flex-1">
           <h3
-            className="font-bold text-lg text-foreground dark:text-slate-100 group-hover:text-primary transition-colors line-clamp-1"
+            className="line-clamp-1 text-lg font-bold text-foreground transition-colors group-hover:text-primary dark:text-slate-100"
             title={job.title}
           >
             {job.title}
           </h3>
-          <p className="text-sm text-muted-foreground dark:text-slate-300 mt-1">
+          <p className="mt-1 text-sm text-muted-foreground dark:text-slate-300">
             {jobCategoryLabel}
           </p>
         </div>
@@ -208,33 +285,29 @@ export const JobCard = ({
         </Badge>
       </div>
 
-      {/* Địa điểm và ngày đăng tin */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground dark:text-slate-400 mb-4">
+      <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground dark:text-slate-400">
         <span className="flex items-center gap-1">
-          <MapPin className="w-3 h-3" />
+          <MapPin className="h-3 w-3" />
           {job.city}
         </span>
-        <span>
-          {formatDateYMD(job.postedDate)}
-        </span>
+        <span>{formatDateYMD(job.postedDate)}</span>
       </div>
 
-      {/* Các chỉ số tương tác của tin tuyển dụng */}
-      <div className="flex items-center text-sm text-muted-foreground mt-auto justify-between">
+      <div className="mt-auto flex items-center justify-between text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
-          <Bookmark className="w-4 h-4" />
+          <Bookmark className="h-4 w-4" />
           <span>{job.applicants}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Eye className="w-4 h-4" />
+          <Eye className="h-4 w-4" />
           <span>{job.views}</span>
         </div>
         <div className="flex items-center gap-2">
-          <ThumbsUp className="w-4 h-4" />
+          <ThumbsUp className="h-4 w-4" />
           <span>{job.likes}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Share2 className="w-4 h-4" />
+          <Share2 className="h-4 w-4" />
           <span>{job.shares}</span>
         </div>
       </div>

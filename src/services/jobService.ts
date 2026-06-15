@@ -42,6 +42,12 @@ type JobSearchPayload = {
   size?: number;
 };
 
+type JobSettingsPayload = {
+  aiScreeningEnabled?: boolean;
+  status?: Status;
+  expiryDate?: string;
+};
+
 type JobRecruitmentPayload = {
   jobId: string;
   coverLetter: boolean;
@@ -361,20 +367,35 @@ const jobService = {
     if (!jobId) {
       throw new Error("Thiếu mã công việc để đóng tin tuyển dụng.");
     }
-    const response = await api.delete(`/jobs/${jobId}`);
+    const response = await api.patch(`/jobs/${jobId}/settings`, {
+      status: toUpperSnake(Status.CLOSED),
+    });
     return unwrapResponse(response.data);
   },
 
   updateAiScreening: async (jobId: string, aiScreeningEnabled: boolean) => {
+    return jobService.updateJobSettings(jobId, { aiScreeningEnabled });
+  },
+
+  updateJobSettings: async (jobId: string, payload: JobSettingsPayload) => {
     if (!jobId) {
-      throw new Error("Thiếu mã công việc để cập nhật sàng lọc AI.");
+      throw new Error("Thiếu mã công việc để cập nhật cài đặt.");
     }
-    const response = await api.patch(`/jobs/${jobId}/settings`, {
-      aiScreeningEnabled,
+
+    const requestBody = compactObject({
+      aiScreeningEnabled: payload.aiScreeningEnabled,
+      status: toUpperSnake(payload.status as string | undefined),
+      expiryDate: payload.expiryDate?.trim() || undefined,
     });
+
+    if (Object.keys(requestBody).length === 0) {
+      throw new Error("Chưa có thay đổi nào để cập nhật.");
+    }
+
+    const response = await api.patch(`/jobs/${jobId}/settings`, requestBody);
     return unwrapResponse(response.data);
   },
 };
 
 export { jobService, mapJobToPayload };
-export type { JobRecruitmentPayload };
+export type { JobRecruitmentPayload, JobSettingsPayload };
