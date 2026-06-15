@@ -83,7 +83,7 @@ export const ApplicationRequirementsStep = ({
             htmlFor="resume"
             className="text-base font-medium cursor-pointer"
           >
-            Resume
+            CV
           </Label>
           <Checkbox
             id="resume"
@@ -98,7 +98,7 @@ export const ApplicationRequirementsStep = ({
             htmlFor="coverLetter"
             className="text-base font-medium cursor-pointer"
           >
-            Cover Letter
+            Thư giới thiệu
           </Label>
           <Checkbox
             id="coverLetter"
@@ -111,14 +111,14 @@ export const ApplicationRequirementsStep = ({
         </div>
       </div>
 
-      <div className="pt-8 rounded-2xl border border-dashed border-border/60 bg-muted/10 dark:bg-slate-900/40 px-6 py-6">
+      {/* <div className="pt-8 rounded-2xl border border-dashed border-border/60 bg-muted/10 dark:bg-slate-900/40 px-6 py-6">
         <h3 className="text-xl font-semibold mb-2">
           Câu hỏi sàng lọc ứng viên (Tuỳ chọn)
         </h3>
         <p className="text-muted-foreground text-sm">
           Tính năng câu hỏi sàng lọc sẽ được bổ sung trong phiên bản tiếp theo.
         </p>
-      </div>
+      </div> */}
 
       <div className="flex flex-col items-end gap-2 pt-6">
         <div className="flex w-full items-center justify-between">

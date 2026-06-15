@@ -15,6 +15,13 @@ const toMap = (items: EnumOption[]) =>
     return acc;
   }, {});
 
+const localLabelMaps = {
+  experience: toMap(EXPERIENCE_LEVEL_OPTIONS),
+  employment: toMap(EMPLOYMENT_TYPE_OPTIONS),
+  education: toMap(EDUCATION_OPTIONS),
+  category: toMap(JOB_CATEGORY_OPTIONS),
+};
+
 export const useJobEnums = () => {
   const [experienceLevels, setExperienceLevels] = useState<EnumOption[]>(
     EXPERIENCE_LEVEL_OPTIONS
@@ -37,19 +44,31 @@ export const useJobEnums = () => {
         if (!mounted || !data) return;
         if (data.experienceLevels?.length)
           setExperienceLevels(
-            data.experienceLevels.map((x) => ({ value: x.code, label: x.name }))
+            data.experienceLevels.map((x) => ({
+              value: x.code,
+              label: localLabelMaps.experience[x.code] ?? x.name,
+            }))
           );
         if (data.employmentTypes?.length)
           setEmploymentTypes(
-            data.employmentTypes.map((x) => ({ value: x.code, label: x.name }))
+            data.employmentTypes.map((x) => ({
+              value: x.code,
+              label: localLabelMaps.employment[x.code] ?? x.name,
+            }))
           );
         if (data.educationTypes?.length)
           setEducationTypes(
-            data.educationTypes.map((x) => ({ value: x.code, label: x.name }))
+            data.educationTypes.map((x) => ({
+              value: x.code,
+              label: localLabelMaps.education[x.code] ?? x.name,
+            }))
           );
         if (data.jobCategories?.length)
           setJobCategories(
-            data.jobCategories.map((x) => ({ value: x.code, label: x.name }))
+            data.jobCategories.map((x) => ({
+              value: x.code,
+              label: localLabelMaps.category[x.code] ?? x.name,
+            }))
           );
       } catch (error) {
         console.error("Failed to load job enums:", error);

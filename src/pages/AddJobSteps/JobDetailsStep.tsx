@@ -42,6 +42,10 @@ export const JobDetailsStep = ({
   onNext,
   isSubmitting = false,
 }: JobDetailsStepProps) => {
+  const [noExperienceRequired, setNoExperienceRequired] = useState(
+    jobData.minExperience == null && jobData.maxExperience == null
+  );
+
   const normalizeEnumCode = (value?: string | null) => {
     if (!value) return undefined;
     return value
@@ -120,6 +124,12 @@ export const JobDetailsStep = ({
   const [responsibilities, setResponsibilities] = useState<string[]>(
     jobData.responsibilities || []
   );
+
+  useEffect(() => {
+    setNoExperienceRequired(
+      jobData.minExperience == null && jobData.maxExperience == null
+    );
+  }, [jobData.minExperience, jobData.maxExperience]);
 
   useEffect(() => {
     // Khi đã có danh sách tỉnh, tự động chọn tỉnh khớp dữ liệu job cũ.
@@ -208,10 +218,20 @@ export const JobDetailsStep = ({
     if (!jobData.title || jobData.title.trim() === "") err.title = "Required";
     if (!jobData.description || jobData.description.trim() === "")
       err.description = "Required";
-    if (jobData.minExperience === undefined || jobData.minExperience === null || Number.isNaN(Number(jobData.minExperience))) {
+    if (
+      !noExperienceRequired &&
+      (jobData.minExperience === undefined ||
+        jobData.minExperience === null ||
+        Number.isNaN(Number(jobData.minExperience)))
+    ) {
       err.minExperience = "Required";
     }
-    if (jobData.maxExperience === undefined || jobData.maxExperience === null || Number.isNaN(Number(jobData.maxExperience))) {
+    if (
+      !noExperienceRequired &&
+      (jobData.maxExperience === undefined ||
+        jobData.maxExperience === null ||
+        Number.isNaN(Number(jobData.maxExperience)))
+    ) {
       err.maxExperience = "Required";
     }
     if (!resolvedExperienceLevel || !normalizeEnumCode(String(resolvedExperienceLevel))) {
@@ -228,7 +248,13 @@ export const JobDetailsStep = ({
       err.location = "State and City are required";
     }
 
-    if (jobData.minExperience && jobData.maxExperience) {
+    if (
+      !noExperienceRequired &&
+      jobData.minExperience !== undefined &&
+      jobData.minExperience !== null &&
+      jobData.maxExperience !== undefined &&
+      jobData.maxExperience !== null
+    ) {
       const min = Number(jobData.minExperience);
       const max = Number(jobData.maxExperience);
       if (Number.isNaN(min) || Number.isNaN(max) || min > max) {
@@ -270,6 +296,12 @@ export const JobDetailsStep = ({
     }
   };
 
+  const parseIntegerOrUndefined = (value: string) => {
+    if (!value.trim()) return undefined;
+    const parsed = parseInt(value, 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  };
+
   return (
     <div className="space-y-6">
       {/* Phần này chứa toàn bộ trường thông tin cơ bản, gợi ý AI và yêu cầu chi tiết. */}
@@ -282,11 +314,11 @@ export const JobDetailsStep = ({
             touched.title && error.title && "text-red-600"
           )}
         >
-          Job Title<span className="text-destructive">*</span>
+          Tiêu đề công việc<span className="text-destructive">*</span>
         </Label>
         <Input
           id="title"
-          placeholder="Job Title"
+          placeholder="Nhập tiêu đề công việc"
           value={jobData.title || ""}
           onChange={(e) => {
             onUpdate({ ...jobData, title: e.target.value });
@@ -321,12 +353,12 @@ export const JobDetailsStep = ({
             touched.description && error.description && "text-red-600"
           )}
         >
-          Description<span className="text-destructive">*</span>
+          Mô tả công việc<span className="text-destructive">*</span>
         </Label>
         <div className="mt-2 border rounded-md">
           <RichTextarea
             id="description"
-            placeholder="Enter job description..."
+            placeholder="Nhập mô tả công việc"
             value={jobData.description || ""}
             onChange={(value) => {
               onUpdate({ ...jobData, description: value });
@@ -342,12 +374,12 @@ export const JobDetailsStep = ({
 
       {/* Qualifications */}
       <div>
-        <Label className="text-sm font-semibold">Qualifications</Label>
+        <Label className="text-sm font-semibold">Yêu cầu công việc</Label>
         <div className="mt-2 space-y-2">
           {qualifications.map((qual, index) => (
             <div key={index} className="flex gap-2">
               <Input
-                placeholder="Add an item"
+                placeholder="Nhập một yêu cầu"
                 value={qual}
                 onChange={(e) =>
                   updateItem("qualifications", index, e.target.value)
@@ -368,19 +400,19 @@ export const JobDetailsStep = ({
             onClick={() => addItem("qualifications")}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add an item
+            Thêm yêu cầu
           </Button>
         </div>
       </div>
 
       {/* Minimum Qualifications */}
       <div>
-        <Label className="text-sm font-semibold">Minimum Qualifications</Label>
+        <Label className="text-sm font-semibold">Yêu cầu tối thiểu</Label>
         <div className="mt-2 space-y-2">
           {minQualifications.map((qual, index) => (
             <div key={index} className="flex gap-2">
               <Input
-                placeholder="Add an item"
+                placeholder="Nhập một yêu cầu tối thiểu"
                 value={qual}
                 onChange={(e) =>
                   updateItem("minQualifications", index, e.target.value)
@@ -401,19 +433,19 @@ export const JobDetailsStep = ({
             onClick={() => addItem("minQualifications")}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add an item
+            Thêm yêu cầu tối thiểu
           </Button>
         </div>
       </div>
 
       {/* Responsibilities */}
       <div>
-        <Label className="text-sm font-semibold">Responsibilities</Label>
+        <Label className="text-sm font-semibold">Trách nhiệm công việc</Label>
         <div className="mt-2 space-y-2">
           {responsibilities.map((resp, index) => (
             <div key={index} className="flex gap-2">
               <Input
-                placeholder="Add an item"
+                placeholder="Nhập một trách nhiệm"
                 value={resp}
                 onChange={(e) =>
                   updateItem("responsibilities", index, e.target.value)
@@ -434,7 +466,7 @@ export const JobDetailsStep = ({
             onClick={() => addItem("responsibilities")}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add an item
+            Thêm trách nhiệm
           </Button>
         </div>
       </div>
@@ -451,15 +483,47 @@ export const JobDetailsStep = ({
               : ""
           )}
         >
-          Experience (Month)<span className="text-destructive">*</span>
+          Kinh nghiệm làm việc (tháng)
         </Label>
+        <div className="flex items-center gap-2 mt-2 mb-3">
+          <Checkbox
+            id="no-experience-required"
+            checked={noExperienceRequired}
+            onCheckedChange={(checked) => {
+              const enabled = Boolean(checked);
+              setNoExperienceRequired(enabled);
+              if (enabled) {
+                onUpdate({
+                  ...jobData,
+                  minExperience: undefined,
+                  maxExperience: undefined,
+                });
+                setError((prev) => ({
+                  ...prev,
+                  minExperience: undefined,
+                  maxExperience: undefined,
+                }));
+              }
+            }}
+          />
+          <Label
+            htmlFor="no-experience-required"
+            className="font-normal cursor-pointer"
+          >
+            Không yêu cầu nhập số tháng kinh nghiệm
+          </Label>
+        </div>
         <div className="grid grid-cols-3 gap-4 mt-2">
           <Input
-            placeholder="Min Experience"
+            placeholder="Kinh nghiệm tối thiểu"
             type="number"
-            value={jobData.minExperience || ""}
+            value={jobData.minExperience ?? ""}
+            disabled={noExperienceRequired}
             onChange={(e) => {
-              onUpdate({ ...jobData, minExperience: parseInt(e.target.value) });
+              onUpdate({
+                ...jobData,
+                minExperience: parseIntegerOrUndefined(e.target.value),
+              });
               setTouched((t) => ({ ...t, minExperience: true }));
             }}
             onFocus={() =>
@@ -467,11 +531,15 @@ export const JobDetailsStep = ({
             }
           />
           <Input
-            placeholder="Max Experience"
+            placeholder="Kinh nghiệm tối đa"
             type="number"
-            value={jobData.maxExperience || ""}
+            value={jobData.maxExperience ?? ""}
+            disabled={noExperienceRequired}
             onChange={(e) => {
-              onUpdate({ ...jobData, maxExperience: parseInt(e.target.value) });
+              onUpdate({
+                ...jobData,
+                maxExperience: parseIntegerOrUndefined(e.target.value),
+              });
               setTouched((t) => ({ ...t, maxExperience: true }));
             }}
           />
@@ -484,7 +552,7 @@ export const JobDetailsStep = ({
             }}
           >
             <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
-              <SelectValue placeholder="Experience Level" />
+              <SelectValue placeholder="Cấp bậc kinh nghiệm" />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
               {experienceLevelOptions.map(({ value, label }) => (
@@ -508,7 +576,7 @@ export const JobDetailsStep = ({
               : ""
           )}
         >
-          Listing Type<span className="text-destructive">*</span>
+          Loại tin tuyển dụng<span className="text-destructive">*</span>
         </Label>
 
         <div className="grid grid-cols-3 gap-4 mt-2">
@@ -521,7 +589,7 @@ export const JobDetailsStep = ({
             }}
           >
             <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
-              <SelectValue placeholder="Job Function" />
+              <SelectValue placeholder="Chọn nhóm công việc" />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
               {jobCategoryOptions.map(({ value, label }) => (
@@ -541,7 +609,7 @@ export const JobDetailsStep = ({
             }}
           >
             <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
-              <SelectValue placeholder="Employment Type" />
+              <SelectValue placeholder="Chọn hình thức làm việc" />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
               {employmentTypeOptions.map(({ value, label }) => (
@@ -560,7 +628,7 @@ export const JobDetailsStep = ({
             }
           >
             <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
-              <SelectValue placeholder="Education" />
+              <SelectValue placeholder="Chọn trình độ học vấn" />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
               {educationOptions.map(({ value, label }) => (
@@ -581,7 +649,7 @@ export const JobDetailsStep = ({
             touched.country && error.location && "text-red-600"
           )}
         >
-          Location<span className="text-destructive">*</span>
+          Địa điểm làm việc<span className="text-destructive">*</span>
         </Label>
         <div className="flex items-center gap-2 mt-2 mb-4">
           <Checkbox
@@ -592,7 +660,7 @@ export const JobDetailsStep = ({
             }
           />
           <Label htmlFor="remote" className="font-normal cursor-pointer">
-            Remote Job?
+            Công việc từ xa
           </Label>
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -619,7 +687,7 @@ export const JobDetailsStep = ({
             <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
               <SelectValue
                 placeholder={
-                  loadingProvinces ? "Loading..." : "Select Province"
+                  loadingProvinces ? "Đang tải..." : "Chọn tỉnh/thành phố"
                 }
               />
             </SelectTrigger>
@@ -653,7 +721,7 @@ export const JobDetailsStep = ({
             <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
               <SelectValue
                 placeholder={
-                  loadingDistricts ? "Loading..." : "Select District"
+                  loadingDistricts ? "Đang tải..." : "Chọn quận/huyện"
                 }
               />
             </SelectTrigger>
@@ -683,7 +751,7 @@ export const JobDetailsStep = ({
           >
             <SelectTrigger className="focus:ring-2 focus:ring-blue-200 focus:border-blue-200 border-gray-300">
               <SelectValue
-                placeholder={loadingWards ? "Loading..." : "Select Ward"}
+                placeholder={loadingWards ? "Đang tải..." : "Chọn phường/xã"}
               />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-900 z-50 max-h-[250px] overflow-y-auto">
@@ -716,7 +784,7 @@ export const JobDetailsStep = ({
 
       {/* Skills */}
       <div>
-        <Label className="text-sm font-semibold">Skills</Label>
+        <Label className="text-sm font-semibold">Kỹ năng</Label>
         <div className="mt-2 relative">
           {/* Hiển thị danh sách kỹ năng đã chọn */}
           <div className="flex flex-wrap gap-2 mb-2">
@@ -744,13 +812,13 @@ export const JobDetailsStep = ({
 
           {/* Ô tìm kiếm */}
           <Input
-            placeholder="Search skills..."
+            placeholder="Tìm kiếm kỹ năng..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
 
           {skillLoading && (
-            <p className="text-sm text-gray-500 mt-2">Loading...</p>
+            <p className="text-sm text-gray-500 mt-2">Đang tải...</p>
           )}
 
           {/* Popup dropdown */}
@@ -784,7 +852,7 @@ export const JobDetailsStep = ({
             className="px-4 py-2"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Đang lưu..." : "Tiếp tục"}
+            {isSubmitting ? "Đang lưu..." : "Tiếp tục"}
           </Button>
         </div>
       </div>

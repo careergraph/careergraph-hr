@@ -8,6 +8,12 @@ import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { jobService, type JobRecruitmentPayload } from "@/services/jobService";
 import { Status } from "@/enums/commonEnum";
+import {
+  EDUCATION_OPTIONS,
+  EMPLOYMENT_TYPE_OPTIONS,
+  EXPERIENCE_LEVEL_OPTIONS,
+  JOB_CATEGORY_OPTIONS,
+} from "@/enums/workEnum";
 
 // AddJob điều phối quy trình tạo job nhiều bước gồm lưu nháp và công khai.
 
@@ -28,7 +34,7 @@ const AddJob = () => {
   const [isLoadingDraft, setIsLoadingDraft] = useState(false);
 
   // const steps = ["Information", "Requirements", "Promote"];
-  const steps = ["Information", "Requirements"];
+  const steps = ["Thông tin", "Yêu cầu ứng tuyển"];
 
   const handleJobDataUpdate = (data: Partial<Job>) => {
     // Gộp dữ liệu mới vào state job hiện tại.
@@ -85,14 +91,62 @@ const AddJob = () => {
       .toUpperCase();
   };
 
+  const buildOptionLookup = <T extends string>(
+    options: { value: T; label: string }[]
+  ) =>
+    options.reduce<Record<string, T>>((acc, option) => {
+      acc[normalizeEnumCode(option.value) ?? option.value] = option.value;
+      acc[normalizeEnumCode(option.label) ?? option.value] = option.value;
+      return acc;
+    }, {} as Record<string, T>);
+
+  const experienceLevelLookup = {
+    ...buildOptionLookup(EXPERIENCE_LEVEL_OPTIONS),
+    MOI_TOT_NGHIEP: "FRESHER",
+    NHAN_VIEN_JUNIOR: "JUNIOR",
+    NHAN_VIEN_SENIOR: "SENIOR",
+    TRUONG_NHOM: "LEADER",
+  };
+
+  const employmentTypeLookup = {
+    ...buildOptionLookup(EMPLOYMENT_TYPE_OPTIONS),
+    FULLTIME: "FULL_TIME",
+    PARTTIME: "PART_TIME",
+  };
+
+  const educationLookup = {
+    ...buildOptionLookup(EDUCATION_OPTIONS),
+    ASSOCIATE_DEGREE: "ASSOCIATE",
+    BACHELORS_DEGREE: "BACHELOR",
+    MASTERS_DEGREE: "MASTER",
+    OTHER: "NONE",
+  };
+
+  const jobCategoryLookup = {
+    ...buildOptionLookup(JOB_CATEGORY_OPTIONS),
+    ENGINEERING: "ENGINEER",
+    ART_AND_MUSIC: "ART_MUSIC",
+    ADMIN: "ADMINISTRATION",
+    TRAINING: "EDUCATION",
+    CUSTOMER_SUCCESS: "CUSTOMER_SERVICE",
+    SUPPORT: "CUSTOMER_SERVICE",
+    PRODUCTION: "MANUFACTURING",
+    SOFTWARE: "TECHNOLOGY",
+    SOFTWARE_ENGINEERING: "TECHNOLOGY",
+    BUSINESS_OPERATIONS: "BUSINESS",
+  };
+
+  const resolveOptionValue = <T extends string>(
+    value: string | null | undefined,
+    lookup: Record<string, T>
+  ): T | undefined => {
+    const normalized = normalizeEnumCode(value);
+    if (!normalized) return undefined;
+    return lookup[normalized];
+  };
+
   const normalizeEducationCode = (value?: string | null) => {
-    const code = normalizeEnumCode(value);
-    if (!code) return undefined;
-    if (code === "ASSOCIATE_DEGREE") return "ASSOCIATE";
-    if (code === "BACHELORS_DEGREE") return "BACHELOR";
-    if (code === "MASTERS_DEGREE") return "MASTER";
-    if (code === "OTHER") return "NONE";
-    return code;
+    return resolveOptionValue(value, educationLookup);
   };
 
   const normalizeNumber = (value: unknown) => {
@@ -117,22 +171,30 @@ const AddJob = () => {
           ...data,
           id: data.id ?? draftId,
           experienceLevel:
-            normalizeEnumCode((data as { experienceLevel?: string }).experienceLevel) ??
+            resolveOptionValue(
+              (data as { experienceLevel?: string }).experienceLevel,
+              experienceLevelLookup
+            ) ??
             prev.experienceLevel,
           employmentType:
-            normalizeEnumCode(
+            resolveOptionValue(
               (data as { employmentType?: string }).employmentType ??
-                (data as { type?: string }).type
+                (data as { type?: string }).type,
+              employmentTypeLookup
             ) ??
             prev.employmentType,
           type:
-            normalizeEnumCode(
+            resolveOptionValue(
               (data as { type?: string }).type ??
-                (data as { employmentType?: string }).employmentType
+                (data as { employmentType?: string }).employmentType,
+              employmentTypeLookup
             ) ??
             prev.type,
           jobCategory:
-            normalizeEnumCode((data as { jobCategory?: string }).jobCategory) ??
+            resolveOptionValue(
+              (data as { jobCategory?: string }).jobCategory,
+              jobCategoryLookup
+            ) ??
             prev.jobCategory,
           education:
             normalizeEducationCode((data as { education?: string }).education) ??
