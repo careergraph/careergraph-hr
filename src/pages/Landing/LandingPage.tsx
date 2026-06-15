@@ -124,43 +124,6 @@ const testimonials = [
   },
 ];
 
-//@ts-ignore
-const pricingPlans = [
-  {
-    name: "Essential",
-    price: "3.9 triệu",
-    description:
-      "Dành cho đội ngũ HR đang xây nền tảng quy trình tuyển dụng chuẩn hóa.",
-    features: [
-      "Quản lý pipeline không giới hạn",
-      "Mẫu email và automation cơ bản",
-      "Báo cáo hiệu suất theo job",
-    ],
-  },
-  {
-    name: "Professional",
-    price: "6.9 triệu",
-    description:
-      "Đáp ứng nhu cầu tự động hóa nâng cao và cộng tác đa phòng ban.",
-    highlight: true,
-    features: [
-      "Tự động hóa nâng cao và workflow tùy chỉnh",
-      "Đánh giá năng lực và bài test tích hợp",
-      "Báo cáo động và dự báo nhu cầu",
-    ],
-  },
-  {
-    name: "Enterprise",
-    price: "Liên hệ",
-    description:
-      "Tùy biến theo quy mô lớn với yêu cầu bảo mật, tuân thủ và tích hợp sâu.",
-    features: [
-      "SSO, SCIM và phân quyền đa lớp",
-      "Tích hợp HRIS, payroll, BI",
-      "Hỗ trợ triển khai chuyên sâu",
-    ],
-  },
-];
 
 const integrations = [
   {
