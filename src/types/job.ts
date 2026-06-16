@@ -98,6 +98,8 @@ type Touched = {
   experienceLevel?: boolean;
   jobCategory?: boolean;
   employmentType?: boolean;
+  education?: boolean;
+  expiryDate?: boolean;
   type?: boolean;
   country?: boolean;
 };
@@ -110,6 +112,8 @@ type ErrorType = {
   experienceLevel?: string;
   employmentType?: string;
   jobCategory?: string;
+  education?: string;
+  expiryDate?: string;
   type?: string;
   location?: string;
 };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,6 +33,13 @@ export const ApplicationRequirementsStep = ({
           coverLetter: true,
         }
   );
+
+  useEffect(() => {
+    setRequirements({
+      resume: true,
+      coverLetter: jobData.applicationRequirements?.coverLetter ?? true,
+    });
+  }, [jobData.applicationRequirements]);
 
   const requirementItemClass =
     "flex items-center justify-between px-5 py-4 rounded-xl border border-border/60 bg-card/40 dark:bg-slate-900/40 hover:border-primary/30 transition-colors shadow-sm";

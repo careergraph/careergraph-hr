@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ import { District, Province, Ward } from "@/types/location";
 import { SkillLookup } from "@/types/skill";
 import { lookup } from "@/api/skillApis";
 import { useJobEnums } from "@/hooks/useJobEnums";
+import DatePicker from "@/components/form/date-picker";
 import {
   EmploymentType,
   Education,
@@ -124,12 +125,32 @@ export const JobDetailsStep = ({
   const [responsibilities, setResponsibilities] = useState<string[]>(
     jobData.responsibilities || []
   );
+  const today = useMemo(() => {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60_000;
+    return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+  }, []);
+
+  const normalizeDateInputValue = (value?: string) =>
+    value?.trim().slice(0, 10) ?? "";
 
   useEffect(() => {
     setNoExperienceRequired(
       jobData.minExperience == null && jobData.maxExperience == null
     );
   }, [jobData.minExperience, jobData.maxExperience]);
+
+  useEffect(() => {
+    setQualifications(jobData.qualifications || []);
+  }, [jobData.qualifications]);
+
+  useEffect(() => {
+    setMinQualifications(jobData.minimumQualifications || []);
+  }, [jobData.minimumQualifications]);
+
+  useEffect(() => {
+    setResponsibilities(jobData.responsibilities || []);
+  }, [jobData.responsibilities]);
 
   useEffect(() => {
     // Khi đã có danh sách tỉnh, tự động chọn tỉnh khớp dữ liệu job cũ.
@@ -243,6 +264,14 @@ export const JobDetailsStep = ({
     if (!resolvedJobCategory || !normalizeEnumCode(String(resolvedJobCategory))) {
       err.jobCategory = "Required";
     }
+    if (jobData.expiryDate) {
+      const normalizedExpiryDate = normalizeDateInputValue(jobData.expiryDate);
+      if (!normalizedExpiryDate) {
+        err.expiryDate = "Invalid date";
+      } else if (normalizedExpiryDate < today) {
+        err.expiryDate = "Expiry date must be today or later";
+      }
+    }
     // Location: state & city are required (district is optional per BE)
     if (!jobData.state || !jobData.city) {
       err.location = "State and City are required";
@@ -276,6 +305,7 @@ export const JobDetailsStep = ({
       experienceLevel: true,
       jobCategory: true,
       employmentType: true,
+      expiryDate: true,
       country: true,
     });
     setError(err);
@@ -639,6 +669,38 @@ export const JobDetailsStep = ({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div>
+        <Label
+          htmlFor="expiryDate"
+          className={cn(
+            "text-sm font-semibold flex items-center gap-1 mb-2",
+            touched.expiryDate && error.expiryDate && "text-red-600"
+          )}
+        >
+          Hết hạn ứng tuyển
+        </Label>
+        <DatePicker
+          id="expiryDate"
+          value={normalizeDateInputValue(jobData.expiryDate)}
+          minDate={today}
+          placeholder="Chọn ngày hết hạn"
+          onValueChange={(value) => {
+            const normalizedValue = value.trim();
+            onUpdate({
+              ...jobData,
+              expiryDate: normalizedValue || undefined,
+            });
+            setTouched((t) => ({ ...t, expiryDate: true }));
+            setError((prev) => ({ ...prev, expiryDate: undefined }));
+          }}
+          className="w-full"
+          inputClassName="pr-11"
+        />
+        {touched.expiryDate && error.expiryDate && (
+          <p className="mt-2 text-sm text-red-600">{error.expiryDate}</p>
+        )}
       </div>
 
       {/* Location */}

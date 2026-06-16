@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Education,
   EDUCATION_OPTIONS,
   EMPLOYMENT_TYPE_OPTIONS,
   EXPERIENCE_LEVEL_OPTIONS,
@@ -20,6 +21,21 @@ const localLabelMaps = {
   employment: toMap(EMPLOYMENT_TYPE_OPTIONS),
   education: toMap(EDUCATION_OPTIONS),
   category: toMap(JOB_CATEGORY_OPTIONS),
+};
+
+const educationCodeMap: Record<string, Education> = {
+  HIGH_SCHOOL: Education.HIGH_SCHOOL,
+  ASSOCIATE: Education.ASSOCIATE,
+  ASSOCIATE_DEGREE: Education.ASSOCIATE,
+  BACHELOR: Education.BACHELOR,
+  BACHELORS_DEGREE: Education.BACHELOR,
+  MASTER: Education.MASTER,
+  MASTERS_DEGREE: Education.MASTER,
+  DOCTORATE: Education.DOCTORATE,
+  VOCATIONAL: Education.VOCATIONAL,
+  CERTIFICATION: Education.CERTIFICATION,
+  OTHER: Education.NONE,
+  NONE: Education.NONE,
 };
 
 export const useJobEnums = () => {
@@ -59,8 +75,10 @@ export const useJobEnums = () => {
         if (data.educationTypes?.length)
           setEducationTypes(
             data.educationTypes.map((x) => ({
-              value: x.code,
-              label: localLabelMaps.education[x.code] ?? x.name,
+              value: educationCodeMap[x.code] ?? x.code,
+              label:
+                localLabelMaps.education[educationCodeMap[x.code] ?? x.code] ??
+                x.name,
             }))
           );
         if (data.jobCategories?.length)
