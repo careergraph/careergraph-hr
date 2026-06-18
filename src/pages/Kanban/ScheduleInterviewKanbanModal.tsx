@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/custom/modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,10 +17,8 @@ import { companyPipelineService } from "@/services/companyPipelineService";
 import type { CreateInterviewRequest, Interview, InterviewType } from "@/types/interview";
 import { extractApiErrorMessage } from "@/lib/error-utils";
 import {
+  canScheduleInterviewAtStage,
   DEFAULT_COMPANY_STAGES,
-  DEFAULT_STAGE_ORDER,
-  normalizeStageConfig,
-  type ApplicationStageCode,
   type CompanyRecruitmentStage,
 } from "@/lib/recruitmentPipeline";
 import { toast } from "sonner";
@@ -82,35 +80,11 @@ export default function ScheduleInterviewKanbanModal({
   const locationInputRef = useRef<HTMLInputElement>(null);
   const todayStr = new Date().toISOString().split("T")[0];
 
-  const stageOrderMap = useMemo(() => {
-    const normalized = normalizeStageConfig(
-      pipelineStages.length > 0 ? pipelineStages : DEFAULT_COMPANY_STAGES
-    );
-    const map = new Map<ApplicationStageCode, number>();
-    normalized.forEach((stage) => {
-      map.set(stage.stage, stage.displayOrder);
-    });
-    return map;
-  }, [pipelineStages]);
-
-  const interviewStageOrder = useMemo(() => {
-    const fallbackIndex = DEFAULT_STAGE_ORDER.indexOf("INTERVIEW");
-    const fallbackOrder = fallbackIndex >= 0 ? fallbackIndex + 1 : 0;
-    return stageOrderMap.get("INTERVIEW") ?? fallbackOrder;
-  }, [stageOrderMap]);
-
   const isStageEligible = useCallback(
     (stage?: string) => {
-      if (!stage) return false;
-      if (stage === "INTERVIEW_COMPLETED") return true;
-      const order = stageOrderMap.get(stage as ApplicationStageCode);
-      if (typeof order !== "number") return false;
-      if (interviewStageOrder <= 0) {
-        return order === interviewStageOrder;
-      }
-      return order === interviewStageOrder || order === interviewStageOrder - 1;
+      return canScheduleInterviewAtStage(stage, pipelineStages);
     },
-    [interviewStageOrder, stageOrderMap]
+    [pipelineStages]
   );
 
   const isAppEligible = useCallback(

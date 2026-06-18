@@ -117,3 +117,41 @@ export const normalizeStageConfig = (
           : REQUIRED_STAGES.includes(stage.stage),
     }));
 };
+
+export const canScheduleInterviewAtStage = (
+  stage?: ApplicationStageCode | string,
+  stages?: CompanyRecruitmentStage[]
+): boolean => {
+  if (!stage) {
+    return false;
+  }
+
+  if (stage === "INTERVIEW_COMPLETED") {
+    return true;
+  }
+
+  const normalized = normalizeStageConfig(
+    stages && stages.length > 0 ? stages : DEFAULT_COMPANY_STAGES
+  );
+  const stageOrderMap = new Map<ApplicationStageCode, number>();
+
+  normalized.forEach((item, index) => {
+    stageOrderMap.set(item.stage, item.displayOrder ?? index + 1);
+  });
+
+  const interviewFallbackIndex = DEFAULT_STAGE_ORDER.indexOf("INTERVIEW");
+  const interviewStageOrder =
+    stageOrderMap.get("INTERVIEW") ??
+    (interviewFallbackIndex >= 0 ? interviewFallbackIndex + 1 : 0);
+  const order = stageOrderMap.get(stage as ApplicationStageCode);
+
+  if (typeof order !== "number") {
+    return false;
+  }
+
+  if (interviewStageOrder <= 0) {
+    return order === interviewStageOrder;
+  }
+
+  return order === interviewStageOrder || order === interviewStageOrder - 1;
+};
