@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type FullCalendar from "@fullcalendar/react";
-import { DateSelectArg, EventClickArg, EventContentArg, DatesSetArg } from "@fullcalendar/core";
+import {
+  DateSelectArg,
+  EventClickArg,
+  EventContentArg,
+  EventHoveringArg,
+  DatesSetArg,
+} from "@fullcalendar/core";
 import { CalendarClock, CalendarDays, Clock3, UserRound } from "lucide-react";
 
 import PageMeta from "@/components/common/PageMeta";
@@ -10,6 +16,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 import { CalendarHero, type CalendarStatCard } from "./CalendarHero";
 import { CalendarBoard } from "./CalendarBoard";
+import { CalendarEventHoverModal } from "./CalendarEventHoverModal";
 import { CalendarSidebar } from "./CalendarSidebar";
 import { CalendarModalForm } from "./CalendarModalForm";
 import {
@@ -76,16 +83,62 @@ const mapInterviewToCalendarEvent = (interview: Interview, round: number): Calen
 const renderEventContent = (eventInfo: EventContentArg) => {
   const variant = getCalendarVariant(eventInfo.event.extendedProps.calendar);
   const styles = CALENDAR_VARIANT_STYLES[variant];
+  const start = toDate(eventInfo.event.start);
+  const timeLabel = start
+    ? start.toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
+  const isPastEvent = start ? start.getTime() < Date.now() : false;
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-2xl px-2.5 py-1 text-[11px] font-semibold tracking-wide ${styles.chip} ${styles.text}`}
+      className={`calendar-event-card flex min-w-0 items-start gap-2 rounded-2xl border px-2.5 py-2 text-left transition ${styles.chip} ${styles.text} ${
+        isPastEvent ? "calendar-event-card--past" : ""
+      }`}
+      title={eventInfo.event.title}
     >
-      <span className={`size-1.5 rounded-full ${styles.indicator}`} />
-      <span className="truncate">{eventInfo.event.title}</span>
+      <span className={`mt-1 size-2 rounded-full ${styles.indicator}`} />
+      <div className="min-w-0 flex-1">
+        {timeLabel ? (
+          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-current/70">
+            {timeLabel}
+          </p>
+        ) : null}
+        <p className="truncate text-[11px] font-semibold leading-4">
+          {eventInfo.event.title}
+        </p>
+      </div>
     </div>
   );
 };
+
+const mapCalendarApiEventToCalendarEvent = (eventArg: {
+  id: string;
+  title: string;
+  start: Date | null;
+  startStr: string;
+  end: Date | null;
+  endStr: string;
+  allDay: boolean;
+  extendedProps: Record<string, unknown>;
+}) => ({
+  id: eventArg.id,
+  title: eventArg.title,
+  start: eventArg.start ?? eventArg.startStr,
+  end: eventArg.end ?? eventArg.endStr,
+  allDay: eventArg.allDay,
+  extendedProps: {
+    calendar: (eventArg.extendedProps.calendar as CalendarLevel) ?? DEFAULT_EVENT_LEVEL,
+    priority: Number(eventArg.extendedProps.priority ?? 999),
+    candidate: eventArg.extendedProps.candidate as string | undefined,
+    location: eventArg.extendedProps.location as string | undefined,
+    notes: eventArg.extendedProps.notes as string | undefined,
+    jobTitle: eventArg.extendedProps.jobTitle as string | undefined,
+    interviewStatus: eventArg.extendedProps.interviewStatus as string | undefined,
+  },
+});
 
 const Calendar = () => {
   const isMobile = useMediaQuery("(max-width: 767px)");
@@ -95,12 +148,20 @@ const Calendar = () => {
   const [eventTitle, setEventTitle] = useState("");
   const [eventCandidate, setEventCandidate] = useState("");
   const [eventStartDate, setEventStartDate] = useState("");
-  const [eventEndDate, setEventEndDate] = useState("");
   const [eventLevel, setEventLevel] = useState<CalendarLevel>(DEFAULT_EVENT_LEVEL);
   const [eventLocation, setEventLocation] = useState("");
   const [eventNotes, setEventNotes] = useState("");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentRangeTitle, setCurrentRangeTitle] = useState("");
+  const [hoveredEvent, setHoveredEvent] = useState<CalendarEvent | null>(null);
+  const [hoveredEventPosition, setHoveredEventPosition] = useState<{
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+    cursorX?: number;
+    cursorY?: number;
+  } | null>(null);
   const [activeView, setActiveView] = useState(() =>
     typeof window !== "undefined" && window.innerWidth < 768
       ? "listWeek"
@@ -236,7 +297,6 @@ const Calendar = () => {
     setEventTitle("");
     setEventCandidate("");
     setEventStartDate("");
-    setEventEndDate("");
     setEventLevel(DEFAULT_EVENT_LEVEL);
     setEventLocation("");
     setEventNotes("");
@@ -257,7 +317,6 @@ const Calendar = () => {
     setEventTitle(eventData.title ?? "");
     setEventCandidate(eventData.extendedProps?.candidate ?? "");
     setEventStartDate(formatDateForInput(eventData.start));
-    setEventEndDate(formatDateForInput(eventData.end));
     setEventLevel(eventData.extendedProps?.calendar ?? DEFAULT_EVENT_LEVEL);
     setEventLocation(eventData.extendedProps?.location ?? "");
     setEventNotes(eventData.extendedProps?.notes ?? "");
@@ -274,15 +333,7 @@ const Calendar = () => {
 
     resetModalFields();
     const startInput = formatDateForInput(selectInfo.start);
-
-    let endInput = formatDateForInput(selectInfo.end);
-    if (selectInfo.allDay && selectInfo.end) {
-      const adjusted = new Date(selectInfo.end.getTime() - DAY_IN_MS);
-      endInput = formatDateForInput(adjusted);
-    }
-
     setEventStartDate(startInput);
-    setEventEndDate(endInput || startInput);
     openModal();
     selectInfo.view.calendar.unselect();
   };
@@ -291,25 +342,35 @@ const Calendar = () => {
     const matched = events.find((event) => event.id === clickInfo.event.id);
 
     const eventData: CalendarEvent =
-      matched ?? {
-        id: clickInfo.event.id,
-        title: clickInfo.event.title,
-        start: clickInfo.event.start ?? clickInfo.event.startStr,
-        end: clickInfo.event.end ?? clickInfo.event.endStr,
-        allDay: clickInfo.event.allDay,
-        extendedProps: {
-          calendar:
-            (clickInfo.event.extendedProps.calendar as CalendarLevel) ??
-            DEFAULT_EVENT_LEVEL,
-          candidate: clickInfo.event.extendedProps.candidate,
-          location: clickInfo.event.extendedProps.location,
-          notes: clickInfo.event.extendedProps.notes,
-        },
-      };
+      matched ?? mapCalendarApiEventToCalendarEvent(clickInfo.event);
 
     populateModalFields(eventData);
     setActiveEvent(matched ?? eventData);
+    setHoveredEvent(null);
+    setHoveredEventPosition(null);
     openModal();
+  };
+
+  const handleEventMouseEnter = (hoverInfo: EventHoveringArg) => {
+    if (isMobile) return;
+
+    const matched = events.find((event) => event.id === hoverInfo.event.id);
+    const rect = hoverInfo.el.getBoundingClientRect();
+
+    setHoveredEvent(matched ?? mapCalendarApiEventToCalendarEvent(hoverInfo.event));
+    setHoveredEventPosition({
+      top: rect.top,
+      bottom: rect.bottom,
+      left: rect.left,
+      right: rect.right,
+      cursorX: hoverInfo.jsEvent.clientX,
+      cursorY: hoverInfo.jsEvent.clientY,
+    });
+  };
+
+  const handleEventMouseLeave = (_hoverInfo: EventHoveringArg) => {
+    setHoveredEvent(null);
+    setHoveredEventPosition(null);
   };
 
   const handleViewChange = (view: string) => {
@@ -402,6 +463,8 @@ const Calendar = () => {
                 onNavigate={handleNavigate}
                 onSelectDate={handleDateSelect}
                 onEventClick={handleEventClick}
+                onEventMouseEnter={handleEventMouseEnter}
+                onEventMouseLeave={handleEventMouseLeave}
                 onDatesSet={handleDatesSet}
                 events={sortedEvents}
                 renderEventContent={renderEventContent}
@@ -434,7 +497,6 @@ const Calendar = () => {
         eventCandidate={eventCandidate}
         eventLevel={eventLevel}
         eventStartDate={eventStartDate}
-        eventEndDate={eventEndDate}
         eventLocation={eventLocation}
         eventNotes={eventNotes}
         onClose={handleCloseModal}
@@ -442,11 +504,11 @@ const Calendar = () => {
         onCandidateChange={setEventCandidate}
         onLevelChange={setEventLevel}
         onStartDateChange={setEventStartDate}
-        onEndDateChange={setEventEndDate}
         onLocationChange={setEventLocation}
         onNotesChange={setEventNotes}
         onInterviewCreated={() => loadCalendarData()}
       />
+      <CalendarEventHoverModal event={hoveredEvent} position={hoveredEventPosition} />
     </>
   );
 };

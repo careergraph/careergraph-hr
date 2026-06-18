@@ -80,7 +80,6 @@ interface CalendarModalFormProps {
   eventCandidate: string;
   eventLevel: CalendarLevel;
   eventStartDate: string;
-  eventEndDate: string;
   eventLocation: string;
   eventNotes: string;
   onClose: () => void;
@@ -88,7 +87,6 @@ interface CalendarModalFormProps {
   onCandidateChange: (value: string) => void;
   onLevelChange: (level: CalendarLevel) => void;
   onStartDateChange: (value: string) => void;
-  onEndDateChange: (value: string) => void;
   onLocationChange: (value: string) => void;
   onNotesChange: (value: string) => void;
   onInterviewCreated?: () => void;
@@ -101,7 +99,6 @@ export const CalendarModalForm = ({
   eventCandidate,
   eventLevel,
   eventStartDate,
-  eventEndDate,
   eventLocation,
   eventNotes,
   onClose,
@@ -109,7 +106,6 @@ export const CalendarModalForm = ({
   onCandidateChange,
   onLevelChange,
   onStartDateChange,
-  onEndDateChange,
   onLocationChange,
   onNotesChange,
   onInterviewCreated,
@@ -142,13 +138,14 @@ export const CalendarModalForm = ({
   const [overwritePromptOpen, setOverwritePromptOpen] = useState(false);
   const [overwritePromptMessage, setOverwritePromptMessage] = useState("");
   const [cancelPromptOpen, setCancelPromptOpen] = useState(false);
+  const durationPresets = [30, 45, 60, 90];
   const formErrorRef = useRef<HTMLDivElement>(null);
   const jobFieldRef = useRef<HTMLDivElement>(null);
   const appFieldRef = useRef<HTMLDivElement>(null);
   const timeFieldRef = useRef<HTMLDivElement>(null);
+  const durationFieldRef = useRef<HTMLDivElement>(null);
   const locationFieldRef = useRef<HTMLDivElement>(null);
   const startDateInputRef = useRef<HTMLInputElement>(null);
-  const endDateInputRef = useRef<HTMLInputElement>(null);
 
   const stageOrderMap = useMemo(() => {
     const normalized = normalizeStageConfig(
@@ -271,7 +268,22 @@ export const CalendarModalForm = ({
         setAvailableRounds([1]);
       })
       .finally(() => setLoadingApps(false));
-  }, [selectedJobId, selectedRound]);
+  }, [isAppEligible, selectedJobId, selectedRound]);
+
+  const resolveEditingDuration = useCallback(() => {
+    if (!editingEvent?.start || !editingEvent?.end) {
+      return 60;
+    }
+
+    const startMs = new Date(String(editingEvent.start)).getTime();
+    const endMs = new Date(String(editingEvent.end)).getTime();
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+      return 60;
+    }
+
+    const minutes = Math.round((endMs - startMs) / 60000);
+    return minutes >= 15 ? minutes : 60;
+  }, [editingEvent]);
 
   // Reset internal state when modal closes
   useEffect(() => {
@@ -298,7 +310,10 @@ export const CalendarModalForm = ({
       const time = formatTimeForInput(editingEvent.start);
       if (time) setStartTime(time);
     }
-  }, [editingEvent]);
+    if (editingEvent) {
+      setDuration(resolveEditingDuration());
+    }
+  }, [editingEvent, resolveEditingDuration]);
 
   // Sync candidate name when selecting from dropdown
   const selectedApp = unscheduledApps.find(
@@ -319,6 +334,10 @@ export const CalendarModalForm = ({
     }
     if (errors.startTime) {
       timeFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (errors.duration) {
+      durationFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     if (errors.eventLocation) {
@@ -345,6 +364,9 @@ export const CalendarModalForm = ({
     }
     if (!startTime) {
       nextErrors.startTime = "Vui lòng chọn giờ bắt đầu.";
+    }
+    if (!duration || duration < 15) {
+      nextErrors.duration = "Thời lượng tối thiểu là 15 phút.";
     }
     if (interviewType === "OFFLINE" && !eventLocation.trim()) {
       nextErrors.eventLocation = "Vui lòng nhập địa điểm cho phỏng vấn offline.";
@@ -424,21 +446,6 @@ export const CalendarModalForm = ({
     }
   };
 
-  const resolveEditingDuration = () => {
-    if (!editingEvent?.start || !editingEvent?.end) {
-      return 60;
-    }
-
-    const startMs = new Date(String(editingEvent.start)).getTime();
-    const endMs = new Date(String(editingEvent.end)).getTime();
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
-      return 60;
-    }
-
-    const minutes = Math.round((endMs - startMs) / 60000);
-    return minutes >= 15 ? minutes : 60;
-  };
-
   const mapLevelToInterviewStatus = (level: CalendarLevel): InterviewStatus => {
     switch (level) {
       case "Warning":
@@ -470,15 +477,17 @@ export const CalendarModalForm = ({
     const nextStatus = mapLevelToInterviewStatus(eventLevel);
     const oldDate = getEditingStartFromEvent();
     const oldTime = formatTimeForInput(editingEvent.start);
+    const oldDuration = resolveEditingDuration();
     const oldNotes = String(editingEvent.extendedProps?.notes ?? "").trim();
     const nextNotes = String(eventNotes ?? "").trim();
 
     const timeChanged = oldDate !== eventStartDate || oldTime !== startTime;
+    const durationChanged = oldDuration !== duration;
     const notesChanged = oldNotes !== nextNotes;
     const statusChanged = !!currentStatus && currentStatus !== nextStatus;
 
-    return timeChanged || notesChanged || statusChanged;
-  }, [editingEvent, eventLevel, eventNotes, eventStartDate, getEditingStartFromEvent, startTime]);
+    return timeChanged || durationChanged || notesChanged || statusChanged;
+  }, [duration, editingEvent, eventLevel, eventNotes, eventStartDate, getEditingStartFromEvent, resolveEditingDuration, startTime]);
 
   const currentInterviewStatus = editingEvent?.extendedProps?.interviewStatus as InterviewStatus | undefined;
   const canEditCurrentInterview =
@@ -521,6 +530,7 @@ export const CalendarModalForm = ({
     const oldNotes = String(editingEvent.extendedProps?.notes ?? "").trim();
     const nextNotes = String(eventNotes ?? "").trim();
     const timeChanged = oldDate !== eventStartDate || oldTime !== startTime;
+    const durationChanged = oldDuration !== duration;
     const notesChanged = oldNotes !== nextNotes;
     const statusChanged = !!currentStatus && currentStatus !== nextStatus;
 
@@ -529,7 +539,7 @@ export const CalendarModalForm = ({
       return;
     }
 
-    if (!isCancelAction && !timeChanged && !notesChanged && !statusChanged) {
+    if (!isCancelAction && !timeChanged && !durationChanged && !notesChanged && !statusChanged) {
       toast.info("Không có thay đổi nào để cập nhật.");
       return;
     }
@@ -541,6 +551,9 @@ export const CalendarModalForm = ({
     }
     if (!isCancelAction && !startTime) {
       nextErrors.startTime = "Vui lòng chọn giờ bắt đầu.";
+    }
+    if (!isCancelAction && (!duration || duration < 15)) {
+      nextErrors.duration = "Thời lượng tối thiểu là 15 phút.";
     }
 
     if (!isCancelAction && eventStartDate && startTime) {
@@ -574,13 +587,19 @@ export const CalendarModalForm = ({
         await interviewService.rescheduleInterview(editingEvent.id, {
           newDate: eventStartDate,
           newStartTime: startTime,
-          durationMinutes: oldDuration,
+          durationMinutes: duration,
           notes: nextNotes || undefined,
         });
+
+        if (currentStatus && currentStatus !== nextStatus) {
+          await interviewService.updateInterviewStatus(editingEvent.id, {
+            status: nextStatus,
+          });
+        }
       } else {
         await interviewService.updateInterview(editingEvent.id, {
           notes: nextNotes || undefined,
-          durationMinutes: oldDuration,
+          durationMinutes: duration,
         });
 
         if (currentStatus && currentStatus !== nextStatus) {
@@ -635,6 +654,32 @@ export const CalendarModalForm = ({
     const typedInput = input as (HTMLInputElement & { showPicker?: () => void }) | null;
     typedInput?.showPicker?.();
   };
+
+  const normalizeDurationInput = (value: string) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      setDuration(15);
+      return;
+    }
+
+    setDuration(Math.min(480, Math.max(15, parsed)));
+    setFieldErrors((prev) => ({ ...prev, duration: "" }));
+  };
+
+  const computedEndDateTime = useMemo(() => {
+    if (!eventStartDate || !startTime || !duration) return "";
+    const start = new Date(`${eventStartDate}T${startTime}:00`);
+    if (!Number.isFinite(start.getTime())) return "";
+
+    const end = new Date(start.getTime() + duration * 60_000);
+    return end.toLocaleString("vi-VN", {
+      weekday: "short",
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, [duration, eventStartDate, startTime]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-[760px] p-0">
@@ -786,7 +831,7 @@ export const CalendarModalForm = ({
 
                 {/* Selected candidate info */}
                 {selectedApp && (
-                  <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/60">
                     <p className="text-sm text-gray-600 dark:text-gray-300">
                       <span className="font-medium">Ứng viên:</span>{" "}
                       {selectedApp.candidateName}
@@ -810,7 +855,7 @@ export const CalendarModalForm = ({
                 )}
 
                 {/* Interview type selector */}
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-1">
                   <div className="space-y-2">
                     <Label>Hình thức phỏng vấn</Label>
                     <Select
@@ -828,23 +873,6 @@ export const CalendarModalForm = ({
                           </span>
                         </SelectItem>
                         <SelectItem value="OFFLINE">Offline</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Thời lượng (phút)</Label>
-                    <Select
-                      value={String(duration)}
-                      onValueChange={(v) => setDuration(Number(v))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="border border-slate-200 bg-white text-slate-900">
-                        <SelectItem value="30">30 phút</SelectItem>
-                        <SelectItem value="45">45 phút</SelectItem>
-                        <SelectItem value="60">60 phút</SelectItem>
-                        <SelectItem value="90">90 phút</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -873,7 +901,7 @@ export const CalendarModalForm = ({
                     value={eventTitle}
                     onChange={(e) => onTitleChange(e.target.value)}
                     placeholder="Ví dụ: Phỏng vấn vòng 2 - Nguyễn Văn A"
-                    disabled={!canEditCurrentInterview || isSubmitting}
+                    disabled
                   />
                 </div>
                 <div className="space-y-2">
@@ -885,14 +913,14 @@ export const CalendarModalForm = ({
                     value={eventCandidate}
                     onChange={(e) => onCandidateChange(e.target.value)}
                     placeholder="Nhập tên ứng viên"
-                    disabled={!canEditCurrentInterview || isSubmitting}
+                    disabled
                   />
                 </div>
               </div>
             )}
 
             {!isCreateMode && editingEvent?.extendedProps?.jobTitle ? (
-              <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-gray-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-gray-300">
                 <span className="font-medium">Vị trí phỏng vấn:</span> {editingEvent.extendedProps.jobTitle}
               </div>
             ) : null}
@@ -912,7 +940,7 @@ export const CalendarModalForm = ({
               </div>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
               <p className="text-sm font-medium text-foreground">Nhóm lịch</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {CALENDAR_LEVELS.map((level) => {
@@ -950,7 +978,7 @@ export const CalendarModalForm = ({
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground" htmlFor="event-start-date">
                   {isCreateMode ? "Ngày phỏng vấn" : "Ngày bắt đầu"}
@@ -972,11 +1000,11 @@ export const CalendarModalForm = ({
                 {fieldErrors.eventStartDate ? (
                   <p className="text-xs text-rose-600">{fieldErrors.eventStartDate}</p>
                 ) : null}
-                {isCreateMode ? (
-                  <p className="text-xs text-muted-foreground">
-                    Hệ thống sẽ tự tính giờ kết thúc dựa trên thời lượng bạn chọn.
-                  </p>
-                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  {isCreateMode
+                    ? "Hệ thống sẽ tự tính giờ kết thúc dựa trên thời lượng bạn chọn."
+                    : "Chỉ cần thay ngày bắt đầu và thời lượng, hệ thống sẽ tự cập nhật mốc kết thúc."}
+                </p>
               </div>
               <div ref={timeFieldRef} className="space-y-2">
                 <label className="text-sm font-medium text-foreground" htmlFor="event-start-time">
@@ -998,53 +1026,82 @@ export const CalendarModalForm = ({
               </div>
             </div>
 
-            {!isCreateMode && (
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground" htmlFor="event-end-date">
-                    Ngày kết thúc
-                  </label>
-                  <Input
-                    id="event-end-date"
-                    type="date"
-                    ref={endDateInputRef}
-                    value={eventEndDate}
-                    onClick={() => openDatePicker(endDateInputRef.current)}
-                    onFocus={() => openDatePicker(endDateInputRef.current)}
-                    onChange={(e) => onEndDateChange(e.target.value)}
-                    min={eventStartDate || todayStr}
-                    disabled={!canEditCurrentInterview || isSubmitting}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Ngày kết thúc dùng cho trường hợp lịch kéo dài qua nhiều ngày.
-                  </p>
+            <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[minmax(0,1fr)_220px]">
+              <div ref={durationFieldRef} className="space-y-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="event-duration">
+                  Thời lượng
+                </label>
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {durationPresets.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => normalizeDurationInput(String(preset))}
+                      disabled={!isCreateMode && !canEditCurrentInterview}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                        duration === preset
+                          ? "border-brand-500 bg-brand-500 text-white"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-brand-200 hover:text-brand-700"
+                      } ${!isCreateMode && !canEditCurrentInterview ? "cursor-not-allowed opacity-60" : ""}`}
+                    >
+                      {preset} phút
+                    </button>
+                  ))}
                 </div>
-                {editingEvent?.extendedProps?.location && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">
-                      Hình thức / Link phỏng vấn
-                    </label>
-                    {(() => {
-                      const loc = editingEvent.extendedProps.location;
-                      const isLink = loc.startsWith("http") || loc.startsWith("/interview/room/");
-                      return isLink ? (
-                        <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5 dark:border-blue-800 dark:bg-blue-900/20">
-                          <Video className="h-4 w-4 shrink-0 text-blue-600" />
-                          <a
-                            href={loc.startsWith("http") ? loc : `${window.location.origin}${loc}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 truncate text-sm text-blue-700 underline dark:text-blue-300"
-                          >
-                            {loc}
-                          </a>
-                        </div>
-                      ) : (
-                        <Input value={loc} readOnly className="bg-muted" />
-                      );
-                    })()}
-                  </div>
-                )}
+                <Input
+                  id="event-duration"
+                  type="number"
+                  min={15}
+                  max={480}
+                  step={15}
+                  value={String(duration)}
+                  onChange={(e) => normalizeDurationInput(e.target.value)}
+                  disabled={!isCreateMode && !canEditCurrentInterview}
+                />
+                {fieldErrors.duration ? (
+                  <p className="text-xs text-rose-600">{fieldErrors.duration}</p>
+                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  Dùng số phút để đội tuyển dụng dễ so khớp availability và reschedule sau này.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Kết thúc dự kiến
+                </p>
+                <p className="mt-2 text-base font-semibold text-slate-900">
+                  {computedEndDateTime || "Chưa đủ thông tin"}
+                </p>
+                <p className="mt-2 text-xs text-slate-500">
+                  Tự động tính từ ngày bắt đầu, giờ bắt đầu và thời lượng.
+                </p>
+              </div>
+            </div>
+
+            {!isCreateMode && editingEvent?.extendedProps?.location && (
+              <div className="space-y-2 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+                <label className="text-sm font-medium text-foreground">
+                  Hình thức / Link phỏng vấn
+                </label>
+                {(() => {
+                  const loc = editingEvent.extendedProps.location;
+                  const isLink = loc.startsWith("http") || loc.startsWith("/interview/room/");
+                  return isLink ? (
+                    <div className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+                      <Video className="h-4 w-4 shrink-0 text-blue-600" />
+                      <a
+                        href={loc.startsWith("http") ? loc : `${window.location.origin}${loc}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 truncate text-sm text-blue-700 underline dark:text-blue-300"
+                      >
+                        {loc}
+                      </a>
+                    </div>
+                  ) : (
+                    <Input value={loc} readOnly className="bg-muted" />
+                  );
+                })()}
               </div>
             )}
 
@@ -1099,15 +1156,17 @@ export const CalendarModalForm = ({
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-3">
-              <div className="ml-auto flex flex-wrap gap-3">
-                <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-                  Đóng
-                </Button>
+              <div className="pl-3">
                 {canCancelCurrentInterview ? (
                   <Button variant="destructive" onClick={handleQuickCancel} disabled={isSubmitting}>
                     {isSubmitting ? "Đang xử lý..." : "Hủy lịch phỏng vấn"}
                   </Button>
                 ) : null}
+              </div>
+              <div className="ml-auto flex flex-wrap gap-3">
+                <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+                  Đóng
+                </Button>
                 {canEditCurrentInterview ? (
                   <Button onClick={handleEditSubmit} disabled={isSubmitting || !isEditFormChanged}>
                     {isSubmitting ? "Đang xử lý..." : "Lưu thay đổi"}

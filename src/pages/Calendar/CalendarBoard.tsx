@@ -12,6 +12,7 @@ import {
   EventContentArg,
   DatesSetArg,
   EventInput,
+  EventHoveringArg,
 } from "@fullcalendar/core";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -27,6 +28,8 @@ interface CalendarBoardProps {
   onNavigate: (direction: "prev" | "next") => void;
   onSelectDate: (selectInfo: DateSelectArg) => void;
   onEventClick: (event: EventClickArg) => void;
+  onEventMouseEnter?: (event: EventHoveringArg) => void;
+  onEventMouseLeave?: (event: EventHoveringArg) => void;
   onDatesSet: (arg: DatesSetArg) => void;
   events: EventInput[];
   renderEventContent: (eventInfo: EventContentArg) => React.JSX.Element;
@@ -48,6 +51,8 @@ export const CalendarBoard = ({
   onNavigate,
   onSelectDate,
   onEventClick,
+  onEventMouseEnter,
+  onEventMouseLeave,
   onDatesSet,
   events,
   renderEventContent,
@@ -136,7 +141,7 @@ export const CalendarBoard = ({
           </div>
         </div>
       </div>
-      <div className="mt-6 overflow-hidden rounded-3xl border border-border/60 bg-background/50">
+      <div className="calendar-enterprise mt-6 overflow-hidden rounded-3xl border border-border/60 bg-background/50">
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
@@ -157,9 +162,17 @@ export const CalendarBoard = ({
           selectable
           select={onSelectDate}
           eventClick={onEventClick}
+          eventMouseEnter={onEventMouseEnter}
+          eventMouseLeave={onEventMouseLeave}
           eventContent={renderEventContent}
           datesSet={onDatesSet}
+          moreLinkContent={(args) => (
+            <span className="text-[11px] font-semibold text-brand-700">
+              +{args.num} lịch khác
+            </span>
+          )}
           dayMaxEvents={3}
+          dayMaxEventRows={3}
           eventDisplay="block"
           selectMirror
         />
