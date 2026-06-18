@@ -58,6 +58,7 @@ export default function FeedbackModal({
   const [recommendation, setRecommendation] = useState<FeedbackRecommendation>("NEXT_ROUND");
   const [notes, setNotes] = useState("");
   const [formError, setFormError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [pipelineStages, setPipelineStages] = useState<CompanyRecruitmentStage[]>([]);
   const errorRef = useRef<HTMLDivElement | null>(null);
 
@@ -137,6 +138,10 @@ export default function FeedbackModal({
   };
 
   const handleSubmit = async () => {
+    if (submitting) {
+      return;
+    }
+
     if (!canSubmit) {
       setFormError("Vui lòng chọn ứng viên cần đánh giá.");
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
@@ -144,6 +149,7 @@ export default function FeedbackModal({
     }
 
     setFormError("");
+    setSubmitting(true);
 
     try {
       await addFeedback(targetInterviewId, {
@@ -167,6 +173,8 @@ export default function FeedbackModal({
     } catch (error: unknown) {
       setFormError(resolveSubmitErrorMessage(error));
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -298,11 +306,11 @@ export default function FeedbackModal({
 
         {/* Footer */}
         <div className="flex flex-wrap justify-end gap-3 border-t border-border/60 px-6 py-5">
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+          <Button variant="outline" onClick={onClose} disabled={isLoading || submitting}>
             Hủy
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading || !canSubmit}>
-            {isLoading ? "Đang gửi..." : "Gửi đánh giá"}
+          <Button onClick={handleSubmit} disabled={isLoading || submitting || !canSubmit}>
+            {isLoading || submitting ? "Đang gửi..." : "Gửi đánh giá"}
           </Button>
         </div>
       </div>

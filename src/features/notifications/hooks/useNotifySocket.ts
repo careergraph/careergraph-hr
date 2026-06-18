@@ -30,6 +30,20 @@ const NOTIFY_SOCKET_URL =
 const canUseBrowserNotifications = (): boolean =>
   typeof window !== "undefined" && "Notification" in window;
 
+const toDataNavigatePath = (payload: NotificationPayload): string | null => {
+  const navigateTo = payload?.data?.navigateTo;
+  return typeof navigateTo === "string" && navigateTo.startsWith("/") ? navigateTo : null;
+};
+
+const appendRefreshParams = (rawPath: string): string => {
+  const [pathname, queryString = ""] = rawPath.split("?");
+  const params = new URLSearchParams(queryString);
+  params.set("refresh", "1");
+  params.set("ts", String(Date.now()));
+  const serialized = params.toString();
+  return serialized ? `${pathname}?${serialized}` : pathname;
+};
+
 export const requestBrowserNotificationPermission = async (): Promise<void> => {
   if (!canUseBrowserNotifications()) {
     return;
@@ -91,6 +105,10 @@ export function useNotifySocket({
         browserNotification.onclick = () => {
           window.focus();
           browserNotification.close();
+          const navigatePath = toDataNavigatePath(notification);
+          if (navigatePath) {
+            window.location.assign(appendRefreshParams(navigatePath));
+          }
         };
       }
     });

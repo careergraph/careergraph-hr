@@ -128,6 +128,7 @@ export default function InterviewRoom() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [selectedFeedbackInterviewId, setSelectedFeedbackInterviewId] = useState<string | null>(null);
   const [feedbackIsPostMeeting, setFeedbackIsPostMeeting] = useState(false);
+  const [handlingFeedbackSubmit, setHandlingFeedbackSubmit] = useState(false);
   const [isUploadingRecording, setIsUploadingRecording] = useState(false);
 
   // Recording assign modal state
@@ -365,6 +366,47 @@ export default function InterviewRoom() {
     },
     [roomCode, interview?.id, joinedCandidateApplicationIds, roomParticipants]
   );
+
+  const handleFeedbackSubmitted = useCallback(
+    async (submittedInterviewId: string) => {
+      if (handlingFeedbackSubmit) {
+        return;
+      }
+
+      const target = roomInterviews.find((iv) => iv.id === submittedInterviewId);
+      if (!target || target.interviewStatus === "COMPLETED") {
+        return;
+      }
+
+      setHandlingFeedbackSubmit(true);
+      try {
+        await handleCompleteCandidateInterview(target);
+      } catch {
+        toast.warning("Đã gửi đánh giá nhưng chưa thể cập nhật trạng thái hoàn thành");
+      } finally {
+        setHandlingFeedbackSubmit(false);
+      }
+    },
+    [handleCompleteCandidateInterview, handlingFeedbackSubmit, roomInterviews]
+  );
+
+  const feedbackModalNode = showFeedbackModal && interview?.id ? (
+    <FeedbackModal
+      open={showFeedbackModal}
+      onClose={() => {
+        setShowFeedbackModal(false);
+        setSelectedFeedbackInterviewId(null);
+        if (feedbackIsPostMeeting) {
+          navigate("/interviews");
+        }
+      }}
+      interviewId={interview.id}
+      initialInterviewId={selectedFeedbackInterviewId ?? undefined}
+      candidateName={interview.candidateName}
+      candidateOptions={feedbackCandidateOptions}
+      onSubmitted={handleFeedbackSubmitted}
+    />
+  ) : null;
 
   const candidateActionItems = roomInterviews
     .filter((iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW")
@@ -1045,34 +1087,7 @@ export default function InterviewRoom() {
           </div>
         </div>
         
-        {/* Render FeedbackModal directly here in case it gets invoked from this screen */}
-        {showFeedbackModal && interview?.id ? (
-          <FeedbackModal
-            open={showFeedbackModal}
-            onClose={() => {
-              setShowFeedbackModal(false);
-              setSelectedFeedbackInterviewId(null);
-              if (feedbackIsPostMeeting) {
-                navigate("/interviews");
-              }
-            }}
-            interviewId={interview.id}
-            initialInterviewId={selectedFeedbackInterviewId ?? undefined}
-            candidateName={interview.candidateName}
-            candidateOptions={feedbackCandidateOptions}
-            onSubmitted={async (submittedInterviewId) => {
-              const target = roomInterviews.find((iv) => iv.id === submittedInterviewId);
-              if (!target) return;
-              if (target.interviewStatus === "COMPLETED") return;
-  
-              try {
-                await handleCompleteCandidateInterview(target);
-              } catch {
-                toast.warning("Đã gửi đánh giá nhưng chưa thể cập nhật trạng thái hoàn thành");
-              }
-            }}
-          />
-        ) : null}
+        {feedbackModalNode}
       </div>
     );
   }
@@ -1736,33 +1751,7 @@ export default function InterviewRoom() {
         </div>
       )}
 
-      {showFeedbackModal && interview?.id ? (
-        <FeedbackModal
-          open={showFeedbackModal}
-          onClose={() => {
-            setShowFeedbackModal(false);
-            setSelectedFeedbackInterviewId(null);
-            if (feedbackIsPostMeeting) {
-              navigate("/interviews");
-            }
-          }}
-          interviewId={interview.id}
-          initialInterviewId={selectedFeedbackInterviewId ?? undefined}
-          candidateName={interview.candidateName}
-          candidateOptions={feedbackCandidateOptions}
-          onSubmitted={async (submittedInterviewId) => {
-            const target = roomInterviews.find((iv) => iv.id === submittedInterviewId);
-            if (!target) return;
-            if (target.interviewStatus === "COMPLETED") return;
-
-            try {
-              await handleCompleteCandidateInterview(target);
-            } catch {
-              toast.warning("Đã gửi đánh giá nhưng chưa thể cập nhật trạng thái hoàn thành");
-            }
-          }}
-        />
-      ) : null}
+      {feedbackModalNode}
 
       {showRecordingAssignModal && interview?.id && roomCode ? (
         <RecordingAssignModal

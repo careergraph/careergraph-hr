@@ -6,14 +6,16 @@ import {
   Briefcase,
   CalendarCheck2,
   CheckCheck,
+  CheckCircle2,
   Eye,
   Loader2,
   MessageSquareText,
+  RotateCcw,
   SearchCheck,
   UserRoundPlus,
   XCircle,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import { Dropdown } from "@/components/custom/dropdown/Dropdown";
 import { DropdownItem } from "@/components/custom/dropdown/DropdownItem";
 import useNotifications from "@/features/notifications/hooks/useNotifications";
@@ -86,6 +88,25 @@ const normalizeNavigatePathForHr = (
   return rawPath;
 };
 
+const appendRefreshParams = (rawPath: string): string | null => {
+  if (!rawPath.startsWith("/")) {
+    return null;
+  }
+
+  const [pathname, queryString = ""] = rawPath.split("?");
+  const params = new URLSearchParams(queryString);
+  params.set("refresh", "1");
+  params.set("ts", String(Date.now()));
+  const serialized = params.toString();
+  return serialized ? `${pathname}?${serialized}` : pathname;
+};
+
+const redirectWithRefresh = (rawPath: string): void => {
+  const nextPath = appendRefreshParams(rawPath);
+  if (!nextPath) return;
+  window.location.assign(nextPath);
+};
+
 const getNavigatePath = (notification: NotificationItem): string | null => {
   const data = notification.data;
   const explicitPath = toDataString(data, "navigateTo");
@@ -114,6 +135,12 @@ const getNavigatePath = (notification: NotificationItem): string | null => {
       if (!jobId) return "/kanbans";
       const base = `/kanbans/${jobId}`;
       return applicationId ? `${base}?applicationId=${applicationId}` : base;
+    }
+    case "INTERVIEW_CONFIRMED":
+    case "INTERVIEW_DECLINED":
+    case "INTERVIEW_RESCHEDULE_PROPOSED": {
+      const interviewId = toDataString(data, "interviewId");
+      return interviewId ? `/interviews/${interviewId}` : "/interviews";
     }
     default:
       return null;
@@ -152,6 +179,21 @@ const getNotificationTypeMeta = (type: string) => {
         icon: <CalendarCheck2 className="h-4 w-4" />,
         iconClass: "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300",
       };
+    case "INTERVIEW_CONFIRMED":
+      return {
+        icon: <CheckCircle2 className="h-4 w-4" />,
+        iconClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300",
+      };
+    case "INTERVIEW_RESCHEDULE_PROPOSED":
+      return {
+        icon: <RotateCcw className="h-4 w-4" />,
+        iconClass: "bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300",
+      };
+    case "INTERVIEW_DECLINED":
+      return {
+        icon: <XCircle className="h-4 w-4" />,
+        iconClass: "bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300",
+      };
     case "APPLICATION_REJECTED":
       return {
         icon: <XCircle className="h-4 w-4" />,
@@ -170,7 +212,6 @@ export function NotificationDropdown({
   isOpen,
   onClose,
 }: NotificationDropdownProps) {
-  const navigate = useNavigate();
   const {
     items,
     loading,
@@ -191,7 +232,7 @@ export function NotificationDropdown({
     onClose();
 
     if (nextPath) {
-      navigate(nextPath);
+      redirectWithRefresh(nextPath);
     }
   };
 
