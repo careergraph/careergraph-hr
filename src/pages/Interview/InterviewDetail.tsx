@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { formatDateYMD, formatTimeHM } from "@/lib/dateUtils";
 import {
   canCompleteByStatus,
+  canAddInterviewFeedback,
   canCompleteInterview,
   getInterviewCompletionBlockReason,
   type RoomParticipantLike,
@@ -153,8 +154,10 @@ export default function InterviewDetail() {
   const endDate = new Date(iv.endAt);
   const canCancelFromDetail = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"].includes(iv.interviewStatus);
   const roomLink = iv.meetingLink ? `${window.location.origin}/interview/room/${iv.meetingLink}` : "";
-  const isCompleted = iv.interviewStatus === "COMPLETED";
   const hasFeedback = Array.isArray(iv.feedback) && iv.feedback.length > 0;
+  const canAddFeedback =
+    canAddInterviewFeedback(iv, roomParticipants) &&
+    (iv.type !== "ONLINE" || !loadingRoomParticipants);
   const isPastEndTime = Number.isFinite(endDate.getTime()) && Date.now() > endDate.getTime();
   const canOpenRoomFromDetail =
     ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(iv.interviewStatus) && !isPastEndTime;
@@ -560,9 +563,10 @@ export default function InterviewDetail() {
               )}
             </>
           )}
-          {isCompleted && !hasFeedback && (
+          {canAddFeedback && (
             <Button onClick={() => setShowFeedback(true)}>
-              <MessageSquare className="h-4 w-4 mr-1" /> Thêm đánh giá
+              <MessageSquare className="h-4 w-4 mr-1" />
+              {hasFeedback ? "Thêm đánh giá bổ sung" : "Thêm đánh giá"}
             </Button>
           )}
         </div>

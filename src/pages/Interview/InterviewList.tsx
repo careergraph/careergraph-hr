@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Briefcase, Calendar, Clock, ExternalLink, RotateCcw, Users, X } from "lucide-react";
 import { formatDateYMD, formatTimeHM } from "@/lib/dateUtils";
-import { canCompleteByStatus } from "./interviewCompletionRules";
+import { canAddInterviewFeedback, canCompleteByStatus } from "./interviewCompletionRules";
 import JobMultiSelectFilter, { type JobFilterOption } from "./JobMultiSelectFilter";
 
 const STATUS_TABS: { value: string; label: string }[] = [
@@ -304,9 +304,8 @@ export default function InterviewList() {
         const feedbackCandidates = latestByApplication
           .filter(
             (iv) =>
-              iv.interviewStatus === "COMPLETED" &&
               joinedApplicationIds.has(iv.applicationId) &&
-              getKnownFeedbackStatus(iv) === false
+              canAddInterviewFeedback(iv, roomParticipants)
           )
           .map((iv) => ({
             interviewId: iv.id,

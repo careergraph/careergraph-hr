@@ -296,7 +296,7 @@ export function CandidateDetail({
                   <TabsTrigger value="cv">CV</TabsTrigger>
                   <TabsTrigger value="interview-review">Đánh giá phỏng vấn</TabsTrigger>
                   <TabsTrigger value="messages">Tin nhắn</TabsTrigger>
-                  <TabsTrigger value="email">Email</TabsTrigger>
+                  {/* <TabsTrigger value="email">Email</TabsTrigger> */}
                 </TabsList>
 
                 <TabsContent
@@ -341,6 +341,9 @@ export function CandidateDetail({
                     loading={loading?.["interview-review"]}
                     error={errors?.["interview-review"]}
                     onScheduleInterview={onScheduleInterview}
+                    onRefreshInterviews={async () => {
+                      await loadTab("interview-review");
+                    }}
                   />
                 </TabsContent>
 

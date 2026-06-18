@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, Monitor, MoreVertical, ExternalLink } from "lucide-react";
-import { canCompleteByStatus } from "./interviewCompletionRules";
+import { canAddInterviewFeedback, canCompleteByStatus } from "./interviewCompletionRules";
 
 interface InterviewCardProps {
   interview: Interview;
@@ -50,8 +50,7 @@ export default function InterviewCard({
   const hasTimeExpired = Number.isFinite(endDate.getTime()) && Date.now() > endDate.getTime();
   const canCancel = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"].includes(interview.interviewStatus);
   const canComplete = canCompleteByStatus(interview.interviewStatus);
-  const isCompleted = interview.interviewStatus === "COMPLETED";
-  const canAddFeedback = isCompleted && (!Array.isArray(interview.feedback) || interview.feedback.length === 0);
+  const canAddFeedback = canAddInterviewFeedback(interview);
   const canJoinRoom = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(interview.interviewStatus) && !hasTimeExpired;
   const showJoinRoomButton = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(interview.interviewStatus);
   const navigate = useNavigate();
@@ -104,7 +103,7 @@ export default function InterviewCard({
           </p>
         </div>
 
-        {(canCancel || canComplete || isCompleted) && (
+        {(canCancel || canComplete || canAddFeedback) && (
           <div
             ref={actionMenuRef}
             className="relative"

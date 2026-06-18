@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { Interview, InterviewFeedback, InterviewRecording } from "@/types/interview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,9 @@ import { CalendarPlus, CalendarDays, Star, Video, MapPin, UserCheck, CircleAlert
 import { formatDateTimeYMDHM } from "@/lib/dateUtils";
 import { getFeedbackRecommendationLabel } from "@/pages/Interview/feedbackRecommendationOptions";
 import type { Candidate } from "@/types/candidate";
+import FeedbackModal from "@/pages/Interview/FeedbackModal";
+import { canAddInterviewFeedback } from "@/pages/Interview/interviewCompletionRules";
+import { interviewService } from "@/services/interviewService";
 
 interface InterviewReviewTabProps {
   candidate: Candidate;
@@ -12,6 +16,7 @@ interface InterviewReviewTabProps {
   loading?: boolean;
   error?: string | null;
   onScheduleInterview?: (candidate: Candidate) => void;
+  onRefreshInterviews?: () => void | Promise<void>;
 }
 
 const getLatestFeedback = (feedback: InterviewFeedback[] | undefined) => {
@@ -62,7 +67,18 @@ const getInterviewRecordings = (interview: Interview): InterviewRecording[] => {
     : [];
 };
 
-export function InterviewReviewTab({ candidate, interviews, loading, error, onScheduleInterview }: InterviewReviewTabProps) {
+export function InterviewReviewTab({
+  candidate,
+  interviews,
+  loading,
+  error,
+  onScheduleInterview,
+  onRefreshInterviews,
+}: InterviewReviewTabProps) {
+  const [feedbackInterview, setFeedbackInterview] = useState<Interview | null>(null);
+  const [roomParticipantsByCode, setRoomParticipantsByCode] = useState<
+    Record<string, Array<{ applicationId?: string; candidateId?: string; joinedAt?: string }>>
+  >({});
   const hasValidActiveInterview = interviews.some((interview) => {
     const endTimeMs = interview.endAt ? new Date(interview.endAt).getTime() : new Date(interview.scheduledAt).getTime();
     return (
@@ -135,10 +151,51 @@ export function InterviewReviewTab({ candidate, interviews, loading, error, onSc
     return new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime();
   });
 
+  useEffect(() => {
+    const roomCodes = Array.from(
+      new Set(
+        interviews
+          .filter((interview) => interview.type === "ONLINE" && interview.meetingLink)
+          .map((interview) => interview.meetingLink as string)
+      )
+    );
+
+    if (roomCodes.length === 0) {
+      setRoomParticipantsByCode({});
+      return;
+    }
+
+    let cancelled = false;
+
+    Promise.all(
+      roomCodes.map(async (roomCode) => {
+        try {
+          const response = await interviewService.fetchRoomParticipants(roomCode);
+          const participants = Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response)
+              ? response
+              : [];
+          return [roomCode, participants] as const;
+        } catch {
+          return [roomCode, []] as const;
+        }
+      })
+    ).then((entries) => {
+      if (cancelled) return;
+      setRoomParticipantsByCode(Object.fromEntries(entries));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [interviews]);
+
   return (
-    <div className="h-full overflow-y-auto p-6 space-y-4">
-      {scheduleAction}
-      {sorted.map((interview) => {
+    <>
+      <div className="h-full overflow-y-auto p-6 space-y-4">
+        {scheduleAction}
+        {sorted.map((interview) => {
         const latestFeedback = getLatestFeedback(interview.feedback || undefined);
         const recordings = getInterviewRecordings(interview);
         const statusMeta = STATUS_META[interview.interviewStatus] ?? {
@@ -156,6 +213,11 @@ export function InterviewReviewTab({ candidate, interviews, loading, error, onSc
           interview.type === "ONLINE" &&
           !!interview.meetingLink &&
           !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(interview.interviewStatus);
+        const roomParticipants =
+          interview.type === "ONLINE" && interview.meetingLink
+            ? roomParticipantsByCode[interview.meetingLink] ?? []
+            : [];
+        const canAddFeedback = canAddInterviewFeedback(interview, roomParticipants);
         const scoreItems = [
           { label: "Kỹ thuật", value: latestFeedback?.technicalScore },
           { label: "Giao tiếp", value: latestFeedback?.communicationScore },
@@ -197,7 +259,7 @@ export function InterviewReviewTab({ candidate, interviews, loading, error, onSc
             </div>
 
             {showRoomButton ? (
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <Button
                   size="sm"
                   className="h-8 bg-blue-600 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
@@ -208,6 +270,27 @@ export function InterviewReviewTab({ candidate, interviews, loading, error, onSc
                   }}
                 >
                   {canOpenRoom ? "Vào phòng phỏng vấn" : "Đã quá giờ phỏng vấn"}
+                </Button>
+                {canAddFeedback ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => setFeedbackInterview(interview)}
+                  >
+                    Thêm đánh giá
+                  </Button>
+                ) : null}
+              </div>
+            ) : canAddFeedback ? (
+              <div className="mt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  onClick={() => setFeedbackInterview(interview)}
+                >
+                  Thêm đánh giá
                 </Button>
               </div>
             ) : null}
@@ -318,7 +401,21 @@ export function InterviewReviewTab({ candidate, interviews, loading, error, onSc
             ) : null}
           </div>
         );
-      })}
-    </div>
+        })}
+      </div>
+
+      {feedbackInterview ? (
+        <FeedbackModal
+          open={!!feedbackInterview}
+          onClose={() => setFeedbackInterview(null)}
+          interviewId={feedbackInterview.id}
+          candidateName={feedbackInterview.candidateName || candidate.name}
+          onSubmitted={async () => {
+            await onRefreshInterviews?.();
+            setFeedbackInterview(null);
+          }}
+        />
+      ) : null}
+    </>
   );
 }

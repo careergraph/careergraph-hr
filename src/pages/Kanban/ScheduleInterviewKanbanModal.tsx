@@ -102,6 +102,7 @@ export default function ScheduleInterviewKanbanModal({
   const isStageEligible = useCallback(
     (stage?: string) => {
       if (!stage) return false;
+      if (stage === "INTERVIEW_COMPLETED") return true;
       const order = stageOrderMap.get(stage as ApplicationStageCode);
       if (typeof order !== "number") return false;
       if (interviewStageOrder <= 0) {

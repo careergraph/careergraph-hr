@@ -733,14 +733,27 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           : Array.isArray(interviewResp)
             ? interviewResp
             : [];
+        const now = Date.now();
         const hasCompletedInterview = interviews.some(
           (item: { interviewStatus?: string }) => item?.interviewStatus === "COMPLETED"
         );
         const hasFeedback = interviews.some(
           (item: { feedback?: unknown[] }) => Array.isArray(item?.feedback) && item.feedback.length > 0
         );
-        if (!hasCompletedInterview && !hasFeedback) {
-          toast.error("Ứng viên chưa tham gia hoặc chưa có đánh giá phỏng vấn, không thể chuyển trạng thái.");
+        const hasStartedOfflineInterview = interviews.some((item: {
+          type?: string;
+          interviewStatus?: string;
+          scheduledAt?: string;
+        }) => {
+          if (item?.type !== "OFFLINE") return false;
+          if (!["SCHEDULED", "CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(item?.interviewStatus || "")) {
+            return false;
+          }
+          const scheduledAtMs = new Date(item.scheduledAt || "").getTime();
+          return Number.isFinite(scheduledAtMs) && scheduledAtMs <= now;
+        });
+        if (!hasCompletedInterview && !hasFeedback && !hasStartedOfflineInterview) {
+          toast.error("Ứng viên chưa đủ điều kiện hoàn tất vòng phỏng vấn để chuyển trạng thái.");
           setCandidates(prevCandidates);
           return;
         }
