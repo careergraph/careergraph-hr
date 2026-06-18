@@ -5,6 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -73,6 +83,8 @@ export default function ScheduleInterviewKanbanModal({
   const [notes, setNotes] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
+  const [overwritePromptOpen, setOverwritePromptOpen] = useState(false);
+  const [overwritePromptMessage, setOverwritePromptMessage] = useState("");
   const formErrorRef = useRef<HTMLDivElement>(null);
   const candidateFieldRef = useRef<HTMLDivElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -164,6 +176,8 @@ export default function ScheduleInterviewKanbanModal({
     setNotes("");
     setFieldErrors({});
     setFormError("");
+    setOverwritePromptOpen(false);
+    setOverwritePromptMessage("");
     setScheduledResult(null);
     setCopied(false);
   };
@@ -245,28 +259,40 @@ export default function ScheduleInterviewKanbanModal({
     } catch (error: unknown) {
       const rawMessage = extractApiErrorMessage(error, "Không thể lên lịch phỏng vấn");
       if (rawMessage.includes("ACTIVE_INTERVIEW")) {
-        const confirm = window.confirm(
-          "Ứng viên đã có một lịch phỏng vấn đang hoạt động cho vị trí này. Bạn có muốn ghi đè lịch cũ bằng lịch mới không?"
-        );
-        if (confirm) {
-          try {
-            const interview = await submitRequest(true);
-            toast.success("Đã cập nhật lịch phỏng vấn thành công");
-            setScheduledResult(interview);
-            onScheduled(selectedAppId, interview);
-            return;
-          } catch (confirmError: unknown) {
-            setFormError(extractApiErrorMessage(confirmError, "Không thể cập nhật lịch phỏng vấn"));
-            setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
-            return;
-          }
-        }
-        setFormError("Bạn đã hủy thao tác ghi đè lịch hiện tại.");
-        setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+        setOverwritePromptMessage(rawMessage.replace(/^ACTIVE_INTERVIEW_[A-Z_]+\|/, ""));
+        setOverwritePromptOpen(true);
         return;
       }
 
       setFormError(rawMessage);
+      setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+    }
+  };
+
+  const handleConfirmOverwrite = async () => {
+    const request: CreateInterviewRequest = {
+      applicationId: selectedAppId,
+      date,
+      startTime,
+      durationMinutes: duration,
+      type,
+      location: type === "OFFLINE" ? location : undefined,
+      notes: notes || undefined,
+      confirmOverwrite: true,
+      notifyCandidate: true,
+      roundNumber: selectedApp?.nextRound ?? undefined,
+    };
+
+    try {
+      const interview = await createInterview(request);
+      setOverwritePromptOpen(false);
+      setOverwritePromptMessage("");
+      toast.success("Đã cập nhật lịch phỏng vấn thành công");
+      setScheduledResult(interview);
+      onScheduled(selectedAppId, interview);
+    } catch (error: unknown) {
+      setOverwritePromptOpen(false);
+      setFormError(extractApiErrorMessage(error, "Không thể cập nhật lịch phỏng vấn"));
       setTimeout(() => formErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
     }
   };
@@ -590,6 +616,29 @@ export default function ScheduleInterviewKanbanModal({
           )}
         </div>
       </div>
+      <AlertDialog open={overwritePromptOpen} onOpenChange={setOverwritePromptOpen}>
+        <AlertDialogContent className="border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.30)] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ghi đè lịch phỏng vấn hiện tại</AlertDialogTitle>
+            <AlertDialogDescription>
+              {overwritePromptMessage || "Ứng viên đang có một lịch phỏng vấn còn hiệu lực cho vị trí này. Xác nhận để hủy lịch hiện tại và tạo lịch mới."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Giữ lịch hiện tại</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-brand-600 hover:bg-brand-700"
+              disabled={isLoading}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmOverwrite();
+              }}
+            >
+              {isLoading ? "Đang xử lý..." : "Xác nhận ghi đè"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Modal>
   );
 }

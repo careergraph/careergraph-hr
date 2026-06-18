@@ -10,7 +10,6 @@ export interface RoomParticipantLike {
 const COMPLETE_ALLOWED_STATUSES = new Set<InterviewStatus>([
   "SCHEDULED",
   "CONFIRMED",
-  "PENDING_RESCHEDULE",
   "IN_PROGRESS",
 ]);
 
@@ -51,11 +50,11 @@ export const getInterviewCompletionBlockReason = (
   }
 
   if (!canCompleteByStatus(interview.interviewStatus)) {
-    return "Chỉ có thể hoàn thành phỏng vấn đã được xác nhận, lên lịch, hoặc đang diễn ra.";
+    return "Chỉ có thể hoàn thành phỏng vấn ở trạng thái đã lên lịch, đã xác nhận, hoặc đang diễn ra.";
   }
 
   if (interview.type === "ONLINE" && !hasCandidateJoinedRoom(interview, participants)) {
-    return "Chỉ có thể hoàn thành sau khi ứng viên đã được duyệt và vào phòng phỏng vấn.";
+    return "Chỉ có thể hoàn thành sau khi ứng viên đã thực sự vào phòng phỏng vấn online.";
   }
 
   return "";
@@ -71,5 +70,6 @@ export const canAddInterviewFeedback = (
   participants: RoomParticipantLike[] = []
 ) =>
   FEEDBACK_ALLOWED_STATUSES.has(interview.interviewStatus as InterviewStatus) &&
-  hasInterviewStarted(interview) &&
-  (interview.type !== "ONLINE" || hasCandidateJoinedRoom(interview, participants));
+  (interview.type === "ONLINE"
+    ? hasCandidateJoinedRoom(interview, participants)
+    : hasInterviewStarted(interview));

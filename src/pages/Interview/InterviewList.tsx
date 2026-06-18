@@ -125,7 +125,7 @@ export default function InterviewList() {
     async (id: string) => {
       const target = interviews.find((interview) => interview.id === id);
       if (target && !canCompleteByStatus(target.interviewStatus)) {
-        toast.warning("Chỉ có thể hoàn thành phỏng vấn đã xác nhận hoặc đang diễn ra");
+        toast.warning("Chỉ có thể hoàn thành phỏng vấn đã lên lịch, đã xác nhận hoặc đang diễn ra");
         return;
       }
 
