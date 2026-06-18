@@ -38,6 +38,7 @@ type CandidateDetailProps = {
   setHeaderBlur: (blur: boolean) => void;
   onRejectCandidate?: (candidate: Candidate) => Promise<void> | void;
   onScheduleInterview?: (candidate: Candidate) => void;
+  canScheduleInterview?: boolean;
 };
 
 export function CandidateDetail({
@@ -47,6 +48,7 @@ export function CandidateDetail({
   setHeaderBlur,
   onRejectCandidate,
   onScheduleInterview,
+  canScheduleInterview = false,
 }: CandidateDetailProps) {
   useEffect(() => {
     // Làm mờ header khi panel mở để tạo trọng tâm.
@@ -176,12 +178,20 @@ export function CandidateDetail({
   }, [open, candidate]);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
       {candidate ? (
-        <SheetContent
-          side="right"
-          className="h-[100dvh] w-full border-l border-slate-200/50 bg-white p-0 sm:h-full sm:max-w-[90vw] lg:max-w-[70vw] xl:max-w-[65rem]"
-        >
+        <>
+          <SheetPortal>
+            <div
+              className="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-[2px]"
+              onClick={() => onOpenChange(false)}
+              aria-hidden="true"
+            />
+          </SheetPortal>
+          <SheetContent
+            side="right"
+            className="h-[100dvh] w-full border-l border-slate-200/50 bg-white p-0 shadow-[0_24px_80px_rgba(15,23,42,0.24)] sm:h-full sm:max-w-[90vw] lg:max-w-[70vw] xl:max-w-[65rem]"
+          >
           <SheetHeader className="sr-only">
             <SheetTitle>Chi tiết ứng viên {candidate.name}</SheetTitle>
             <SheetDescription>
@@ -340,6 +350,7 @@ export function CandidateDetail({
                     interviews={interviewReviews}
                     loading={loading?.["interview-review"]}
                     error={errors?.["interview-review"]}
+                    canScheduleInterview={canScheduleInterview}
                     onScheduleInterview={onScheduleInterview}
                     onRefreshInterviews={async () => {
                       await loadTab("interview-review");
@@ -366,6 +377,7 @@ export function CandidateDetail({
             </div>
           </div>
         </SheetContent>
+        </>
       ) : null}
     </Sheet>
   );

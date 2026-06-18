@@ -28,6 +28,7 @@ import { Status as CandidateStatusType } from "@/types/candidate";
 import ScheduleInterviewKanbanModal from "./ScheduleInterviewKanbanModal";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import {
+  canScheduleInterviewAtStage,
   DEFAULT_COMPANY_STAGES,
   STAGE_TO_STATUS,
   STATUS_TO_STAGE,
@@ -689,6 +690,17 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     );
   }, [moveRequest, pipelineColumns]);
 
+  const canScheduleActiveCandidate = useMemo(() => {
+    if (!activeCandidate) {
+      return false;
+    }
+
+    return canScheduleInterviewAtStage(
+      STATUS_TO_STAGE[activeCandidate.status],
+      pipelineStages
+    );
+  }, [activeCandidate, pipelineStages]);
+
   useEffect(() => {
     if (!isMobile) return;
     if (!pipelineColumns.length) return;
@@ -996,6 +1008,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         candidate={activeCandidate}
+        canScheduleInterview={canScheduleActiveCandidate}
         setHeaderBlur={() => {}}
         onScheduleInterview={(candidate) => {
           setDetailOpen(false);

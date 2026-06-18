@@ -15,6 +15,7 @@ interface InterviewReviewTabProps {
   interviews: Interview[];
   loading?: boolean;
   error?: string | null;
+  canScheduleInterview?: boolean;
   onScheduleInterview?: (candidate: Candidate) => void;
   onRefreshInterviews?: () => void | Promise<void>;
 }
@@ -72,6 +73,7 @@ export function InterviewReviewTab({
   interviews,
   loading,
   error,
+  canScheduleInterview = false,
   onScheduleInterview,
   onRefreshInterviews,
 }: InterviewReviewTabProps) {
@@ -79,6 +81,13 @@ export function InterviewReviewTab({
   const [roomParticipantsByCode, setRoomParticipantsByCode] = useState<
     Record<string, Array<{ applicationId?: string; candidateId?: string; joinedAt?: string }>>
   >({});
+  const roomCodes = Array.from(
+    new Set(
+      interviews
+        .filter((interview) => interview.type === "ONLINE" && interview.meetingLink)
+        .map((interview) => interview.meetingLink as string)
+    )
+  );
   const hasValidActiveInterview = interviews.some((interview) => {
     const endTimeMs = interview.endAt ? new Date(interview.endAt).getTime() : new Date(interview.scheduledAt).getTime();
     return (
@@ -87,7 +96,7 @@ export function InterviewReviewTab({
     );
   });
 
-  const scheduleAction = (
+  const scheduleAction = canScheduleInterview ? (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -115,7 +124,39 @@ export function InterviewReviewTab({
       ) : null}
 
     </>
-  );
+  ) : null;
+
+  useEffect(() => {
+    if (roomCodes.length === 0) {
+      setRoomParticipantsByCode({});
+      return;
+    }
+
+    let cancelled = false;
+
+    Promise.all(
+      roomCodes.map(async (roomCode) => {
+        try {
+          const response = await interviewService.fetchRoomParticipants(roomCode);
+          const participants = Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response)
+              ? response
+              : [];
+          return [roomCode, participants] as const;
+        } catch {
+          return [roomCode, []] as const;
+        }
+      })
+    ).then((entries) => {
+      if (cancelled) return;
+      setRoomParticipantsByCode(Object.fromEntries(entries));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [interviews]);
 
   if (loading) {
     return (
@@ -150,46 +191,6 @@ export function InterviewReviewTab({
     if (bFb) return 1;
     return new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime();
   });
-
-  useEffect(() => {
-    const roomCodes = Array.from(
-      new Set(
-        interviews
-          .filter((interview) => interview.type === "ONLINE" && interview.meetingLink)
-          .map((interview) => interview.meetingLink as string)
-      )
-    );
-
-    if (roomCodes.length === 0) {
-      setRoomParticipantsByCode({});
-      return;
-    }
-
-    let cancelled = false;
-
-    Promise.all(
-      roomCodes.map(async (roomCode) => {
-        try {
-          const response = await interviewService.fetchRoomParticipants(roomCode);
-          const participants = Array.isArray(response?.data)
-            ? response.data
-            : Array.isArray(response)
-              ? response
-              : [];
-          return [roomCode, participants] as const;
-        } catch {
-          return [roomCode, []] as const;
-        }
-      })
-    ).then((entries) => {
-      if (cancelled) return;
-      setRoomParticipantsByCode(Object.fromEntries(entries));
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [interviews]);
 
   return (
     <>
