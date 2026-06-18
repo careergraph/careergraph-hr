@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarClock, Video, Briefcase, Users } from "lucide-react";
+import { CalendarClock, Video, Briefcase, Users, X } from "lucide-react";
 import { jobService } from "@/services/jobService";
 import { interviewService } from "@/services/interviewService";
 import { companyPipelineService } from "@/services/companyPipelineService";
@@ -682,8 +682,15 @@ export const CalendarModalForm = ({
     });
   }, [duration, eventStartDate, startTime]);
 
+  const isPromptOpen = overwritePromptOpen || cancelPromptOpen;
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className="max-w-[760px] p-0">
+    <Modal
+      isOpen={isOpen}
+      onClose={isPromptOpen ? () => undefined : onClose}
+      className="max-w-[760px] p-0"
+      showCloseButton={!isPromptOpen}
+    >
       <div className="flex max-h-[80vh] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-[0_30px_80px_rgba(0,0,0,0.35)]">
         <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
           <div>
@@ -1179,7 +1186,18 @@ export const CalendarModalForm = ({
         </div>
       </div>
       <AlertDialog open={overwritePromptOpen} onOpenChange={setOverwritePromptOpen}>
-        <AlertDialogContent className="border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.30)] sm:max-w-md dark:border-slate-700 dark:bg-slate-900">
+        <AlertDialogContent
+          className="border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.30)] sm:max-w-md dark:border-slate-700 dark:bg-slate-900"
+          onInteractOutside={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+        >
+          <AlertDialogCancel
+            className="absolute right-4 top-4 mt-0 h-9 w-9 min-w-0 rounded-full border-0 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            disabled={isSubmitting}
+            aria-label="Đóng xác nhận ghi đè lịch"
+          >
+            <X className="h-4 w-4" />
+          </AlertDialogCancel>
           <AlertDialogHeader>
             <AlertDialogTitle>Ghi đè lịch phỏng vấn hiện tại</AlertDialogTitle>
             <AlertDialogDescription>
@@ -1202,7 +1220,18 @@ export const CalendarModalForm = ({
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog open={cancelPromptOpen} onOpenChange={setCancelPromptOpen}>
-        <AlertDialogContent className="border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.30)] sm:max-w-md dark:border-slate-700 dark:bg-slate-900">
+        <AlertDialogContent
+          className="border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.30)] sm:max-w-md dark:border-slate-700 dark:bg-slate-900"
+          onInteractOutside={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+        >
+          <AlertDialogCancel
+            className="absolute right-4 top-4 mt-0 h-9 w-9 min-w-0 rounded-full border-0 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            disabled={isSubmitting}
+            aria-label="Đóng xác nhận hủy lịch"
+          >
+            <X className="h-4 w-4" />
+          </AlertDialogCancel>
           <AlertDialogHeader>
             <AlertDialogTitle>Hủy lịch phỏng vấn</AlertDialogTitle>
             <AlertDialogDescription>
