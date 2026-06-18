@@ -97,8 +97,19 @@ export const JobCard = ({
   const currentStatus = job.status ?? Status.ACTIVE;
   const today = new Date().toISOString().slice(0, 10);
   const expiryDate = job.expiryDate?.slice(0, 10) ?? "";
+  const formattedPostedDate = formatDateYMD(job.postedDate);
+  const formattedExpiryDate = expiryDate ? formatDateYMD(expiryDate) : "Chưa đặt";
   const isClosed = currentStatus === Status.CLOSED;
   const isExpired = Boolean(expiryDate) && expiryDate < today && !isClosed;
+  const displayStatusLabel = isExpired
+    ? "Hết hạn"
+    : currentStatus === Status.ACTIVE
+    ? "Đang tuyển"
+    : currentStatus === Status.INACTIVE
+    ? "Tạm dừng"
+    : currentStatus === Status.DRAFT
+    ? "Bản nháp"
+    : "Đã đóng";
   const extendActionLabel =
     isClosed || isExpired ? "Mở lại công việc" : "Gia hạn công việc";
 
@@ -109,13 +120,6 @@ export const JobCard = ({
     [EmploymentType.INTERNSHIP]: "Thực tập",
     [EmploymentType.FREELANCE]: "Tự do",
     [EmploymentType.TEMPORARY]: "Tạm thời",
-  };
-
-  const statusLabelMap: Record<Status, string> = {
-    [Status.ACTIVE]: "Đang tuyển",
-    [Status.INACTIVE]: "Tạm dừng",
-    [Status.DRAFT]: "Bản nháp",
-    [Status.CLOSED]: "Đã đóng",
   };
 
   const jobCategoryLabel =
@@ -161,7 +165,9 @@ export const JobCard = ({
   };
 
   const statusColor =
-    currentStatus === Status.ACTIVE
+    isExpired
+      ? "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-300"
+      : currentStatus === Status.ACTIVE
       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
       : currentStatus === Status.DRAFT
       ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-300"
@@ -281,16 +287,44 @@ export const JobCard = ({
           </p>
         </div>
         <Badge className={`ml-3 rounded-full px-2 py-1 text-sm ${statusColor}`}>
-          {statusLabelMap[currentStatus]}
+          {displayStatusLabel}
         </Badge>
       </div>
 
-      <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground dark:text-slate-400">
-        <span className="flex items-center gap-1">
+      <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground dark:text-slate-400">
+        <span className="flex min-w-0 flex-1 items-center gap-1.5" title={job.city}>
           <MapPin className="h-3 w-3" />
-          {job.city}
+          <span className="truncate">{job.city}</span>
         </span>
-        <span>{formatDateYMD(job.postedDate)}</span>
+      </div>
+
+      <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl border border-border/60 bg-background/70 p-3 text-xs dark:border-slate-800 dark:bg-slate-950/40">
+        <div className="min-w-0 rounded-lg bg-muted/60 px-3 py-2 dark:bg-slate-900/70">
+          <span className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Ngày đăng
+          </span>
+          <span
+            className="mt-1 block truncate text-sm font-semibold text-foreground dark:text-slate-100"
+            title={formattedPostedDate}
+          >
+            {formattedPostedDate}
+          </span>
+        </div>
+        <div className="min-w-0 rounded-lg bg-muted/60 px-3 py-2 dark:bg-slate-900/70">
+          <span className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Hạn ứng tuyển
+          </span>
+          <span
+            className={`mt-1 block truncate text-sm font-semibold ${
+              isExpired
+                ? "text-red-600 dark:text-red-400"
+                : "text-foreground dark:text-slate-100"
+            }`}
+            title={formattedExpiryDate}
+          >
+            {formattedExpiryDate}
+          </span>
+        </div>
       </div>
 
       <div className="mt-auto flex items-center justify-between text-sm text-muted-foreground">
