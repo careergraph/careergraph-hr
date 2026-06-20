@@ -9,8 +9,11 @@ import { useMessagingStore } from "@/features/messaging/store/messagingStore";
 import { useAuthStore } from "@/stores/authStore";
 
 const PAGE_SIZE = 20;
+const MESSAGE_NOTIFICATION_TYPE = "NEW_MESSAGE";
 const countUnreadItems = (items: NotificationItem[]): number =>
   items.reduce((total, item) => total + (item.read ? 0 : 1), 0);
+const isBellNotification = (item: NotificationItem): boolean =>
+  item.type !== MESSAGE_NOTIFICATION_TYPE;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -88,11 +91,12 @@ export const useNotifications = () => {
           targetPage,
           PAGE_SIZE
         );
+        const bellNotifications = response.notifications.filter(isBellNotification);
 
         if (reset) {
-          replaceItems(response.notifications);
+          replaceItems(bellNotifications);
         } else {
-          appendItems(response.notifications);
+          appendItems(bellNotifications);
         }
 
         setUnreadCount(response.totalUnread);
@@ -124,17 +128,27 @@ export const useNotifications = () => {
     try {
       const count = await notificationApi.getUnreadCount();
       setUnreadCount(count);
+      return count;
     } catch {
       // Keep silent to avoid noisy header behavior.
+      return unreadCount;
     }
-  }, [setUnreadCount]);
+  }, [setUnreadCount, unreadCount]);
 
   const ensureLoaded = useCallback(async () => {
-    if (!initialized) {
+    const nextUnreadCount = await refreshUnreadCount();
+
+    const localUnreadCount = countUnreadItems(items);
+    const shouldLoadNotifications =
+      !initialized ||
+      items.length === 0 ||
+      nextUnreadCount > localUnreadCount ||
+      (initialized && nextUnreadCount > 0);
+
+    if (shouldLoadNotifications) {
       await fetchNotifications({ reset: true });
-      await refreshUnreadCount();
     }
-  }, [fetchNotifications, initialized, refreshUnreadCount]);
+  }, [fetchNotifications, initialized, items, refreshUnreadCount]);
 
   const markAsRead = useCallback(async (notificationId: string) => {
     markRead(notificationId);
@@ -161,6 +175,9 @@ export const useNotifications = () => {
   const handleSocketNotification = useCallback(
     (payload: unknown) => {
       const nextItem = normalizeNotification(payload);
+      if (!isBellNotification(nextItem)) {
+        return;
+      }
       prependItem(nextItem);
     },
     [prependItem]
@@ -211,6 +228,7 @@ export const useNotifications = () => {
     error,
     unreadCount,
     hasMore,
+    initialized,
     ensureLoaded,
     fetchNotifications,
     refreshUnreadCount,
