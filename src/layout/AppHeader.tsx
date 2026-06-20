@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router";
+import { MessageSquareText } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import NotificationDropdown from "../components/header/NotificationDropdown";
 import UserDropdown from "../components/header/UserDropdown";
 import { useAuthStore } from "@/stores/authStore";
+import useThreads from "@/features/messaging/hooks/useThreads";
 
 const AppHeader: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const { toggleMobileSidebar, isMobile } = useSidebar();
   const { company } = useAuthStore();
+  const { totalUnread } = useThreads({ autoLoad: false, archived: false });
   const [searchOpen, setSearchOpen] = useState(false);
 
   const greeting = useMemo(() => {
@@ -117,6 +121,26 @@ const AppHeader: React.FC = () => {
 
         <div className="flex items-center gap-2 2xsm:gap-3">
           <ThemeToggleButton />
+          <Link
+            to="/messages"
+            aria-label={`Open messages inbox${
+              totalUnread > 0 ? ` (${totalUnread} unread)` : ""
+            }`}
+            className="relative flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+          >
+            {totalUnread > 0 ? (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-0.5 -top-0.5 h-5 min-w-5 rounded-full bg-brand-500/40 motion-safe:animate-ping"
+                />
+                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-semibold text-white shadow-sm motion-safe:animate-pulse">
+                  {totalUnread > 99 ? "99+" : totalUnread}
+                </span>
+              </>
+            ) : null}
+            <MessageSquareText className="h-5 w-5" />
+          </Link>
           <NotificationDropdown />
           <UserDropdown />
         </div>

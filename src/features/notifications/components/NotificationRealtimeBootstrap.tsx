@@ -13,6 +13,7 @@ export function NotificationRealtimeBootstrap() {
   const {
     items,
     unreadCount,
+    initialized,
     refreshUnreadCount,
     fetchNotifications,
     handleSocketNotification,
@@ -26,6 +27,10 @@ export function NotificationRealtimeBootstrap() {
     enableNativeNotification: true,
     onConnect: () => {
       void refreshUnreadCount();
+
+      if (initialized && (items.length > 0 || unreadCount > 0)) {
+        void fetchNotifications({ reset: true });
+      }
     },
   });
 
