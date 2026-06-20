@@ -345,11 +345,13 @@ const ensureSocket = (token: string): ChatSocket => {
 
   sharedSocket = io(`${CHAT_SOCKET_URL}/chat`, {
     auth: { token },
-    transports: ["websocket"],
+    transports: ["websocket", "polling"],
+    tryAllTransports: true,
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 10000,
     reconnectionAttempts: Infinity,
+    timeout: 20000,
   });
 
   sharedSocket.on("connect", () => {
