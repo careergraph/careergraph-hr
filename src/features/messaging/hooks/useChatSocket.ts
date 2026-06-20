@@ -14,6 +14,9 @@ import type {
 
 const CHAT_SOCKET_URL =
   import.meta.env.VITE_RTC_BASE_URL ?? "http://localhost:4000";
+const logChatSocket = (...args: unknown[]) => {
+  console.info("[chat socket][hr]", ...args);
+};
 
 type ChatSocket = Socket;
 
@@ -355,7 +358,16 @@ const ensureSocket = (token: string): ChatSocket => {
   });
 
   sharedSocket.on("connect", () => {
+    logChatSocket("connected", {
+      id: sharedSocket?.id,
+      url: `${CHAT_SOCKET_URL}/chat`,
+      subscribedThreads: subscribedThreadIds.size,
+    });
     rejoinSubscribedThreads();
+  });
+
+  sharedSocket.on("disconnect", (reason) => {
+    logChatSocket("disconnected", { reason });
   });
 
   sharedToken = token;
@@ -415,6 +427,7 @@ export const useChatSocket = (token: string | null): UseChatSocketResult => {
     const currentCount = subscribedThreadIds.get(threadId) ?? 0;
     subscribedThreadIds.set(threadId, currentCount + 1);
     if (currentCount > 0) return;
+    logChatSocket("join-thread", { threadId });
     emitJoinThread(threadId);
   }, []);
 
@@ -427,6 +440,7 @@ export const useChatSocket = (token: string | null): UseChatSocketResult => {
     }
 
     subscribedThreadIds.delete(threadId);
+    logChatSocket("leave-thread", { threadId });
     emitLeaveThread(threadId);
   }, []);
 

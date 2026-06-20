@@ -7,6 +7,7 @@ import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
 import BottomNav from "../components/layout/BottomNav";
 import MessagingRealtimeBootstrap from "@/features/messaging/components/MessagingRealtimeBootstrap";
+import NotificationRealtimeBootstrap from "@/features/notifications/components/NotificationRealtimeBootstrap";
 
 const LayoutContent: React.FC = () => {
   const { isExpanded, isHovered, isMobileOpen, isMobile, isTablet } = useSidebar();
@@ -29,6 +30,7 @@ const LayoutContent: React.FC = () => {
         className={`flex-1 min-w-0 transition-all duration-300 ease-in-out ${mainMargin} ${isMobileOpen ? "ml-0" : ""}`}
       >
         <AppHeader />
+        <NotificationRealtimeBootstrap />
         <MessagingRealtimeBootstrap />
         <div
           className={`${isMessagesRoute

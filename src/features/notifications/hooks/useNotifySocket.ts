@@ -22,10 +22,15 @@ interface UseNotifySocketOptions {
   onNotification: (notification: NotificationPayload) => void;
   onUnreadCounts: (counts: UnreadCounts) => void;
   enableNativeNotification?: boolean;
+  onConnect?: () => void;
 }
 
 const NOTIFY_SOCKET_URL =
   import.meta.env.VITE_RTC_BASE_URL ?? "http://localhost:4000";
+
+const logNotifySocket = (...args: unknown[]) => {
+  console.info("[notify socket][hr]", ...args);
+};
 
 const canUseBrowserNotifications = (): boolean =>
   typeof window !== "undefined" && "Notification" in window;
@@ -59,10 +64,12 @@ export function useNotifySocket({
   onNotification,
   onUnreadCounts,
   enableNativeNotification = true,
+  onConnect,
 }: UseNotifySocketOptions) {
   const socketRef = useRef<Socket | null>(null);
   const onNotificationRef = useRef(onNotification);
   const onUnreadCountsRef = useRef(onUnreadCounts);
+  const onConnectRef = useRef(onConnect);
 
   useEffect(() => {
     onNotificationRef.current = onNotification;
@@ -71,6 +78,10 @@ export function useNotifySocket({
   useEffect(() => {
     onUnreadCountsRef.current = onUnreadCounts;
   }, [onUnreadCounts]);
+
+  useEffect(() => {
+    onConnectRef.current = onConnect;
+  }, [onConnect]);
 
   useEffect(() => {
     if (!token) {
@@ -90,7 +101,24 @@ export function useNotifySocket({
 
     socketRef.current = socket;
 
+    socket.on("connect", () => {
+      logNotifySocket("connected", { id: socket.id, url: `${NOTIFY_SOCKET_URL}/notify` });
+      onConnectRef.current?.();
+    });
+
+    socket.on("disconnect", (reason) => {
+      logNotifySocket("disconnected", { reason });
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("[notify socket][hr] connect_error", error.message);
+    });
+
     socket.on("notification", (notification: NotificationPayload) => {
+      logNotifySocket("notification", {
+        id: notification.id,
+        type: notification.type,
+      });
       onNotificationRef.current(notification);
 
       if (
@@ -116,6 +144,7 @@ export function useNotifySocket({
     });
 
     socket.on("unread-counts", (counts: UnreadCounts) => {
+      logNotifySocket("unread-counts", counts);
       onUnreadCountsRef.current(counts);
     });
 
