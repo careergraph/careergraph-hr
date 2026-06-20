@@ -1188,8 +1188,6 @@ export const CalendarModalForm = ({
       <AlertDialog open={overwritePromptOpen} onOpenChange={setOverwritePromptOpen}>
         <AlertDialogContent
           className="border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.30)] sm:max-w-md dark:border-slate-700 dark:bg-slate-900"
-          onInteractOutside={(event) => event.preventDefault()}
-          onPointerDownOutside={(event) => event.preventDefault()}
         >
           <AlertDialogCancel
             className="absolute right-4 top-4 mt-0 h-9 w-9 min-w-0 rounded-full border-0 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
@@ -1222,8 +1220,6 @@ export const CalendarModalForm = ({
       <AlertDialog open={cancelPromptOpen} onOpenChange={setCancelPromptOpen}>
         <AlertDialogContent
           className="border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.30)] sm:max-w-md dark:border-slate-700 dark:bg-slate-900"
-          onInteractOutside={(event) => event.preventDefault()}
-          onPointerDownOutside={(event) => event.preventDefault()}
         >
           <AlertDialogCancel
             className="absolute right-4 top-4 mt-0 h-9 w-9 min-w-0 rounded-full border-0 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
