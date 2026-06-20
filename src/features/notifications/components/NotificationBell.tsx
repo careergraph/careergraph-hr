@@ -2,37 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import NotificationDropdown from "@/features/notifications/components/NotificationDropdown";
 import useNotifications from "@/features/notifications/hooks/useNotifications";
-import {
-  requestBrowserNotificationPermission,
-  useNotifySocket,
-} from "@/features/notifications/hooks/useNotifySocket";
-import { useAuthStore } from "@/stores/authStore";
 
 export function NotificationBell() {
-  const token = useAuthStore((state) => state.accessToken);
   const [isOpen, setIsOpen] = useState(false);
   const bellContainerRef = useRef<HTMLDivElement | null>(null);
   const bellButtonRef = useRef<HTMLButtonElement | null>(null);
-  const {
-    unreadCount,
-    handleSocketNotification,
-    handleSocketUnreadCounts,
-  } = useNotifications();
-
-  useNotifySocket({
-    token,
-    onNotification: handleSocketNotification,
-    onUnreadCounts: handleSocketUnreadCounts,
-    enableNativeNotification: true,
-  });
-
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
-
-    void requestBrowserNotificationPermission();
-  }, [token]);
+  const unreadCount = useNotifications().unreadCount;
 
   const closeDropdown = useCallback(() => {
     setIsOpen(false);

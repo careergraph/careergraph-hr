@@ -9,6 +9,8 @@ import { useMessagingStore } from "@/features/messaging/store/messagingStore";
 import { useAuthStore } from "@/stores/authStore";
 
 const PAGE_SIZE = 20;
+const countUnreadItems = (items: NotificationItem[]): number =>
+  items.reduce((total, item) => total + (item.read ? 0 : 1), 0);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -191,6 +193,17 @@ export const useNotifications = () => {
 
     void refreshUnreadCount();
   }, [refreshUnreadCount, token]);
+
+  useEffect(() => {
+    if (!token || !initialized || loading) {
+      return;
+    }
+
+    const localUnreadCount = countUnreadItems(items);
+    if (unreadCount > localUnreadCount) {
+      void fetchNotifications({ reset: true });
+    }
+  }, [fetchNotifications, initialized, items, loading, token, unreadCount]);
 
   return {
     items,
