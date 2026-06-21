@@ -8,6 +8,8 @@ import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { jobService, type JobRecruitmentPayload } from "@/services/jobService";
 import { Status } from "@/enums/commonEnum";
+import { useAuthStore } from "@/stores/authStore";
+import { AlertTriangle } from "lucide-react";
 import {
   EDUCATION_OPTIONS,
   EMPLOYMENT_TYPE_OPTIONS,
@@ -19,6 +21,7 @@ import {
 
 const AddJob = () => {
   const navigate = useNavigate();
+  const { company } = useAuthStore();
   const [searchParams] = useSearchParams();
   const draftId = searchParams.get("draftId") ?? "";
   // Theo dõi bước hiện tại của wizard.
@@ -361,6 +364,45 @@ const AddJob = () => {
       setIsPublishing(false);
     }
   };
+
+  const verificationStatus = company?.verificationStatus;
+  const operationalStatus = company?.operationalStatus;
+
+  const isBlocked = operationalStatus === "BLOCKED" || operationalStatus === "SUSPENDED";
+  const isNotApproved =
+    verificationStatus !== "APPROVED" ||
+    operationalStatus !== "ACTIVE";
+
+  const blockReason =
+    operationalStatus === "BLOCKED" || operationalStatus === "SUSPENDED"
+      ? "Công ty/tài khoản của bạn đang bị khóa. Vui lòng liên hệ email hỗ trợ để giải trình."
+      : "Vui lòng xác thực thông tin công ty để có thể đăng tải công việc.";
+
+  if (isNotApproved) {
+    return (
+      <div className="min-h-screen bg-background py-12 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-card rounded-lg shadow-sm border p-8 text-center">
+            <div className="flex justify-center mb-4">
+              <AlertTriangle className="w-12 h-12 text-amber-600" />
+            </div>
+            <h1 className="text-2xl font-semibold mb-4">
+              {isBlocked ? "Công ty bị khóa" : "Xác thực công ty cần thiết"}
+            </h1>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">{blockReason}</p>
+            {!isBlocked && (
+              <button
+                onClick={() => navigate("/company/verification")}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+              >
+                Xác thực ngay
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background py-12 px-4">

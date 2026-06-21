@@ -1,6 +1,10 @@
 import { useEffect } from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 import companyService from "@/services/companyService";
+import {
+  buildBlockedSessionNotice,
+  persistSessionNotice,
+} from "@/lib/sessionNotice";
 // RequireAuth is responsible for ensuring that a user is authenticated
 // before allowing access to protected routes. It hydrates the company
 // information when an access token is present but the app lacks company
@@ -15,7 +19,15 @@ interface RequireAuthProps {
 
 const RequireAuth: React.FC<RequireAuthProps> = ({ redirectTo = "/signin" }) => {
   const location = useLocation();
-  const { accessToken, user, isAuthenticating, updateUser, setCompany, company } = useAuthStore();
+  const {
+    accessToken,
+    user,
+    isAuthenticating,
+    updateUser,
+    setCompany,
+    company,
+    clearState,
+  } = useAuthStore();
   const userRole = user?.role;
 
   // NOTE: We intentionally do NOT hydrate an "account" from `/accounts/me` here.
@@ -36,6 +48,13 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ redirectTo = "/signin" }) => 
         if (!isMounted) return;
 
         if (profile) {
+          if (profile.operationalStatus === "BLOCKED" || profile.operationalStatus === "SUSPENDED") {
+            persistSessionNotice(buildBlockedSessionNotice(profile.blockedReason));
+            clearState();
+            window.location.assign("/signin?session=blocked");
+            return;
+          }
+
           setCompany(profile);
           updateUser({
             company: profile,
@@ -54,7 +73,7 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ redirectTo = "/signin" }) => 
     return () => {
       isMounted = false;
     };
-  }, [accessToken, company, setCompany, updateUser, userRole]);
+  }, [accessToken, clearState, company, setCompany, updateUser, userRole]);
 
   if (!accessToken) {
     return <Navigate to={redirectTo} replace state={{ from: location }} />;

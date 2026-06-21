@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import useThreads from "@/features/messaging/hooks/useThreads";
+import { Shield } from "lucide-react";
 
 // Assume these icons are imported from an icon library
 import {
@@ -15,6 +16,7 @@ import {
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
+import { useAuthStore } from "@/stores/authStore";
 
 type NavItem = {
   name: string;
@@ -22,55 +24,6 @@ type NavItem = {
   path?: string;
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
-
-const navItems: NavItem[] = [
-  {
-    icon: <GridIcon />,
-    name: "Trang chủ",
-    path: "/dashboard",
-  },
-  // {
-  //   name: "Kanban",
-  //   icon: <ListIcon />,
-  //   path: "/kanbans",
-  // },
-  {
-    icon: <CalenderIcon />,
-    name: "Lịch",
-    path: "/calendar",
-  },
-  // {
-  //   icon: <UserCircleIcon />,
-  //   name: "Employees",
-  //   path: "/employees",
-  // },
-  {
-    icon: <UserCircleIcon />,
-    name: "Tìm ứng viên",
-    path: "/candidates",
-  },
-  {
-    icon: <ChatIcon />,
-    name: "Tin nhắn",
-    path: "/messages",
-  },
-  {
-    name: "Công việc",
-    icon: <TableIcon />,
-    // subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
-    path: "/jobs",
-  },
-  {
-    icon: <HorizontaLDots />,
-    name: "Pipeline",
-    path: "/kanbans/pipeline",
-  },
-  {
-    icon: <VideoIcon />,
-    name: "Phỏng vấn",
-    path: "/interviews",
-  },
-];
 
 const othersItems: NavItem[] = [];
 
@@ -86,6 +39,54 @@ const AppSidebar: React.FC = () => {
   } = useSidebar();
   const location = useLocation();
   const { totalUnread } = useThreads({ autoLoad: true, archived: false });
+  const { company } = useAuthStore();
+
+  const mainNavItems: NavItem[] = [
+    {
+      icon: <GridIcon />,
+      name: "Trang chủ",
+      path: "/dashboard",
+    },
+    {
+      icon: <CalenderIcon />,
+      name: "Lịch",
+      path: "/calendar",
+    },
+    {
+      icon: <UserCircleIcon />,
+      name: "Tìm ứng viên",
+      path: "/candidates",
+    },
+    {
+      icon: <ChatIcon />,
+      name: "Tin nhắn",
+      path: "/messages",
+    },
+    {
+      name: "Công việc",
+      icon: <TableIcon />,
+      path: "/jobs",
+    },
+    {
+      icon: <HorizontaLDots />,
+      name: "Pipeline",
+      path: "/kanbans/pipeline",
+    },
+    {
+      icon: <VideoIcon />,
+      name: "Phỏng vấn",
+      path: "/interviews",
+    },
+  ];
+
+  const verificationNotApproved = company?.verificationStatus !== "APPROVED";
+  if (verificationNotApproved) {
+    mainNavItems.push({
+      icon: <Shield className="w-5 h-5" />,
+      name: "Xác thực công ty",
+      path: "/company/verification",
+    });
+  }
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
@@ -105,7 +106,7 @@ const AppSidebar: React.FC = () => {
   useEffect(() => {
     let submenuMatched = false;
     ["main", "others"].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : othersItems;
+      const items = menuType === "main" ? mainNavItems : othersItems;
       items.forEach((nav, index) => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
@@ -357,7 +358,7 @@ const AppSidebar: React.FC = () => {
                     <HorizontaLDots className="size-6" />
                   )}
                 </h2>
-                {renderMenuItems(navItems, "main")}
+                {renderMenuItems(mainNavItems, "main")}
               </div>
               {othersItems.length > 0 && (
                 <div className="">

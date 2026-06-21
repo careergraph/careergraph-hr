@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import NotificationDropdown from "@/features/notifications/components/NotificationDropdown";
-import useNotifications from "@/features/notifications/hooks/useNotifications";
+import { useNotificationStore } from "@/features/notifications/store/notificationStore";
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const bellContainerRef = useRef<HTMLDivElement | null>(null);
   const bellButtonRef = useRef<HTMLButtonElement | null>(null);
-  const unreadCount = useNotifications().unreadCount;
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
 
   const closeDropdown = useCallback(() => {
     setIsOpen(false);

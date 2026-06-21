@@ -106,6 +106,12 @@ const mapCompany = (raw: Record<string, unknown>): CompanyProfile => {
         : undefined,
     addresses,
     contacts,
+    verificationStatus: typeof raw.verificationStatus === "string" ? raw.verificationStatus : undefined,
+    operationalStatus: typeof raw.operationalStatus === "string" ? raw.operationalStatus : undefined,
+    taxCode: typeof raw.taxCode === "string" ? raw.taxCode : undefined,
+    legalRepresentativeName: typeof raw.legalRepresentativeName === "string" ? raw.legalRepresentativeName : undefined,
+    verificationAdminNote: typeof raw.verificationAdminNote === "string" ? raw.verificationAdminNote : undefined,
+    blockedReason: typeof raw.blockedReason === "string" ? raw.blockedReason : undefined,
   };
 };
 

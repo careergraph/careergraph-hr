@@ -10,9 +10,18 @@ import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Button from "../custom/button/Button";
+import { Modal } from "../custom/modal";
 import GoogleAuth from "./GoogleAuth";
 import authService, { LoginResponse } from "@/services/authService";
 import companyService from "@/services/companyService";
+import {
+  buildBlockedSessionNotice,
+  buildBlockedSessionNoticeFromApiError,
+  type ApiErrorPayload,
+  consumeSessionNotice,
+  resolveApiErrorCode,
+  type SessionNotice,
+} from "@/lib/sessionNotice";
 import { useAuthStore } from "@/stores/authStore";
 import type { AuthUser, CompanyProfile } from "@/types/account";
 import { saveOtpContext } from "@/utils/otpStorage";
@@ -149,7 +158,9 @@ const toVietnameseMessage = (raw?: string | null) => {
 
 const resolveErrorMessage = (error: unknown): string => {
   if (isAxiosError(error)) {
-    const data = error.response?.data as { message?: string; error?: string } | undefined;
+    const data = error.response?.data as ApiErrorPayload | undefined;
+    const blockedNotice = buildBlockedSessionNoticeFromApiError(data);
+    if (blockedNotice) return blockedNotice.message;
     const vietnamese = toVietnameseMessage(data?.message ?? data?.error);
     if (vietnamese) return vietnamese;
     return data?.message ?? data?.error ?? "Đăng nhập thất bại. Vui lòng thử lại.";
@@ -178,10 +189,19 @@ const resolveErrorStatus = (error: unknown): number | null => {
   return null;
 };
 
+const resolveErrorCode = (error: unknown): string | null =>
+  isAxiosError(error)
+    ? resolveApiErrorCode(error.response?.data as ApiErrorPayload | undefined)
+    : null;
+
+const isBlockedCompanyProfile = (company?: CompanyProfile | null): boolean =>
+  company?.operationalStatus === "BLOCKED" || company?.operationalStatus === "SUSPENDED";
+
 export default function SignInForm() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [googlePromptPending, setGooglePromptPending] = useState(false);
+  const [sessionNotice, setSessionNotice] = useState<SessionNotice | null>(null);
   const googlePromptTimerRef = useRef<number | null>(null);
 
   const { control, handleSubmit, formState } = useForm<SignInFormValues>({
@@ -195,7 +215,7 @@ export default function SignInForm() {
 
   const { errors, isSubmitting } = formState;
 
-  const { setAccessToken, setUser, updateUser, setCompany, setIsAuthenticating, isAuthenticating } =
+  const { setAccessToken, setUser, updateUser, setCompany, setIsAuthenticating, isAuthenticating, clearState } =
     useAuthStore();
 
   const submitting = isSubmitting || isAuthenticating || googlePromptPending;
@@ -220,12 +240,35 @@ export default function SignInForm() {
   };
 
   useEffect(() => {
+    const persistedNotice = consumeSessionNotice();
+    if (persistedNotice) {
+      setSessionNotice(persistedNotice);
+    }
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (googlePromptTimerRef.current !== null) {
         window.clearTimeout(googlePromptTimerRef.current);
       }
     };
   }, []);
+
+  const resolveBlockedNotice = (error: unknown): SessionNotice | null => {
+    if (isAxiosError(error)) {
+      const data = error.response?.data as ApiErrorPayload | undefined;
+      return buildBlockedSessionNoticeFromApiError(data);
+    }
+
+    return null;
+  };
+
+  const blockLoginWithPopup = (reason?: string | null) => {
+    clearState();
+    const notice = buildBlockedSessionNotice(reason);
+    setSessionNotice(notice);
+    toast.error(notice.message);
+  };
 
   const handleGoogleLogin = async (idToken: string) => {
     clearGooglePromptPending();
@@ -243,6 +286,11 @@ export default function SignInForm() {
       try {
         const currentCompany = await companyService.getMyCompany();
         if (currentCompany) {
+          if (isBlockedCompanyProfile(currentCompany)) {
+            blockLoginWithPopup(currentCompany.blockedReason);
+            return;
+          }
+
           setCompany(currentCompany);
           updateUser({
             company: currentCompany,
@@ -258,6 +306,13 @@ export default function SignInForm() {
       toast.success("Đăng nhập Google thành công!");
       navigate("/dashboard");
     } catch (error) {
+      const blockedNotice = resolveBlockedNotice(error);
+      if (blockedNotice) {
+        setSessionNotice(blockedNotice);
+        toast.error(blockedNotice.message);
+        return;
+      }
+
       const message = resolveErrorMessage(error);
       toast.error(message);
     } finally {
@@ -299,6 +354,11 @@ export default function SignInForm() {
         const currentCompany = await companyService.getMyCompany();
 
         if (currentCompany) {
+          if (isBlockedCompanyProfile(currentCompany)) {
+            blockLoginWithPopup(currentCompany.blockedReason);
+            return;
+          }
+
           setCompany(currentCompany);
           updateUser({
             company: currentCompany,
@@ -315,8 +375,16 @@ export default function SignInForm() {
       navigate("/dashboard");
     } catch (error: unknown) {
       if (!token) {
+        const blockedNotice = resolveBlockedNotice(error);
+        if (blockedNotice) {
+          setSessionNotice(blockedNotice);
+          toast.error(blockedNotice.message);
+          return;
+        }
+
         const status = resolveErrorStatus(error);
-        if (status === 403 || status === 505) {
+        const errorCode = resolveErrorCode(error);
+        if ((status === 403 || status === 505) && errorCode === "UNVERIFIED") {
           saveOtpContext({email: values.email.trim(),purpose: "verify_email",redirectTo: "/signin", })
           navigate("/verify-otp", {
             replace: true,
@@ -499,6 +567,42 @@ export default function SignInForm() {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={Boolean(sessionNotice)}
+        onClose={() => setSessionNotice(null)}
+        className="mx-4 max-w-[520px]"
+      >
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-2xl dark:border-amber-800/60 dark:bg-amber-950/95">
+          <div className="pr-10">
+            <div className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/70 dark:text-amber-200">
+              Thông báo
+            </div>
+            <h3 className="mt-4 text-xl font-semibold text-amber-950 dark:text-amber-50">
+              {sessionNotice?.title ?? "Thông báo đăng nhập"}
+            </h3>
+            <p className="mt-3 leading-7 text-amber-900 dark:text-amber-100">
+              {sessionNotice?.message}
+            </p>
+            {sessionNotice?.reason ? (
+              <div className="mt-4 rounded-2xl border border-amber-300 bg-white/80 p-4 dark:border-amber-700 dark:bg-amber-900/40">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-200">
+                  Lý do tạm khóa
+                </p>
+                <p className="mt-2 text-sm leading-6 text-amber-950 dark:text-amber-50">
+                  {sessionNotice.reason}
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <Button size="sm" type="button" onClick={() => setSessionNotice(null)}>
+              Tôi đã hiểu
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

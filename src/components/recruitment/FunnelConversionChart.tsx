@@ -48,7 +48,12 @@ export default function FunnelConversionChart({
       fontFamily: "Outfit, sans-serif",
       height: 320,
       type: "area",
+      animations: {
+        enabled: true,
+        speed: 240,
+      },
       toolbar: { show: false },
+      zoom: { enabled: false },
     },
     stroke: {
       curve: "smooth",
@@ -62,10 +67,10 @@ export default function FunnelConversionChart({
       },
     },
     markers: {
-      size: 0,
+      size: 4,
       strokeColors: "#fff",
       strokeWidth: 2,
-      hover: { size: 6 },
+      hover: { size: 7 },
     },
     grid: {
       xaxis: { lines: { show: false } },
@@ -74,6 +79,9 @@ export default function FunnelConversionChart({
     dataLabels: { enabled: false },
     tooltip: {
       enabled: true,
+      shared: true,
+      intersect: false,
+      followCursor: false,
       y: {
         formatter: (value: number, opts) =>
           `${value} ${opts.seriesIndex === 0 ? "buổi phỏng vấn" : "thư mời nhận việc"}`,

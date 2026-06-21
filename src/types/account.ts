@@ -40,6 +40,12 @@ export interface CompanyProfile {
   enableOffboardedStage?: boolean;
   addresses?: CompanyAddress[];
   contacts?: CompanyContact[];
+  verificationStatus?: string;
+  operationalStatus?: string;
+  taxCode?: string | null;
+  legalRepresentativeName?: string | null;
+  verificationAdminNote?: string | null;
+  blockedReason?: string | null;
 }
 
 export interface AccountProfile {
