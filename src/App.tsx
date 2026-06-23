@@ -25,6 +25,7 @@ import ForgotPassword from "./pages/AuthPages/ForgotPassword";
 import ResetPassword from "./pages/AuthPages/ResetPassword";
 import NotFound from "@/pages/Common/NotFound";
 import MessagesPage from "@/features/messaging/pages/MessagesPage";
+import CompanyVerificationPage from "@/pages/CompanyVerification/CompanyVerificationPage";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 const HAS_VALID_GOOGLE_CLIENT_ID =
@@ -55,6 +56,7 @@ const AppRoutes = () => (
             <Route path="/employees" element={<EmployeesTable />} />
             <Route path="/candidates" element={<SuggestionCandidates />} />
             <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/company/verification" element={<CompanyVerificationPage />} />
           </Route>
         </Route>
 

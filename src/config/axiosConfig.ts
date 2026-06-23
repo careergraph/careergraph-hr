@@ -4,6 +4,11 @@ import axios, {
   InternalAxiosRequestConfig,
   AxiosRequestHeaders,
 } from "axios";
+import {
+  buildBlockedSessionNoticeFromApiError,
+  type ApiErrorPayload,
+  persistSessionNotice,
+} from "@/lib/sessionNotice";
 import { useAuthStore } from "@/stores/authStore";
 
 const API_BASE_URL =
@@ -232,6 +237,17 @@ api.interceptors.response.use(
     }
 
     if (status === 403 && !isAuthRequest) {
+      const payload = error.response?.data as ApiErrorPayload | undefined;
+      const blockedNotice = buildBlockedSessionNoticeFromApiError(payload);
+      if (blockedNotice) {
+        persistSessionNotice(blockedNotice);
+        useAuthStore.getState().clearState();
+        if (typeof window !== "undefined" && window.location.pathname !== "/signin") {
+          window.location.assign("/signin?session=blocked");
+        }
+        return Promise.reject(error);
+      }
+
       useAuthStore.getState().clearState();
     }
 

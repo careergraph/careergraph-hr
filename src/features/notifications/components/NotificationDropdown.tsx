@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
@@ -13,6 +13,9 @@ import {
   SearchCheck,
   UserRoundPlus,
   XCircle,
+  Shield,
+  Lock,
+  AlertCircle,
 } from "lucide-react";
 import { Link } from "react-router";
 import { Dropdown } from "@/components/custom/dropdown/Dropdown";
@@ -138,6 +141,13 @@ const getNavigatePath = (notification: NotificationItem): string | null => {
       const interviewId = toDataString(data, "interviewId");
       return interviewId ? `/interviews/${interviewId}` : "/interviews";
     }
+    case "COMPANY_VERIFICATION_APPROVED":
+    case "COMPANY_VERIFICATION_REJECTED":
+    case "COMPANY_VERIFICATION_NEEDS_INFO":
+    case "COMPANY_BLOCKED":
+    case "COMPANY_UNBLOCKED": {
+      return "/company/verification";
+    }
     default:
       return null;
   }
@@ -190,6 +200,27 @@ const getNotificationTypeMeta = (type: string) => {
         icon: <XCircle className="h-4 w-4" />,
         iconClass: "bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300",
       };
+    case "COMPANY_VERIFICATION_APPROVED":
+      return {
+        icon: <CheckCircle2 className="h-4 w-4" />,
+        iconClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300",
+      };
+    case "COMPANY_VERIFICATION_REJECTED":
+    case "COMPANY_VERIFICATION_NEEDS_INFO":
+      return {
+        icon: <AlertCircle className="h-4 w-4" />,
+        iconClass: "bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300",
+      };
+    case "COMPANY_BLOCKED":
+      return {
+        icon: <Lock className="h-4 w-4" />,
+        iconClass: "bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300",
+      };
+    case "COMPANY_UNBLOCKED":
+      return {
+        icon: <Shield className="h-4 w-4" />,
+        iconClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300",
+      };
     default:
       return {
         icon: <Briefcase className="h-4 w-4" />,
@@ -203,12 +234,12 @@ export function NotificationDropdown({
   isOpen,
   onClose,
 }: NotificationDropdownProps) {
+  const openedRef = useRef(false);
   const {
     items,
     loading,
     error,
     hasMore,
-    ensureLoaded,
     fetchNotifications,
     markAsRead,
     markAllAsRead,
@@ -229,11 +260,17 @@ export function NotificationDropdown({
 
   useEffect(() => {
     if (!isOpen) {
+      openedRef.current = false;
       return;
     }
 
-    void ensureLoaded();
-  }, [ensureLoaded, isOpen]);
+    if (openedRef.current) {
+      return;
+    }
+
+    openedRef.current = true;
+    void fetchNotifications({ reset: true });
+  }, [fetchNotifications, isOpen]);
 
   return (
     <Dropdown

@@ -11,6 +11,7 @@ import { CalenderIcon, UserCircleIcon } from "@/icons";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { DashboardRecentActivity } from "@/features/dashboard/types/dashboard.types";
 import { formatDateTimeYMDHM } from "@/lib/dateUtils";
+import { STAGE_LABELS, type ApplicationStageCode } from "@/lib/recruitmentPipeline";
 
 type RecentCandidateActivityProps = {
   data?: DashboardRecentActivity[] | null;
@@ -41,6 +42,23 @@ const formatUpdatedAt = (value: string): string => {
   }
 
   return formatDateTimeYMDHM(parsed);
+};
+
+const translateStageLabel = (stage?: string | null): string => {
+  if (!stage) {
+    return "Chưa xác định";
+  }
+
+  const normalized = stage.trim();
+  if (normalized in STAGE_LABELS) {
+    return STAGE_LABELS[normalized as ApplicationStageCode];
+  }
+
+  if (normalized.toLowerCase() === "trial period") {
+    return STAGE_LABELS.TRIAL;
+  }
+
+  return normalized;
 };
 
 /**
@@ -193,7 +211,7 @@ function RecentCandidateActivityInner({
                     {activity.jobTitle}
                   </p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                    <span>{activity.stage}</span>
+                    <span>{translateStageLabel(activity.stage)}</span>
                     <span>Bởi {activity.updatedBy}</span>
                   </div>
                   <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
@@ -271,7 +289,7 @@ function RecentCandidateActivityInner({
                   {activity.jobTitle}
                 </TableCell>
                 <TableCell className="py-3 text-sm text-gray-600 dark:text-gray-300">
-                  {activity.stage}
+                  {translateStageLabel(activity.stage)}
                 </TableCell>
                 <TableCell className="py-3 text-sm text-gray-600 dark:text-gray-300">
                   {activity.updatedBy}

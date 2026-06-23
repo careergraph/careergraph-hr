@@ -8,10 +8,13 @@ import AppSidebar from "./AppSidebar";
 import BottomNav from "../components/layout/BottomNav";
 import MessagingRealtimeBootstrap from "@/features/messaging/components/MessagingRealtimeBootstrap";
 import NotificationRealtimeBootstrap from "@/features/notifications/components/NotificationRealtimeBootstrap";
+import VerificationStatusBanner from "@/components/company/VerificationStatusBanner";
+import { useAuthStore } from "@/stores/authStore";
 
 const LayoutContent: React.FC = () => {
   const { isExpanded, isHovered, isMobileOpen, isMobile, isTablet } = useSidebar();
   const { pathname } = useLocation();
+  const { company } = useAuthStore();
   const isMessagesRoute = pathname.startsWith("/messages");
 
   const mainMargin = useMemo(() => {
@@ -37,6 +40,7 @@ const LayoutContent: React.FC = () => {
             ? "h-[calc(100dvh-4.75rem)] min-h-0 w-full overflow-hidden"
             : "mx-auto w-full max-w-(--breakpoint-2xl) overflow-x-hidden p-4 md:p-6"} ${isMobile ? "pb-[var(--bottom-nav-height)]" : ""}`}
         >
+          {!isMessagesRoute && <VerificationStatusBanner company={company} />}
           <Outlet />
         </div>
       </div>
