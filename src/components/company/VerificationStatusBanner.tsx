@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { AlertTriangle, CheckCircle, Clock, XCircle } from "lucide-react";
+import { AlertTriangle, Clock, XCircle } from "lucide-react";
 import { SUPPORT_EMAIL } from "@/lib/sessionNotice";
 import type { CompanyProfile } from "@/types/account";
 
