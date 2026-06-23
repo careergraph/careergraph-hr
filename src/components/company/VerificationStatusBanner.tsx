@@ -114,21 +114,21 @@ const VerificationStatusBanner: React.FC<VerificationStatusBannerProps> = ({ com
     );
   }
 
-  if (status === "APPROVED") {
-    return (
-      <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
-        <div className="flex items-start gap-3">
-          <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
-          <div className="flex-1">
-            <h3 className="font-medium text-green-900">Công ty đã xác thực</h3>
-            <p className="mt-1 text-sm text-green-800">
-              Thông tin công ty của bạn đã được xác thực và phê duyệt.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (status === "APPROVED") {
+  //   return (
+  //     <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
+  //       <div className="flex items-start gap-3">
+  //         <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+  //         <div className="flex-1">
+  //           <h3 className="font-medium text-green-900">Công ty đã xác thực</h3>
+  //           <p className="mt-1 text-sm text-green-800">
+  //             Thông tin công ty của bạn đã được xác thực và phê duyệt.
+  //           </p>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return null;
 };
