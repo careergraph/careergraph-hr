@@ -44,7 +44,7 @@ const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
   const sizes = ["Bytes", "KB", "MB"];
-  const i = Math.floor(Math.log(bytes, k));
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
 };
 
@@ -95,17 +95,16 @@ const CompanyVerificationPage = () => {
         ]);
 
         if (status?.latestRequest) {
-          setLatestRequest(status.latestRequest);
-          setVerificationData(status.latestRequest);
+          const latestRequest = status.latestRequest;
+          setLatestRequest(latestRequest);
+          setVerificationData(latestRequest);
 
           // Pre-populate documents for resubmit
-          const currentStatus = status.latestRequest.verificationStatus;
+          const currentStatus = latestRequest.verificationStatus;
           const isResubmit = currentStatus === "REJECTED" || currentStatus === "NEEDS_ADDITIONAL_INFO";
-          if (isResubmit && status.latestRequest.documents?.length) {
+          if (isResubmit && latestRequest.documents?.length) {
             const initialSlots = DOCUMENT_SLOTS.map((slot) => {
-              const existingDoc = status.latestRequest.documents?.find(
-                (d) => d.documentType === slot.documentType
-              );
+              const existingDoc = latestRequest.documents?.find((d) => d.documentType === slot.documentType);
               return {
                 ...slot,
                 file: null,
@@ -414,7 +413,7 @@ const CompanyVerificationPage = () => {
                 Admin yêu cầu bổ sung thông tin
               </p>
               <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">
-                {latestRequest.adminNote}
+                {latestRequest?.adminNote}
               </p>
               <p className="text-sm text-amber-800 dark:text-amber-300 mt-2">
                 Vui lòng cập nhật thông tin và tài liệu, sau đó nhấn "Gửi lại".
@@ -429,7 +428,7 @@ const CompanyVerificationPage = () => {
             <div>
               <p className="font-semibold text-red-900 dark:text-red-200">Yêu cầu bị từ chối</p>
               <p className="text-sm text-red-800 dark:text-red-300 mt-1">
-                Lý do: {latestRequest.adminNote}
+                Lý do: {latestRequest?.adminNote}
               </p>
               <p className="text-sm text-red-800 dark:text-red-300 mt-2">
                 Bạn có thể gửi lại yêu cầu mới với thông tin đã cập nhật.
@@ -626,7 +625,6 @@ const CompanyVerificationPage = () => {
                   <DocumentSlotComponent
                     key={index}
                     slot={slot}
-                    slotIndex={index}
                     onDrop={handleDocumentDrop(index)}
                     onRemove={() => removeDocument(index)}
                     hasError={!!validationErrors[`document-${index}`]}
@@ -738,7 +736,6 @@ const CompanyVerificationPage = () => {
 
 interface DocumentSlotComponentProps {
   slot: DocumentSlot;
-  slotIndex: number;
   onDrop: (files: File[]) => void;
   onRemove: () => void;
   hasError: boolean;
@@ -746,7 +743,6 @@ interface DocumentSlotComponentProps {
 
 const DocumentSlotComponent: React.FC<DocumentSlotComponentProps> = ({
   slot,
-  slotIndex,
   onDrop,
   onRemove,
   hasError,
@@ -820,7 +816,7 @@ const DocumentSlotComponent: React.FC<DocumentSlotComponentProps> = ({
             )}
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {slot.file?.name || slot.uploadedDoc.originalFileName}
+                {slot.file?.name || slot.uploadedDoc?.originalFileName || "TÃ i liá»‡u xÃ¡c thá»±c"}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {slot.uploading
