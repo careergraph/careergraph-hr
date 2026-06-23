@@ -89,9 +89,14 @@ const SuggestionCandidate = () => {
         setTotalElements(0);
       }
     } catch (err) {
+      const error = err as Error;
       // Ignore abort errors
-      if ((err as Error).name !== "AbortError") {
-        setError("Có lỗi xảy ra khi tải danh sách ứng viên");
+      if (error.name !== "AbortError") {
+        if (error.name === "BusinessVerificationError") {
+          setError(error.message);
+        } else {
+          setError("Có lỗi xảy ra khi tải danh sách ứng viên");
+        }
         console.error("Error fetching candidates:", err);
       }
     } finally {

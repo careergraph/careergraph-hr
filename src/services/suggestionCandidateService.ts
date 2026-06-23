@@ -7,6 +7,7 @@ import type {
   CandidateOverviewResponse,
   CandidateExperienceOverviewResponse,
 } from "@/types/suggestionCandidate";
+import type { AxiosError } from "axios";
 
 /**
  * API response wrapper type
@@ -18,14 +19,23 @@ interface ApiResponse<T> {
 }
 
 /**
+ * Error response type from API
+ */
+interface ApiErrorResponse {
+  status: string;
+  message?: string;
+  data?: unknown;
+}
+
+/**
  * Search candidates with hybrid search (fuzzy + embedding)
- * 
+ *
  * @param keyword Search keyword (optional) - matches desiredPosition, currentJobTitle, skills
  * @param filter Additional filters
  * @param page Page number (0-indexed)
  * @param size Page size
  * @param signal AbortSignal for cancellation
- * @returns Page of CandidateSuggestionResponse
+ * @returns Page of CandidateSuggestionResponse or throws error with message
  */
 const searchCandidates = async (
   keyword?: string,
@@ -60,7 +70,17 @@ const searchCandidates = async (
     if (e?.name === "CanceledError" || e?.name === "AbortError") {
       return null;
     }
-    
+
+    const axiosError = error as AxiosError<ApiErrorResponse>;
+    const status = axiosError.response?.status;
+    const message = axiosError.response?.data?.message;
+
+    if (status === 400 && message?.includes("Vui lòng hoàn tất xác thực doanh nghiệp")) {
+      const err = new Error(message);
+      err.name = "BusinessVerificationError";
+      throw err;
+    }
+
     console.error("Error searching candidates:", error);
     toast.error("Có lỗi xảy ra khi tìm kiếm ứng viên");
     return null;
