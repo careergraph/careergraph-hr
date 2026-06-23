@@ -200,11 +200,7 @@ const SuggestionCandidate = () => {
       )}
 
       {/* Error state */}
-      {error && !loading && (
-        <div className="flex items-center justify-center py-8">
-          <p className="text-destructive">{error}</p>
-        </div>
-      )}
+      
 
       {/* Results info - hiển thị cả khi loading */}
       {!error && totalElements > 0 && (
@@ -220,7 +216,6 @@ const SuggestionCandidate = () => {
         </div>
       )}
 
-      {/* Danh sách ứng viên gợi ý phía trên - hiển thị cả khi loading */}
       {!error && (
         <div className={loading ? "opacity-60 pointer-events-none" : ""}>
           <CandidateHorizontalList
@@ -234,10 +229,16 @@ const SuggestionCandidate = () => {
         </div>
       )}
 
-      {/* Khu vực hiển thị chi tiết ứng viên đã chọn. */}
-      <div className="w-full">
-        <CandidateDetail candidate={selectedCandidate} />
-      </div>
+      {error && !loading && (
+        <div className="flex items-center justify-center py-8">
+          <p className="text-destructive">{error}</p>
+        </div>
+      )}
+
+      {!error && <div className="w-full">
+              <CandidateDetail candidate={selectedCandidate} />
+            </div>
+      }
     </div>
   );
 };
