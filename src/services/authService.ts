@@ -132,6 +132,11 @@ const authService = {
     const response = await api.post("/auth/google-login", { idToken, role: "HR" });
     return response.data as LoginResponse;
   },
+
+  logout: async () => {
+    const response = await api.post("/auth/logout");
+    return response.data;
+  },
 };
 
 export default authService;

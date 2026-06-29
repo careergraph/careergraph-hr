@@ -7,7 +7,7 @@ import { useAuthStore } from "@/stores/authStore";
 export default function UserDropdown() {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const { user, company, clearState } = useAuthStore();
+  const { user, company, logout } = useAuthStore();
 
   const fullName = useMemo(() => {
     const trimmedFirst = user?.firstName?.trim();
@@ -35,8 +35,8 @@ export default function UserDropdown() {
     setIsOpen(false);
   };
 
-  const handleLogout = () => {
-    clearState();
+  const handleLogout = async () => {
+    await logout();
     setIsOpen(false);
     navigate("/signin", { replace: true });
   };

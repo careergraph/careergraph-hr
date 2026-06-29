@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import authService from "@/services/authService";
 import type { AuthUser, CompanyProfile } from "@/types/account";
 
 interface AuthState {
@@ -13,6 +14,7 @@ interface AuthState {
   setCompany: (company: CompanyProfile | null) => void;
   setIsAuthenticating: (value: boolean) => void;
   clearState: () => void;
+  logout: () => Promise<void>;
 }
 
 const storage = createJSONStorage(() => {
@@ -96,6 +98,23 @@ export const useAuthStore = create<AuthState>()(
         company: null,
         isAuthenticating: false,
       }),
+      logout: async () => {
+        try {
+          const { accessToken } = useAuthStore.getState();
+          if (accessToken) {
+            await authService.logout();
+          }
+        } catch {
+          // Ignore logout API errors and always clear local auth state.
+        } finally {
+          set({
+            accessToken: null,
+            user: null,
+            company: null,
+            isAuthenticating: false,
+          });
+        }
+      },
     }),
     {
       name: "careergraph-auth",
