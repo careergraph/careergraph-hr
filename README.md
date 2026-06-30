@@ -1,192 +1,140 @@
-# CareerGraph React - Free React Tailwind Admin Dashboard Template
+# CareerGraph HR
 
-CareerGraph is a free and open-source admin dashboard template built on **React and Tailwind CSS**, providing developers
-with everything they need to create a comprehensive, data-driven back-end,
-dashboard, or admin panel solution for upcoming web projects.
+CareerGraph HR là workspace tuyển dụng dành cho doanh nghiệp trên nền tảng. Ứng dụng này kết hợp dashboard, ATS, interview operations, messaging và company onboarding trong một portal thống nhất cho đội ngũ tuyển dụng.
 
-With CareerGraph, you get access to all the necessary dashboard UI components, elements, and pages required to build a
-feature-rich and complete dashboard or admin panel. Whether you're building dashboard or admin panel for a complex web
-application or a simple website, CareerGraph is the perfect solution to help you get up and running quickly.
 
-![CareerGraph React.js Dashboard Preview](./banner.png)
+## Product scope
 
-## Overview
+HR portal hiện bao gồm các nhóm chức năng:
 
-CareerGraph provides essential UI components and layouts for building feature-rich, data-driven admin dashboards and
-control panels. It's built on:
+- authentication và onboarding cho doanh nghiệp
+- dashboard tuyển dụng
+- quản lý hồ sơ công ty và xác thực doanh nghiệp
+- quản lý job postings
+- kanban ứng viên theo pipeline
+- lịch phỏng vấn
+- interview detail và interview room
+- candidate suggestions
+- messaging với ứng viên
+- account và profile settings
+
+## Product screens
+
+Dashboard thống kê:
+
+![CareerGraph HR Dashboard](./docs/assets/readme/dashboard.png)
+
+Kanban ứng viên theo pipeline:
+
+![CareerGraph HR Kanban](./docs/assets/readme/kanban.png)
+
+Interview room cho điều phối phỏng vấn:
+
+![CareerGraph HR Interview Room](./docs/assets/readme/interview-room.png)
+
+Workflow xác thực doanh nghiệp:
+
+![CareerGraph HR Company Verification](./docs/assets/readme/company-verification.png)
+
+## Core capabilities
+
+- vận hành dashboard KPI tuyển dụng theo khoảng thời gian
+- đăng tuyển và quản lý job lifecycle
+- kéo thả ứng viên theo pipeline tuyển dụng
+- quản lý lịch, trạng thái và đề xuất đổi lịch phỏng vấn
+- điều phối phỏng vấn trực tuyến với waiting room, admit/reject, recording và feedback
+- nhắn tin realtime với ứng viên
+- nộp và theo dõi xác thực doanh nghiệp
+- nhận gợi ý ứng viên từ backend recommendation/search flows
+
+## Technology
 
 - React 19
 - TypeScript
-- Tailwind CSS
+- Vite
+- Tailwind CSS 4
+- React Router
+- TanStack Query
+- Axios
+- Socket.IO client
+- FullCalendar
+- dnd-kit
+- ApexCharts
+- Recharts
+- Tiptap
+- Radix UI
 
-### Quick Links
+## Architecture
 
-- [✨ Visit Website](https://CareerGraph.com)
-- [📄 Documentation](https://CareerGraph.com/docs)
-- [⬇️ Download](https://CareerGraph.com/download)
-- [🖌️ Figma Design File (Community Edition)](https://www.figma.com/community/file/1214477970819985778)
-- [⚡ Get PRO Version](https://CareerGraph.com/pricing)
+Portal này phụ thuộc trực tiếp vào:
 
-### Demos
+- `careergraph-api`
+- `careergraph-rtc`
 
-- [Free Version](https://free-react-demo.CareerGraph.com/)
-- [Pro Version](https://react-demo.CareerGraph.com)
+`careergraph-api` cung cấp domain data và business rules; `careergraph-rtc` cung cấp signaling, realtime room behavior và presence-dependent workflows.
 
-### Other Versions
+## Code structure
 
-- [HTML Version](https://github.com/CareerGraph/CareerGraph-free-tailwind-dashboard-template)
-- [Next.js Version](https://github.com/CareerGraph/free-nextjs-admin-dashboard)
-- [Vue.js Version](https://github.com/CareerGraph/vue-tailwind-admin-dashboard)
-
-## Installation
-
-### Prerequisites
-
-To get started with CareerGraph, ensure you have the following prerequisites installed and set up:
-
-- Node.js 18.x or later (recommended to use Node.js 20.x or later)
-
-### Cloning the Repository
-
-Clone the repository using the following command:
-
-```bash
-git clone https://github.com/CareerGraph/free-react-tailwind-admin-dashboard.git
+```text
+src/
+├── api/
+├── components/
+├── config/
+├── context/
+├── features/
+│   ├── dashboard/
+│   ├── messaging/
+│   └── notifications/
+├── hooks/
+├── layout/
+├── pages/
+├── services/
+├── stores/
+├── types/
+└── lib/
 ```
 
-> Windows Users: place the repository near the root of your drive if you face issues while cloning.
+## Environment model
 
-1. Install dependencies:
+Cấu hình môi trường được cung cấp qua các biến `VITE_*` trong local development và qua build-time environment trong production.
 
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
+Các biến quan trọng:
 
-   > Use the `--legacy-peer-deps` flag, if you face issues while installing.
+- `VITE_API_BASE_URL`
+- `VITE_RTC_BASE_URL`
+- `VITE_GOOGLE_CLIENT_ID`
+- `VITE_CLIENT_SITE_URL`
 
-2. Start the development server:
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
+Môi trường production nên được cấp qua secret manager hoặc CI/CD variables; file `.env` chỉ dùng cho local development.
 
-## Components
+## Local development
 
-CareerGraph is a pre-designed starting point for building a web-based dashboard using React.js and Tailwind CSS. The
-template includes:
+Yêu cầu:
 
-- Sophisticated and accessible sidebar
-- Data visualization components
-- Prebuilt profile management and 404 page
-- Tables and Charts(Line and Bar)
-- Authentication forms and input elements
-- Alerts, Dropdowns, Modals, Buttons and more
-- Can't forget Dark Mode 🕶️
+- Node.js 20.19+ hoặc mới hơn
+- npm
+- `careergraph-api` và `careergraph-rtc` đang chạy
 
-All components are built with React and styled using Tailwind CSS for easy customization.
+Chạy local:
 
-## Feature Comparison
+```bash
+npm install
+npm run dev
+```
 
-### Free Version
+Build production:
 
-- 1 Unique Dashboard
-- 30+ dashboard components
-- 50+ UI elements
-- Basic Figma design files
-- Community support
+```bash
+npm run build
+```
 
-### Pro Version
+## Deployment notes
 
-- 5 Unique Dashboards: Analytics, Ecommerce, Marketing, CRM, Stocks (more coming soon)
-- 400+ dashboard components and UI elements
-- Complete Figma design file
-- Email support
+- Portal được build thành static frontend và có thể phục vụ qua web server hoặc CDN
+- Production configuration cần đồng bộ chặt với domain của API, RTC và candidate portal
+- Interview room, dashboard analytics và editor-heavy modules là các khu vực nên tiếp tục theo dõi bundle size nếu ứng dụng mở rộng thêm
 
-To learn more about pro version features and pricing, visit our [pricing page](https://CareerGraph.com/pricing).
+## Verification
 
-## Changelog
-
-### Version 2.0.2 - [March 25, 2025]
-
-- Upgraded to React 19
-- Included overrides for packages to prevent peer dependency errors.
-- Migrated from react-flatpickr to flatpickr package for React 19 support
-
-### Version 2.0.1 - [February 27, 2025]
-
-#### Update Overview
-
-- Upgraded to Tailwind CSS v4 for better performance and efficiency.
-- Updated class usage to match the latest syntax and features.
-- Replaced deprecated class and optimized styles.
-
-#### Next Steps
-
-- Run npm install or yarn install to update dependencies.
-- Check for any style changes or compatibility issues.
-- Refer to the Tailwind CSS v4 [Migration Guide](https://tailwindcss.com/docs/upgrade-guide) on this release. if needed.
-- This update keeps the project up to date with the latest Tailwind improvements. 🚀
-
-### Version 2.0.0 - [February 2025]
-
-A major update with comprehensive redesign and modern React patterns implementation.
-
-#### Major Improvements
-
-- Complete UI redesign with modern React patterns
-- New features: collapsible sidebar, chat, and calendar
-- Improved performance and accessibility
-- Updated data visualization using ApexCharts
-
-#### Key Features
-
-- Redesigned dashboards (Ecommerce, Analytics, Marketing, CRM)
-- Enhanced navigation with React Router integration
-- Advanced tables with sorting and filtering
-- Calendar with drag-and-drop support
-- New UI components and improved existing ones
-
-#### Breaking Changes
-
-- Updated sidebar component API
-- Migrated charts to ApexCharts
-- Revised authentication system
-
-[Read more](https://CareerGraph.com/docs/update-logs/react) on this release.
-
-### Version 1.3.7 - [June 20, 2024]
-
-#### Enhancements
-
-1. Remove Repetition of DefaultLayout in every Pages
-2. Add ClickOutside Component for reduce repeated functionality in Header Message, Notification and User Dropdowns.
-
-### Version 1.3.6 - [Jan 31, 2024]
-
-#### Enhancements
-
-1. Integrate flatpickr in [Date Picker/Form Elements]
-2. Change color after select an option [Select Element/Form Elements].
-3. Make it functional [Multiselect Dropdown/Form Elements].
-4. Make best value editable [Pricing Table One/Pricing Table].
-5. Rearrange Folder structure.
-
-### Version 1.2.0 - [Apr 28, 2023]
-
-- Add Typescript in CareerGraph React.
-
-### Version 1.0.0 - Initial Release - [Mar 13, 2023]
-
-- Initial release of CareerGraph React.
-
-## License
-
-CareerGraph React.js Free Version is released under the MIT License.
-
-## Support
-
-If you find this project helpful, please consider giving it a star on GitHub. Your support helps us continue developing
-and maintaining this template.
+- Build frontend đã hoàn tất thành công trong workspace hiện tại
+- Bundle production hiện còn lớn, đặc biệt ở các luồng dashboard, interview và export-related dependencies
