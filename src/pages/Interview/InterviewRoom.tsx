@@ -109,6 +109,7 @@ export default function InterviewRoom() {
   const [elapsed, setElapsed] = useState(0);
   const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
+  const [forceRemotePlaceholder, setForceRemotePlaceholder] = useState(false);
 
   // Recording state
   const [recording, setRecording] = useState(false);
@@ -183,10 +184,21 @@ export default function InterviewRoom() {
 
   // Attach remote stream to video element
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
+    if (remoteVideoRef.current && remoteStream && !forceRemotePlaceholder) {
       remoteVideoRef.current.srcObject = remoteStream;
+      return;
     }
-  }, [remoteStream]);
+
+    if (remoteVideoRef.current && (!remoteStream || forceRemotePlaceholder)) {
+      remoteVideoRef.current.srcObject = null;
+    }
+  }, [remoteStream, forceRemotePlaceholder]);
+
+  useEffect(() => {
+    if (remoteStream && remotePeerId) {
+      setForceRemotePlaceholder(false);
+    }
+  }, [remotePeerId, remoteStream]);
 
   // Re-bind local stream whenever local video element is remounted (lobby <-> in-call).
   useEffect(() => {
@@ -428,6 +440,8 @@ export default function InterviewRoom() {
 
     return !hasOpenWindow;
   }, [roomInterviews, interview]);
+
+  const showRemoteWaitingState = forceRemotePlaceholder || !remoteStream || !remotePeerId;
 
   // Timer
   useEffect(() => {
@@ -823,6 +837,10 @@ export default function InterviewRoom() {
   // ── Kick candidate ──────────────────────────────────
   const handleKickConfirm = useCallback(() => {
     if (remotePeerId) {
+      setForceRemotePlaceholder(true);
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
       kickUser(remotePeerId);
       if (roomCode && activeCandidateId) {
         interviewService.removeParticipant(roomCode, activeCandidateId).catch(() => null);
@@ -1399,22 +1417,22 @@ export default function InterviewRoom() {
               <div className="relative h-full">
                 {/* Remote video — full area */}
                 <div className="absolute inset-0 overflow-hidden rounded-2xl bg-gray-800">
-                  {remoteStream ? (
+                  {showRemoteWaitingState ? (
+                    <div className="flex h-full items-center justify-center">
+                      <div className="text-center">
+                        <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gray-700 text-2xl font-bold text-white">
+                          ?
+                        </div>
+                        <p className="text-sm text-gray-400">Đang chờ ứng viên...</p>
+                      </div>
+                    </div>
+                  ) : (
                     <video
                       ref={remoteVideoRef}
                       autoPlay
                       playsInline
                       className="h-full w-full bg-black object-contain"
                     />
-                  ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <div className="text-center">
-                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-700 text-2xl font-bold text-white mb-3">
-                          ?
-                        </div>
-                        <p className="text-sm text-gray-400">Đang chờ ứng viên...</p>
-                      </div>
-                    </div>
                   )}
                   <div className="absolute bottom-3 left-3 flex items-center gap-2">
                     <Badge className="bg-gray-900/70 text-white text-xs">Ứng viên</Badge>
@@ -1477,22 +1495,22 @@ export default function InterviewRoom() {
 
               {/* Remote video */}
               <div className="relative min-h-55 overflow-hidden rounded-2xl bg-gray-800">
-            {remoteStream ? (
+            {showRemoteWaitingState ? (
+              <div className="flex h-full items-center justify-center">
+                <div className="text-center">
+                  <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gray-700 text-2xl font-bold text-white">
+                    ?
+                  </div>
+                  <p className="text-sm text-gray-400">Đang chờ ứng viên tham gia...</p>
+                </div>
+              </div>
+            ) : (
               <video
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
                 className="h-full w-full bg-black object-contain"
               />
-            ) : (
-              <div className="flex h-full items-center justify-center">
-                <div className="text-center">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-700 text-2xl font-bold text-white mb-3">
-                    ?
-                  </div>
-                  <p className="text-sm text-gray-400">Đang chờ ứng viên tham gia...</p>
-                </div>
-              </div>
             )}
             <div className="absolute bottom-3 left-3 flex items-center gap-2">
               <Badge className="bg-gray-900/70 text-white text-xs">Ứng viên</Badge>
@@ -1688,8 +1706,9 @@ export default function InterviewRoom() {
           variant={recording ? "destructive" : "outline"}
           className={recording ? "h-12 w-12 rounded-full" : "h-12 w-12 rounded-full border-gray-600 text-white hover:bg-gray-800"}
           onClick={toggleRecording}
-          title={recording ? "Dừng ghi hình" : "Ghi hình"}
-          aria-label={recording ? "Dừng ghi hình" : "Ghi hình"}
+          disabled={isUploadingRecording}
+          title={isUploadingRecording ? "Đang lưu bản ghi" : recording ? "Dừng ghi hình" : "Ghi hình"}
+          aria-label={isUploadingRecording ? "Đang lưu bản ghi" : recording ? "Dừng ghi hình" : "Ghi hình"}
         >
           {recording ? <Square className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
         </Button>
@@ -1747,6 +1766,20 @@ export default function InterviewRoom() {
                 Hủy
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isUploadingRecording && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-gray-700 bg-gray-900/95 p-6 text-center shadow-2xl backdrop-blur">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/10 text-red-400">
+              <RotateCcw className="h-7 w-7 animate-spin" />
+            </div>
+            <h3 className="mt-4 text-lg font-semibold text-white">Đang lưu video record</h3>
+            <p className="mt-2 text-sm leading-6 text-gray-300">
+              Hệ thống đang tải bản ghi lên để chuẩn bị gán cho ứng viên. Vui lòng chờ trong giây lát.
+            </p>
           </div>
         </div>
       )}
