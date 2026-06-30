@@ -128,13 +128,3 @@ Build production:
 npm run build
 ```
 
-## Deployment notes
-
-- Portal được build thành static frontend và có thể phục vụ qua web server hoặc CDN
-- Production configuration cần đồng bộ chặt với domain của API, RTC và candidate portal
-- Interview room, dashboard analytics và editor-heavy modules là các khu vực nên tiếp tục theo dõi bundle size nếu ứng dụng mở rộng thêm
-
-## Verification
-
-- Build frontend đã hoàn tất thành công trong workspace hiện tại
-- Bundle production hiện còn lớn, đặc biệt ở các luồng dashboard, interview và export-related dependencies
