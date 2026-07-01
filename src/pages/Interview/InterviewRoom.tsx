@@ -162,6 +162,7 @@ export default function InterviewRoom() {
     emitRecordingStarted,
     emitRecordingStopped,
     remotePeerId,
+    remotePeerUserId,
     roomStatus,
     waitingCount,
     peerMediaStates,
@@ -181,6 +182,36 @@ export default function InterviewRoom() {
       setActiveCandidateId(null);
     }
   }, [remotePeerId]);
+
+  useEffect(() => {
+    if (!remotePeerUserId) {
+      return;
+    }
+
+    setActiveCandidateId(remotePeerUserId);
+    setForceRemotePlaceholder(false);
+
+    setRoomParticipants((prev) =>
+      prev.map((p) =>
+        p.candidateId === remotePeerUserId
+          ? {
+              ...p,
+              admitStatus: p.admitStatus === "COMPLETED" ? p.admitStatus : "ADMITTED",
+              joinedAt: p.joinedAt || new Date().toISOString(),
+              leftAt: undefined,
+            }
+          : p
+      )
+    );
+
+    setRoomInterviews((prev) =>
+      prev.map((iv) =>
+        iv.candidateId === remotePeerUserId && iv.interviewStatus !== "COMPLETED"
+          ? { ...iv, interviewStatus: "IN_PROGRESS" }
+          : iv
+      )
+    );
+  }, [remotePeerUserId]);
 
   // Attach remote stream to video element
   useEffect(() => {
@@ -442,6 +473,18 @@ export default function InterviewRoom() {
   }, [roomInterviews, interview]);
 
   const showRemoteWaitingState = forceRemotePlaceholder || !remoteStream || !remotePeerId;
+  const remoteCandidateName = useMemo(() => {
+    const targetCandidateId = activeCandidateId || remotePeerUserId;
+    if (!targetCandidateId) return "Ứng viên";
+
+    const participantName = roomParticipants.find((p) => p.candidateId === targetCandidateId)?.candidateName?.trim();
+    if (participantName) return participantName;
+
+    const interviewCandidateName = roomInterviews.find((iv) => iv.candidateId === targetCandidateId)?.candidateName?.trim();
+    if (interviewCandidateName) return interviewCandidateName;
+
+    return "Ứng viên";
+  }, [activeCandidateId, remotePeerUserId, roomParticipants, roomInterviews]);
 
   // Timer
   useEffect(() => {
@@ -1435,7 +1478,7 @@ export default function InterviewRoom() {
                     />
                   )}
                   <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                    <Badge className="bg-gray-900/70 text-white text-xs">Ứng viên</Badge>
+                    <Badge className="bg-gray-900/70 text-white text-xs">{remoteCandidateName}</Badge>
                     {remotePeerId && peerMediaStates[remotePeerId] && (
                       <>
                         {!peerMediaStates[remotePeerId].mic && (
@@ -1513,7 +1556,7 @@ export default function InterviewRoom() {
               />
             )}
             <div className="absolute bottom-3 left-3 flex items-center gap-2">
-              <Badge className="bg-gray-900/70 text-white text-xs">Ứng viên</Badge>
+              <Badge className="bg-gray-900/70 text-white text-xs">{remoteCandidateName}</Badge>
               {/* Remote peer media indicators */}
               {remotePeerId && peerMediaStates[remotePeerId] && (
                 <>
