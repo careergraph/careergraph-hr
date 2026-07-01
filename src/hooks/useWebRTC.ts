@@ -51,6 +51,8 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
   // Track the remote peer's socket ID for kick
   const [remotePeerId, setRemotePeerId] = useState<string | null>(null);
   const [remotePeerUserId, setRemotePeerUserId] = useState<string | null>(null);
+  const [remotePeerDisplayName, setRemotePeerDisplayName] = useState<string | null>(null);
+  const [remotePeerEmail, setRemotePeerEmail] = useState<string | null>(null);
 
   // Room lifecycle
   const [roomStatus, setRoomStatus] = useState<RoomStatus>("WAITING");
@@ -159,6 +161,8 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
     setPeerMediaStates({});
     setRemotePeerId(null);
     setRemotePeerUserId(null);
+    setRemotePeerDisplayName(null);
+    setRemotePeerEmail(null);
     setRoomStatus("WAITING");
 
     const socket = io(RTC_URL, {
@@ -179,7 +183,7 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
     });
 
     // Existing peers already in room — we initiate
-    socket.on("room-peers", (peers: { socketId: string; userId?: string; isHost?: boolean; media?: PeerMediaState }[]) => {
+    socket.on("room-peers", (peers: { socketId: string; userId?: string; email?: string; displayName?: string; isHost?: boolean; media?: PeerMediaState }[]) => {
       setPeerCount(peers.length);
       // Update peer media states
       const newStates: Record<string, PeerMediaState> = {};
@@ -191,15 +195,19 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
       if (peers.length > 0) {
         setRemotePeerId(peers[0].socketId);
         setRemotePeerUserId(peers[0].userId || null);
+        setRemotePeerDisplayName(peers[0].displayName || null);
+        setRemotePeerEmail(peers[0].email || null);
         createPeer(socket, peers[0].socketId, true);
       }
     });
 
     // New peer joined — they will send offer, we wait
-    socket.on("user-joined", ({ socketId, userId }: { socketId: string; userId?: string }) => {
+    socket.on("user-joined", ({ socketId, userId, email, displayName }: { socketId: string; userId?: string; email?: string; displayName?: string }) => {
       setPeerCount((c) => c + 1);
       setRemotePeerId(socketId);
       setRemotePeerUserId(userId || null);
+      setRemotePeerDisplayName(displayName || null);
+      setRemotePeerEmail(email || null);
       const currentRemoteSocketId = remoteSocketIdRef.current;
       if (
         currentRemoteSocketId !== socketId ||
@@ -267,6 +275,8 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
       if (!socketId || remoteSocketIdRef.current === socketId) {
         setRemotePeerId(null);
         setRemotePeerUserId(null);
+        setRemotePeerDisplayName(null);
+        setRemotePeerEmail(null);
         closePeer();
       }
     });
@@ -427,6 +437,8 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
     emitRecordingStopped,
     remotePeerId,
     remotePeerUserId,
+    remotePeerDisplayName,
+    remotePeerEmail,
     roomStatus,
     waitingCount,
     peerMediaStates,

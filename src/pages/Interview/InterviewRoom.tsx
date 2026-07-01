@@ -109,6 +109,7 @@ export default function InterviewRoom() {
   const [elapsed, setElapsed] = useState(0);
   const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
+  const [activeCandidateName, setActiveCandidateName] = useState<string | null>(null);
   const [forceRemotePlaceholder, setForceRemotePlaceholder] = useState(false);
 
   // Recording state
@@ -163,6 +164,8 @@ export default function InterviewRoom() {
     emitRecordingStopped,
     remotePeerId,
     remotePeerUserId,
+    remotePeerDisplayName,
+    remotePeerEmail,
     roomStatus,
     waitingCount,
     peerMediaStates,
@@ -180,38 +183,89 @@ export default function InterviewRoom() {
   useEffect(() => {
     if (!remotePeerId) {
       setActiveCandidateId(null);
+      setActiveCandidateName(null);
     }
   }, [remotePeerId]);
+
+  const matchedRemoteParticipant = useMemo(() => {
+    if (!remotePeerUserId) {
+      return null;
+    }
+
+    return (
+      roomParticipants.find((p) => p.candidateId === remotePeerUserId) ||
+      roomParticipants.find(
+        (p) =>
+          p.candidateEmail?.trim().toLowerCase() &&
+          remotePeerEmail?.trim().toLowerCase() &&
+          p.candidateEmail.trim().toLowerCase() === remotePeerEmail.trim().toLowerCase()
+      ) ||
+      null
+    );
+  }, [remotePeerEmail, remotePeerUserId, roomParticipants]);
+
+  const resolvedRemoteCandidateId = matchedRemoteParticipant?.candidateId || remotePeerUserId || null;
+  const resolvedRemoteCandidateName = useMemo(() => {
+    if (!remotePeerUserId) {
+      return null;
+    }
+
+    return (
+      matchedRemoteParticipant?.candidateName?.trim() ||
+      roomParticipants.find((p) => p.candidateId === remotePeerUserId)?.candidateName?.trim() ||
+      roomInterviews.find((iv) => iv.candidateId === matchedRemoteParticipant?.candidateId)?.candidateName?.trim() ||
+      roomInterviews.find((iv) => iv.candidateId === remotePeerUserId)?.candidateName?.trim() ||
+      null
+    );
+  }, [matchedRemoteParticipant?.candidateId, matchedRemoteParticipant?.candidateName, remotePeerUserId, roomInterviews, roomParticipants]);
 
   useEffect(() => {
     if (!remotePeerUserId) {
       return;
     }
 
-    setActiveCandidateId(remotePeerUserId);
+    setActiveCandidateId(resolvedRemoteCandidateId);
     setForceRemotePlaceholder(false);
 
+    setActiveCandidateName(resolvedRemoteCandidateName);
+
     setRoomParticipants((prev) =>
-      prev.map((p) =>
-        p.candidateId === remotePeerUserId
-          ? {
-              ...p,
-              admitStatus: p.admitStatus === "COMPLETED" ? p.admitStatus : "ADMITTED",
-              joinedAt: p.joinedAt || new Date().toISOString(),
-              leftAt: undefined,
-            }
-          : p
-      )
+      prev.map((p) => {
+        if (p.candidateId !== resolvedRemoteCandidateId) {
+          return p;
+        }
+
+        const nextAdmitStatus = p.admitStatus === "COMPLETED" ? p.admitStatus : "ADMITTED";
+        const nextJoinedAt = p.joinedAt || new Date().toISOString();
+        const nextLeftAt = undefined;
+
+        if (
+          p.admitStatus === nextAdmitStatus &&
+          p.joinedAt === nextJoinedAt &&
+          p.leftAt === nextLeftAt
+        ) {
+          return p;
+        }
+
+        return {
+          ...p,
+          admitStatus: nextAdmitStatus,
+          joinedAt: nextJoinedAt,
+          leftAt: nextLeftAt,
+        };
+      })
     );
 
     setRoomInterviews((prev) =>
-      prev.map((iv) =>
-        iv.candidateId === remotePeerUserId && iv.interviewStatus !== "COMPLETED"
-          ? { ...iv, interviewStatus: "IN_PROGRESS" }
-          : iv
-      )
+      prev.map((iv) => {
+        if (iv.candidateId !== resolvedRemoteCandidateId || iv.interviewStatus === "COMPLETED" || iv.interviewStatus === "IN_PROGRESS") {
+          return iv;
+        }
+
+        return { ...iv, interviewStatus: "IN_PROGRESS" };
+      })
     );
-  }, [remotePeerUserId]);
+  }, [remotePeerUserId, resolvedRemoteCandidateId, resolvedRemoteCandidateName]);
 
   // Attach remote stream to video element
   useEffect(() => {
@@ -423,14 +477,34 @@ export default function InterviewRoom() {
 
       setHandlingFeedbackSubmit(true);
       try {
-        await handleCompleteCandidateInterview(target);
+        if (target.candidateId) {
+          setRoomParticipants((prev) =>
+            prev.map((p) =>
+              p.candidateId === target.candidateId
+                ? { ...p, admitStatus: "COMPLETED", leftAt: p.leftAt || new Date().toISOString() }
+                : p
+            )
+          );
+        }
+
+        setRoomInterviews((prev) =>
+          prev.map((iv) =>
+            iv.id === submittedInterviewId ? { ...iv, interviewStatus: "COMPLETED" } : iv
+          )
+        );
+
+        if (interview?.id === submittedInterviewId) {
+          setInterview((prev) =>
+            prev ? { ...prev, interviewStatus: "COMPLETED" } : prev
+          );
+        }
       } catch {
         toast.warning("Đã gửi đánh giá nhưng chưa thể cập nhật trạng thái hoàn thành");
       } finally {
         setHandlingFeedbackSubmit(false);
       }
     },
-    [handleCompleteCandidateInterview, handlingFeedbackSubmit, roomInterviews]
+    [handlingFeedbackSubmit, interview?.id, roomInterviews]
   );
 
   const feedbackModalNode = showFeedbackModal && interview?.id ? (
@@ -474,17 +548,33 @@ export default function InterviewRoom() {
 
   const showRemoteWaitingState = forceRemotePlaceholder || !remoteStream || !remotePeerId;
   const remoteCandidateName = useMemo(() => {
+    if (forceRemotePlaceholder) return "Ứng viên";
+
     const targetCandidateId = activeCandidateId || remotePeerUserId;
-    if (!targetCandidateId) return "Ứng viên";
+    if (activeCandidateName?.trim()) return activeCandidateName.trim();
+    if (!targetCandidateId) {
+      return remotePeerDisplayName?.trim() || remotePeerEmail?.trim() || "Ứng viên";
+    }
 
     const participantName = roomParticipants.find((p) => p.candidateId === targetCandidateId)?.candidateName?.trim();
     if (participantName) return participantName;
 
+    const participantNameByEmail = roomParticipants.find(
+      (p) =>
+        p.candidateEmail?.trim().toLowerCase() &&
+        remotePeerEmail?.trim().toLowerCase() &&
+        p.candidateEmail.trim().toLowerCase() === remotePeerEmail.trim().toLowerCase()
+    )?.candidateName?.trim();
+    if (participantNameByEmail) return participantNameByEmail;
+
     const interviewCandidateName = roomInterviews.find((iv) => iv.candidateId === targetCandidateId)?.candidateName?.trim();
     if (interviewCandidateName) return interviewCandidateName;
 
+    if (remotePeerDisplayName?.trim()) return remotePeerDisplayName.trim();
+    if (remotePeerEmail?.trim()) return remotePeerEmail.trim();
+
     return "Ứng viên";
-  }, [activeCandidateId, remotePeerUserId, roomParticipants, roomInterviews]);
+  }, [activeCandidateId, activeCandidateName, forceRemotePlaceholder, remotePeerDisplayName, remotePeerEmail, remotePeerUserId, roomParticipants, roomInterviews]);
 
   // Timer
   useEffect(() => {
@@ -895,7 +985,8 @@ export default function InterviewRoom() {
           )
         );
       }
-          setActiveCandidateId(null);
+      setActiveCandidateId(null);
+      setActiveCandidateName(null);
       toast.info("Đã mời ứng viên rời phòng");
     }
     setShowKickConfirm(false);
@@ -1415,8 +1506,15 @@ export default function InterviewRoom() {
                   onClick={() => {
                     admitUser(req.socketId);
                     const matched = resolveParticipantFromJoinRequest(req);
+                    const resolvedCandidateName =
+                      matched?.candidateName?.trim() ||
+                      req.displayName?.trim() ||
+                      req.email?.trim() ||
+                      req.userId ||
+                      "Ứng viên";
                     if (roomCode && matched?.candidateId) {
                       setActiveCandidateId(matched.candidateId);
+                      setActiveCandidateName(resolvedCandidateName);
                       interviewService.admitParticipant(roomCode, matched.candidateId).catch(() => null);
                       setRoomParticipants((prev) =>
                         prev.map((p) =>
