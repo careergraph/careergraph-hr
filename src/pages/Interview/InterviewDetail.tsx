@@ -409,9 +409,16 @@ export default function InterviewDetail() {
                   return (
                     <div key={recording.id} className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs text-gray-500">
-                          {recording.createdDate ? `Recorded: ${new Date(recording.createdDate).toLocaleString("vi-VN")}` : "Recorded clip"}
-                        </p>
+                        <div>
+                          <p className="text-xs text-gray-500">
+                            {recording.createdDate ? `Recorded: ${new Date(recording.createdDate).toLocaleString("vi-VN")}` : "Recorded clip"}
+                          </p>
+                          {recording.candidateName && (
+                            <p className="mt-1 text-xs font-medium text-gray-700 dark:text-gray-200">
+                              Gán cho: {recording.candidateName}
+                            </p>
+                          )}
+                        </div>
                         {recording.recordingStatus && (
                           <Badge variant="outline">
                             {RECORDING_STATUS_LABELS[recording.recordingStatus] ?? recording.recordingStatus}

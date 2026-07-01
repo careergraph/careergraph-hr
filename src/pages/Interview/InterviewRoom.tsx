@@ -107,8 +107,11 @@ export default function InterviewRoom() {
   const [screenSharing, setScreenSharing] = useState(false);
   const [joined, setJoined] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [clockNow, setClockNow] = useState(() => Date.now());
+  const autoOpenedRoomRef = useRef<string | null>(null);
   const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
+  const activeCandidateIdRef = useRef<string | null>(null);
   const [forceRemotePlaceholder, setForceRemotePlaceholder] = useState(false);
 
   // Recording state
@@ -163,7 +166,10 @@ export default function InterviewRoom() {
     emitRecordingStopped,
     remotePeerId,
     roomStatus,
+    roomOpenedAt,
     waitingCount,
+    admitBlockedMessage,
+    lastParticipantSessionLeft,
     peerMediaStates,
     emitOpenRoom,
     emitCloseRoom,
@@ -177,10 +183,37 @@ export default function InterviewRoom() {
   });
 
   useEffect(() => {
+    activeCandidateIdRef.current = activeCandidateId;
+  }, [activeCandidateId]);
+
+  useEffect(() => {
     if (!remotePeerId) {
       setActiveCandidateId(null);
     }
   }, [remotePeerId]);
+
+  useEffect(() => {
+    if (!lastParticipantSessionLeft) {
+      return;
+    }
+
+    const candidateId = activeCandidateIdRef.current;
+    if (!candidateId) {
+      return;
+    }
+
+    const targetInterview = roomInterviews.find((iv) => iv.candidateId === candidateId) ?? null;
+    const nextAdmitStatus = targetInterview?.interviewStatus === "COMPLETED" ? "COMPLETED" : "WAITING_LOBBY";
+
+    setRoomParticipants((prev) =>
+      prev.map((participant) =>
+        participant.candidateId === candidateId
+          ? { ...participant, admitStatus: nextAdmitStatus, leftAt: lastParticipantSessionLeft.occurredAt }
+          : participant
+      )
+    );
+    setActiveCandidateId(null);
+  }, [lastParticipantSessionLeft, roomInterviews]);
 
   // Attach remote stream to video element
   useEffect(() => {
@@ -351,17 +384,6 @@ export default function InterviewRoom() {
 
       await interviewService.completeInterview(targetInterview.id);
 
-      if (targetInterview.candidateId) {
-        interviewService.completeParticipant(roomCode, targetInterview.candidateId).catch(() => null);
-        setRoomParticipants((prev) =>
-          prev.map((p) =>
-            p.candidateId === targetInterview.candidateId
-              ? { ...p, admitStatus: "COMPLETED", leftAt: new Date().toISOString() }
-              : p
-          )
-        );
-      }
-
       setRoomInterviews((prev) =>
         prev.map((iv) =>
           iv.id === targetInterview.id ? { ...iv, interviewStatus: "COMPLETED" } : iv
@@ -374,7 +396,9 @@ export default function InterviewRoom() {
         );
       }
 
-      toast.success(`Đã hoàn thành phỏng vấn ứng viên ${targetInterview.candidateName}`);
+      toast.success(
+        `Đã hoàn thành phỏng vấn ứng viên ${targetInterview.candidateName}. Room vẫn được giữ để HR tiếp tục đánh giá, gán bản ghi hoặc chủ động kết thúc phiên.`
+      );
     },
     [roomCode, interview?.id, joinedCandidateApplicationIds, roomParticipants]
   );
@@ -441,7 +465,22 @@ export default function InterviewRoom() {
     return !hasOpenWindow;
   }, [roomInterviews, interview]);
 
+  const hasJoinedCandidateInRoom = joinedCandidateApplicationIds.size > 0;
+  const hasRemoteCandidatePresence = !!remotePeerId || peerCount > 0;
+  const hasActiveAdmittedCandidate = roomParticipants.some(
+    (participant) => participant.admitStatus === "ADMITTED"
+  );
+  const activeRoomParticipant = roomParticipants.find(
+    (participant) => participant.admitStatus === "ADMITTED"
+  ) ?? null;
+  const activeCompletedInterview = activeRoomParticipant
+    ? roomInterviews.find((iv) => iv.applicationId === activeRoomParticipant.applicationId) ?? null
+    : null;
+  const isActiveCandidateInterviewCompleted = activeCompletedInterview?.interviewStatus === "COMPLETED";
   const showRemoteWaitingState = forceRemotePlaceholder || !remoteStream || !remotePeerId;
+  const remoteWaitingMessage = hasRemoteCandidatePresence || hasJoinedCandidateInRoom
+    ? "Ứng viên đã vào phòng, đang chờ kết nối media..."
+    : "Đang chờ ứng viên tham gia...";
 
   // Timer
   useEffect(() => {
@@ -450,11 +489,32 @@ export default function InterviewRoom() {
     return () => clearInterval(timer);
   }, [joined]);
 
+  useEffect(() => {
+    if (!joined) return;
+    const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [joined]);
+
+  useEffect(() => {
+    if (!admitBlockedMessage) return;
+    toast.warning(admitBlockedMessage);
+  }, [admitBlockedMessage]);
+
   const fmtElapsed = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
     return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
   };
+
+  const displayElapsed = useMemo(() => {
+    if (roomOpenedAt) {
+      const startMs = new Date(roomOpenedAt).getTime();
+      if (Number.isFinite(startMs)) {
+        return Math.max(0, Math.floor((clockNow - startMs) / 1000));
+      }
+    }
+    return elapsed;
+  }, [clockNow, elapsed, roomOpenedAt]);
 
   // ── Media device detection & initialization ──────────
   // Media failures should not block the admission socket; fall back to no-camera/no-mic mode.
@@ -923,6 +983,22 @@ export default function InterviewRoom() {
     toast.success("Phòng đã mở. Ứng viên có thể tham gia.");
   }, [roomCode, interview, emitOpenRoom]);
 
+  useEffect(() => {
+    if (!joined || roomStatus !== "WAITING") {
+      autoOpenedRoomRef.current = null;
+    }
+  }, [joined, roomStatus]);
+
+  useEffect(() => {
+    if (!joined || !roomCode || roomStatus !== "WAITING" || isRoomEnded) return;
+    if (autoOpenedRoomRef.current === roomCode) return;
+
+    autoOpenedRoomRef.current = roomCode;
+
+    emitOpenRoom();
+    interviewService.openRoom(roomCode).catch(() => null);
+  }, [joined, roomCode, roomStatus, isRoomEnded, emitOpenRoom]);
+
   const toggleScreenShare = async () => {
     if (screenSharing) {
       // Stop screen share → restore camera (if we had one)
@@ -1246,7 +1322,7 @@ export default function InterviewRoom() {
           )}
           <span className="flex items-center gap-1.5 text-sm text-gray-300">
             <Clock className="h-3.5 w-3.5" />
-            {fmtElapsed(elapsed)}
+            {fmtElapsed(displayElapsed)}
           </span>
           {roomStatusBadge(roomStatus)}
         </div>
@@ -1314,6 +1390,13 @@ export default function InterviewRoom() {
                 <span className="text-xs text-gray-500">— Không có</span>
               )}
             </div>
+            {activeRoomParticipant && (
+              <Badge className="bg-blue-600 text-white">
+                <Users className="mr-1 h-3 w-3" />
+                {isActiveCandidateInterviewCompleted ? "Đã hoàn thành, còn trong room: " : "Active: "}
+                {activeRoomParticipant.candidateName || activeRoomParticipant.candidateEmail || "Ứng viên"}
+              </Badge>
+            )}
             {/* Kick button */}
             {connected && remotePeerId && (
               <Button
@@ -1369,7 +1452,13 @@ export default function InterviewRoom() {
                 <Button
                   size="icon"
                   className="h-7 w-7 rounded-full bg-green-600 hover:bg-green-700"
+                  disabled={hasActiveAdmittedCandidate}
+                  title={hasActiveAdmittedCandidate ? "Cần kết thúc active session của ứng viên hiện tại trước khi admit người tiếp theo" : undefined}
                   onClick={() => {
+                    if (hasActiveAdmittedCandidate) {
+                      toast.warning("Ứng viên hiện tại vẫn đang giữ active session. Hãy để ứng viên rời phòng hoặc mời rời phòng trước khi admit người tiếp theo.");
+                      return;
+                    }
                     admitUser(req.socketId);
                     const matched = resolveParticipantFromJoinRequest(req);
                     if (roomCode && matched?.candidateId) {
@@ -1423,7 +1512,7 @@ export default function InterviewRoom() {
                         <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gray-700 text-2xl font-bold text-white">
                           ?
                         </div>
-                        <p className="text-sm text-gray-400">Đang chờ ứng viên...</p>
+                        <p className="text-sm text-gray-400">{remoteWaitingMessage}</p>
                       </div>
                     </div>
                   ) : (
@@ -1501,7 +1590,7 @@ export default function InterviewRoom() {
                   <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gray-700 text-2xl font-bold text-white">
                     ?
                   </div>
-                  <p className="text-sm text-gray-400">Đang chờ ứng viên tham gia...</p>
+                  <p className="text-sm text-gray-400">{remoteWaitingMessage}</p>
                 </div>
               </div>
             ) : (
@@ -1583,6 +1672,7 @@ export default function InterviewRoom() {
                 const canReview = hasJoined && completed && !alreadyReviewed;
                 const canComplete = canCompleteInterview(iv, roomParticipants);
                 const completeBlockReason = getInterviewCompletionBlockReason(iv, roomParticipants);
+                const isActiveCandidate = activeRoomParticipant?.candidateId === iv.candidateId;
                 return (
                   <div key={iv.id} className="rounded-xl border border-gray-800 bg-gray-900/80 p-3">
                     <div className="flex items-start justify-between gap-2">
@@ -1592,8 +1682,16 @@ export default function InterviewRoom() {
                           {new Date(iv.scheduledAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
-                      <Badge className={completed ? "bg-green-600 text-white" : hasJoined ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-200"}>
-                        {completed ? "Đã hoàn thành" : hasJoined ? "Đã vào phòng" : "Chưa vào phòng"}
+                      <Badge className={completed ? "bg-green-600 text-white" : isActiveCandidate ? "bg-cyan-600 text-white" : hasJoined ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-200"}>
+                        {completed && isActiveCandidate
+                          ? "Đã hoàn thành, còn trong phòng"
+                          : completed
+                            ? "Đã hoàn thành"
+                            : isActiveCandidate
+                              ? "Đang active"
+                              : hasJoined
+                                ? "Đã vào phòng"
+                                : "Chưa vào phòng"}
                       </Badge>
                     </div>
 

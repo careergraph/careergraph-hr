@@ -17,9 +17,6 @@ export const canCompleteByStatus = (status?: InterviewStatus | string | null) =>
   COMPLETE_ALLOWED_STATUSES.has(status as InterviewStatus);
 
 const FEEDBACK_ALLOWED_STATUSES = new Set<InterviewStatus>([
-  "SCHEDULED",
-  "CONFIRMED",
-  "IN_PROGRESS",
   "COMPLETED",
 ]);
 
@@ -66,10 +63,10 @@ export const canCompleteInterview = (
 ) => !getInterviewCompletionBlockReason(interview, participants);
 
 export const canAddInterviewFeedback = (
-  interview: Pick<Interview, "type" | "scheduledAt" | "interviewStatus" | "applicationId" | "candidateId">,
+  interview: Pick<Interview, "type" | "interviewStatus" | "applicationId" | "candidateId">,
   participants: RoomParticipantLike[] = []
 ) =>
   FEEDBACK_ALLOWED_STATUSES.has(interview.interviewStatus as InterviewStatus) &&
   (interview.type === "ONLINE"
     ? hasCandidateJoinedRoom(interview, participants)
-    : hasInterviewStarted(interview));
+    : true);

@@ -160,6 +160,11 @@ const removeParticipant = async (roomCode: string, candidateId: string) => {
   return response.data;
 };
 
+const leaveParticipant = async (roomCode: string, candidateId: string) => {
+  const response = await api.post(`/rooms/${roomCode}/participants/${candidateId}/leave`);
+  return response.data;
+};
+
 const completeParticipant = async (roomCode: string, candidateId: string) => {
   const response = await api.post(`/rooms/${roomCode}/participants/${candidateId}/complete`);
   return response.data;
@@ -177,7 +182,7 @@ const saveRecording = async (interviewId: string, data: {
   fileSize?: number;
   durationSeconds?: number;
   mimeType?: string;
-  participantId?: string;
+  roomParticipantId?: string;
 }) => {
   const response = await api.post(`${BASE}/${interviewId}/recordings`, data);
   return response.data;
@@ -233,6 +238,7 @@ export const interviewService = {
   fetchRoomParticipants,
   admitParticipant,
   removeParticipant,
+  leaveParticipant,
   completeParticipant,
   startInterview,
   saveRecording,

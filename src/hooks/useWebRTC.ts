@@ -53,7 +53,14 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
 
   // Room lifecycle
   const [roomStatus, setRoomStatus] = useState<RoomStatus>("WAITING");
+  const [roomOpenedAt, setRoomOpenedAt] = useState<string | null>(null);
   const [waitingCount, setWaitingCount] = useState(0);
+  const [admitBlockedMessage, setAdmitBlockedMessage] = useState<string | null>(null);
+  const [lastParticipantSessionLeft, setLastParticipantSessionLeft] = useState<{
+    userId?: string;
+    email?: string;
+    occurredAt: string;
+  } | null>(null);
 
   // Peer media states (remote participants)
   const [peerMediaStates, setPeerMediaStates] = useState<Record<string, PeerMediaState>>({});
@@ -63,7 +70,9 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
     pcRef.current?.close();
     pcRef.current = null;
     remoteSocketIdRef.current = null;
+    pendingCandidates.current = [];
     setRemoteStream(null);
+    setRemotePeerId(null);
     setConnected(false);
   }, []);
 
@@ -157,6 +166,8 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
     setPeerMediaStates({});
     setRemotePeerId(null);
     setRoomStatus("WAITING");
+    setRoomOpenedAt(null);
+    setAdmitBlockedMessage(null);
 
     const socket = io(RTC_URL, {
       auth: { token },
@@ -273,8 +284,9 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
     });
 
     // ── Room lifecycle events ──────────────────────────
-    socket.on("room-status-changed", ({ status }: { status: RoomStatus }) => {
+    socket.on("room-status-changed", ({ status, openedAt }: { status: RoomStatus; openedAt?: string | null }) => {
       setRoomStatus(status);
+      setRoomOpenedAt(typeof openedAt === "string" ? openedAt : null);
     });
 
     socket.on("waiting-count", ({ count }: { count: number }) => {
@@ -282,6 +294,22 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
       if (count > 0) {
         socket.emit("get-waiting-room");
       }
+    });
+
+    socket.on("admit-blocked", ({ message }: { message?: string }) => {
+      setAdmitBlockedMessage(
+        typeof message === "string" && message.trim()
+          ? message
+          : "Phòng hiện chỉ hỗ trợ 1 ứng viên active tại một thời điểm."
+      );
+    });
+
+    socket.on("participant-session-left", (payload: { userId?: string; email?: string; occurredAt?: string }) => {
+      setLastParticipantSessionLeft({
+        userId: payload?.userId,
+        email: payload?.email,
+        occurredAt: payload?.occurredAt || new Date().toISOString(),
+      });
     });
 
     // ── Peer media tracking ────────────────────────────
@@ -402,7 +430,10 @@ export function useWebRTC({ roomCode, token, localStream }: UseWebRTCOptions) {
     emitRecordingStopped,
     remotePeerId,
     roomStatus,
+    roomOpenedAt,
     waitingCount,
+    admitBlockedMessage,
+    lastParticipantSessionLeft,
     peerMediaStates,
     emitOpenRoom,
     emitCloseRoom,

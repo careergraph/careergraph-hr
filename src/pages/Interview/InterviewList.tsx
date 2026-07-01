@@ -61,7 +61,14 @@ export default function InterviewList() {
     candidateName?: string;
     candidateOptions?: Array<{ interviewId: string; candidateName: string }>;
   } | null>(null);
-  const [roomParticipantsByCode, setRoomParticipantsByCode] = useState<Record<string, Array<{ applicationId?: string; joinedAt?: string }>>>({});
+  const [roomParticipantsByCode, setRoomParticipantsByCode] = useState<Record<string, Array<{
+    id?: string;
+    applicationId?: string;
+    candidateId?: string;
+    candidateName?: string;
+    admitStatus?: string;
+    joinedAt?: string;
+  }>>>({});
   const [feedbackStatusByInterviewId, setFeedbackStatusByInterviewId] = useState<Record<string, boolean>>({});
   const [expandedCancelledByRoom, setExpandedCancelledByRoom] = useState<Record<string, boolean>>({});
   const [dateFilter, setDateFilter] = useState("");
@@ -276,6 +283,7 @@ export default function InterviewList() {
 
         const latestByApplication = Array.from(latestByApplicationMap.values());
         const roomParticipants = roomParticipantsByCode[roomCode] ?? [];
+        const activeParticipant = roomParticipants.find((participant) => participant.admitStatus === "ADMITTED");
         const joinedApplicationIds = new Set(
           roomParticipants.filter((participant) => participant.joinedAt && participant.applicationId).map((participant) => participant.applicationId as string)
         );
@@ -333,6 +341,7 @@ export default function InterviewList() {
           totalCandidates,
           cancelledCount,
           canJoinRoom: canJoinRoom && canJoinRoomByTime,
+          activeCandidateName: activeParticipant?.candidateName,
           feedbackCandidates,
         };
       })
@@ -776,6 +785,11 @@ export default function InterviewList() {
                             <Users className="h-3.5 w-3.5" />
                             {room.totalCandidates} ứng viên
                           </span>
+                          {room.activeCandidateName && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2 py-0.5 font-medium text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300">
+                              Active: {room.activeCandidateName}
+                            </span>
+                          )}
                         </div>
 
                         <div className="mt-3 space-y-1 rounded-lg border border-gray-200/70 bg-gray-50/70 p-2 dark:border-gray-700 dark:bg-gray-900/30">

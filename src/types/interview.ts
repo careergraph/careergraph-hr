@@ -58,6 +58,10 @@ export interface InterviewFeedback {
 export interface InterviewRecording {
   id: string;
   interviewId: string;
+  roomParticipantId?: string;
+  applicationId?: string;
+  candidateId?: string;
+  candidateName?: string;
   fileKey?: string;
   fileSize?: number;
   durationSeconds?: number;

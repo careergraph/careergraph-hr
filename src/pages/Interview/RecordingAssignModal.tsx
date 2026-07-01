@@ -52,14 +52,21 @@ export default function RecordingAssignModal({
           : Array.isArray(resp)
             ? resp
             : [];
-        // Only candidates who actually joined are eligible for recording assignment.
-        const eligible = items.filter((p) =>
-          ["ADMITTED", "COMPLETED"].includes(p.admitStatus) && !!p.joinedAt
-        );
+        // A kicked/removed candidate still needs to be assignable if they already joined the room.
+        const eligible = items
+          .filter((p) => !!p.joinedAt)
+          .sort((a, b) => {
+            const aTime = a.joinedAt ? new Date(a.joinedAt).getTime() : 0;
+            const bTime = b.joinedAt ? new Date(b.joinedAt).getTime() : 0;
+            return bTime - aTime;
+          });
         setParticipants(eligible);
+        const preferred = eligible.find((p) => p.admitStatus === "ADMITTED") ?? eligible[0] ?? null;
+        setSelectedParticipantId(preferred?.id ?? "");
       })
       .catch(() => {
         setParticipants([]);
+        setSelectedParticipantId("");
       })
       .finally(() => setLoadingParticipants(false));
   }, [open, roomCode]);
@@ -82,6 +89,7 @@ export default function RecordingAssignModal({
 
       await interviewService.saveRecording(targetInterviewId, {
         fileKey: recordingUrl,
+        roomParticipantId: selectedParticipant?.id,
       });
       toast.success(
         selectedParticipantId
@@ -129,7 +137,7 @@ export default function RecordingAssignModal({
             </div>
           ) : participants.length === 0 ? (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-              Chưa có ứng viên nào được duyệt vào phòng hôm nay.
+              Chưa có ứng viên nào đã vào phòng trong phiên này.
             </div>
           ) : (
             <div className="space-y-2">
@@ -161,7 +169,7 @@ export default function RecordingAssignModal({
                           {p.candidateEmail}
                         </p>
                       )}
-                      {p.slotStart && (
+                     {p.slotStart && (
                         <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                           <Clock className="h-3 w-3" />
                           {new Date(p.slotStart).toLocaleTimeString("vi-VN", {
@@ -178,6 +186,11 @@ export default function RecordingAssignModal({
                     </div>
                     {isSelected && (
                       <CheckCircle2 className="h-5 w-5 shrink-0 text-blue-600" />
+                    )}
+                    {p.admitStatus === "ADMITTED" && (
+                      <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">
+                        Đang active
+                      </span>
                     )}
                     {p.admitStatus === "COMPLETED" && (
                       <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
