@@ -24,7 +24,7 @@ export function HeroSection({ stats }: HeroSectionProps) {
             CareerGraph kết nối doanh nghiệp với nguồn nhân tài chất lượng, cung cấp một bảng điều khiển duy nhất để quản lý chiến lược tuyển dụng, chăm sóc ứng viên và đo lường hiệu quả.
           </p>
         </div>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        {/* <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <Link
             to="/signup"
             className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 text-base font-semibold text-primary-foreground shadow-primary/20 transition-colors hover:bg-primary/90"
@@ -37,7 +37,7 @@ export function HeroSection({ stats }: HeroSectionProps) {
           >
             Trải nghiệm bản demo
           </Link>
-        </div>
+        </div> */}
         <div className="grid gap-5 md:grid-cols-3">
           {stats.map((stat) => (
             <div

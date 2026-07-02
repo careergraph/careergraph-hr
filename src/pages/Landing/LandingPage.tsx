@@ -210,7 +210,7 @@ export default function LandingPage() {
         
         {/* TODO: Thêm lại phần giá khi có thông tin cụ thể về sản phẩm và gói dịch vụ. */}
         {/* <PricingSection plans={pricingPlans} /> */}
-        <CallToActionSection />
+        {/* <CallToActionSection /> */}
       </main>
       <LandingFooter />
     </div>

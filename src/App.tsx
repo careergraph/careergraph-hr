@@ -20,6 +20,7 @@ import AddJob from "@/pages/Job/AddJob";
 import { Toaster } from "sonner";
 import SuggestionCandidates from "@/pages/SuggestionCandidate/SuggestionCandidate";
 import RequireAuth from "@/components/auth/RequireAuth";
+import RequireGuest from "@/components/auth/RequireGuest";
 import LandingPage from "@/pages/Landing/LandingPage";
 import ForgotPassword from "./pages/AuthPages/ForgotPassword";
 import ResetPassword from "./pages/AuthPages/ResetPassword";
@@ -60,11 +61,13 @@ const AppRoutes = () => (
           </Route>
         </Route>
 
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/verify-otp" element={<Verify />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route element={<RequireGuest redirectTo="/" />}>
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/verify-otp" element={<Verify />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+        </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>

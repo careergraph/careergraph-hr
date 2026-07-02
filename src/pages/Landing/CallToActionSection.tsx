@@ -21,12 +21,12 @@ export function CallToActionSection() {
           >
             Bắt đầu ngay
           </Link>
-          <Link
+          {/* <Link
             to="/signin"
             className="inline-flex items-center justify-center rounded-xl border border-white/50 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
           >
             Đặt lịch cá nhân hóa
-          </Link>
+          </Link> */}
         </div>
       </div>
     </ScrollReveal>
