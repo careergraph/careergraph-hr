@@ -64,6 +64,16 @@ type CandidateDetailProps = {
   ) => Promise<void> | void;
 };
 
+type PendingStageAction =
+  | { type: "advance"; title: string; description: string }
+  | {
+      type: "restore";
+      targetStatus: Candidate["status"];
+      title: string;
+      description: string;
+    }
+  | { type: "reject"; title: string; description: string };
+
 export function CandidateDetail({
   open,
   onOpenChange,
@@ -137,8 +147,8 @@ export function CandidateDetail({
   );
   const [interviewReviews, setInterviewReviews] = useState<Interview[]>([]);
   const [rejecting, setRejecting] = useState(false);
-  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
   const [restoringStatus, setRestoringStatus] = useState<Candidate["status"] | null>(null);
+  const [pendingStageAction, setPendingStageAction] = useState<PendingStageAction | null>(null);
 
   const handleRejectCandidate = useCallback(async () => {
     if (!candidate || !onRejectCandidate || rejecting) return;
@@ -146,7 +156,7 @@ export function CandidateDetail({
     setRejecting(true);
     try {
       await onRejectCandidate(candidate);
-      setConfirmRejectOpen(false);
+      setPendingStageAction(null);
       onOpenChange(false);
     } finally {
       setRejecting(false);
@@ -171,6 +181,24 @@ export function CandidateDetail({
     if (!candidate || !onAdvanceStage || isAdvancingStage) return;
     await onAdvanceStage(candidate);
   }, [candidate, isAdvancingStage, onAdvanceStage]);
+
+  const handleConfirmStageAction = useCallback(async () => {
+    if (!pendingStageAction) return;
+
+    if (pendingStageAction.type === "reject") {
+      await handleRejectCandidate();
+      return;
+    }
+
+    if (pendingStageAction.type === "advance") {
+      await handleAdvanceStage();
+      setPendingStageAction(null);
+      return;
+    }
+
+    await handleRestoreCandidateStage(pendingStageAction.targetStatus);
+    setPendingStageAction(null);
+  }, [handleAdvanceStage, handleRejectCandidate, handleRestoreCandidateStage, pendingStageAction]);
 
   const currentStageLabel = useMemo(() => {
     if (!candidate?.status) return "Chưa cập nhật";
@@ -310,7 +338,11 @@ export function CandidateDetail({
                       size="sm"
                       className="mt-3 w-full bg-slate-900 text-white hover:bg-slate-800"
                       onClick={() => {
-                        void handleAdvanceStage();
+                        setPendingStageAction({
+                          type: "advance",
+                          title: "Xác nhận chuyển trạng thái",
+                          description: `Bạn có chắc chắn muốn chuyển ứng viên sang ${nextStageLabel}?`,
+                        });
                       }}
                       disabled={isAdvancingStage}
                     >
@@ -329,7 +361,12 @@ export function CandidateDetail({
                           variant="outline"
                           className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
                           onClick={() => {
-                            void handleRestoreCandidateStage(option.status);
+                            setPendingStageAction({
+                              type: "restore",
+                              targetStatus: option.status,
+                              title: "Xác nhận khôi phục hồ sơ",
+                              description: `Bạn có chắc chắn muốn khôi phục hồ sơ về ${option.label}?`,
+                            });
                           }}
                           disabled={Boolean(restoringStatus) || isAdvancingStage}
                         >
@@ -346,7 +383,14 @@ export function CandidateDetail({
                       size="sm"
                       variant="destructive"
                       className="mt-3 w-full bg-red-600 text-white hover:bg-red-700"
-                      onClick={() => setConfirmRejectOpen(true)}
+                      onClick={() =>
+                        setPendingStageAction({
+                          type: "reject",
+                          title: "Xác nhận từ chối ứng viên",
+                          description:
+                            "Hồ sơ sẽ được chuyển sang trạng thái từ chối và HR sẽ không thể khôi phục lại từ quyết định này. Vui lòng xác nhận để tránh thao tác nhầm.",
+                        })
+                      }
                       disabled={rejecting || candidate.status === "rejected"}
                     >
                       {rejecting
@@ -468,25 +512,48 @@ export function CandidateDetail({
               </Tabs>
             </div>
           </div>
-          <AlertDialog open={confirmRejectOpen} onOpenChange={setConfirmRejectOpen}>
+          <AlertDialog
+            open={Boolean(pendingStageAction)}
+            onOpenChange={(open) => {
+              if (!open) {
+                setPendingStageAction(null);
+              }
+            }}
+          >
             <AlertDialogContent className="border-slate-200 bg-white opacity-100 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
               <AlertDialogHeader>
-                <AlertDialogTitle>Xác nhận từ chối ứng viên</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {pendingStageAction?.title ?? "Xác nhận chuyển trạng thái"}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  Hồ sơ sẽ được chuyển sang trạng thái từ chối và HR sẽ không thể khôi phục lại
-                  từ quyết định này. Vui lòng xác nhận để tránh thao tác nhầm.
+                  {pendingStageAction?.description ??
+                    "Bạn có chắc chắn muốn thực hiện thay đổi trạng thái này?"}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel disabled={rejecting}>Huỷ</AlertDialogCancel>
+                <AlertDialogCancel disabled={rejecting || Boolean(restoringStatus) || isAdvancingStage}>
+                  Huỷ
+                </AlertDialogCancel>
                 <AlertDialogAction
-                  className="bg-red-600 text-white hover:bg-red-700"
+                  className={
+                    pendingStageAction?.type === "reject"
+                      ? "bg-red-600 text-white hover:bg-red-700"
+                      : "bg-slate-900 text-white hover:bg-slate-800"
+                  }
                   onClick={() => {
-                    void handleRejectCandidate();
+                    void handleConfirmStageAction();
                   }}
-                  disabled={rejecting}
+                  disabled={rejecting || Boolean(restoringStatus) || isAdvancingStage}
                 >
-                  {rejecting ? "Đang xử lý..." : "Xác nhận từ chối"}
+                  {rejecting
+                    ? "Đang xử lý..."
+                    : restoringStatus
+                      ? "Đang khôi phục..."
+                      : isAdvancingStage
+                        ? "Đang cập nhật..."
+                        : pendingStageAction?.type === "reject"
+                          ? "Xác nhận từ chối"
+                          : "Xác nhận"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

@@ -4,6 +4,7 @@
 
 - Show recovery actions for AI-rejected candidates in the HR candidate detail panel.
 - Add explicit confirmation before HR rejects a candidate from the detail panel.
+- Add explicit confirmation for click-based stage changes in the candidate detail panel.
 - Keep drag-drop behavior unchanged to minimize production risk.
 
 ## Frontend changes
@@ -13,7 +14,10 @@
   - `Khôi phục về Ứng tuyển`
   - `Khôi phục về Sàng lọc`
   - Only when the corresponding stage is available in the current pipeline
-- Added a destructive confirmation dialog before the `Từ chối ứng viên` action is executed from the detail drawer.
+- Added a shared confirmation dialog before click-based stage changes are executed from the detail drawer:
+  - `Chuyển sang ...`
+  - `Khôi phục về ...`
+  - `Từ chối ứng viên`
 - Extended [`candidate.ts`](/home/theron/Desktop/careergraph/careergraph-hr/src/types/candidate.ts) with a lightweight `rejectedByAi` flag for UI rendering.
 
 ## Verification
@@ -24,7 +28,7 @@
 
 - Good:
   - Recovery is placed in the candidate detail view, which matches the high-stakes nature of reviewing an AI false negative.
-  - HR rejection now has an extra confirmation step, reducing accidental final-state actions.
+  - All click-based stage changes now share a confirmation step, reducing accidental transitions in high-stakes flows.
   - The board interaction model stays familiar because drag-drop rules were not reopened.
 
 - Remaining tradeoff:
