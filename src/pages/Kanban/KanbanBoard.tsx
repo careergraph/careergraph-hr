@@ -56,6 +56,8 @@ const BACKEND_STAGE_TO_STATUS: Record<string, CandidateStatusType> = {
   WITHDRAWN: "rejected",
 } as const;
 
+const AI_SCREENING_ACTOR = "system:ai-screening";
+
 const normalizeString = (value: unknown, fallback = "") =>
   typeof value === "string" ? value : fallback;
 
@@ -81,6 +83,17 @@ const mapApplicationToCandidate = (
   const stageHistory = Array.isArray(app["stageHistory"])
     ? (app["stageHistory"] as unknown[])
     : [];
+  const latestRejectedHistory = [...stageHistory]
+    .reverse()
+    .find((entry) => {
+      const event = (entry as Record<string, unknown>) || {};
+      return normalizeString(event["toStage"]) === "REJECTED";
+    }) as Record<string, unknown> | undefined;
+  const stageNote = normalizeString(app["stageNote"] || "");
+  const rejectedByAi =
+    rawStage === "REJECTED" &&
+    (normalizeString(latestRejectedHistory?.["changedBy"]) === AI_SCREENING_ACTOR ||
+      stageNote.includes("Sàng lọc tự động (AI)"));
 
   return {
     id: applicationId,
@@ -150,6 +163,7 @@ const mapApplicationToCandidate = (
     educationLevel: normalizeString(candidateObj["educationLevel"] || undefined),
     hasInterviewed: false,
     interviewScore: undefined,
+    rejectedByAi,
   } as Candidate;
 };
 
@@ -390,6 +404,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
             ...currentLocal,
             status: targetStatus,
             lastActive: new Date().toISOString(),
+            rejectedByAi: false,
           };
 
           if (targetCandidateId) {
@@ -406,7 +421,12 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
 
         syncActiveCandidate((candidate) =>
           candidate.id === applicationId
-            ? { ...candidate, status: targetStatus, lastActive: new Date().toISOString() }
+            ? {
+                ...candidate,
+                status: targetStatus,
+                lastActive: new Date().toISOString(),
+                rejectedByAi: false,
+              }
             : candidate
         );
 
@@ -898,6 +918,45 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     [pipelineColumns, syncActiveCandidate, updateCandidateStage]
   );
 
+  const restoreStageOptions = useMemo(() => {
+    if (!activeCandidate || activeCandidate.status !== "rejected" || !activeCandidate.rejectedByAi) {
+      return [];
+    }
+
+    return pipelineColumns
+      .filter(
+        (column) => column.id === "apply" || column.id === "screening"
+      )
+      .map((column) => ({
+        status: column.id,
+        label: STAGE_LABELS[column.stage] ?? column.title,
+      }));
+  }, [activeCandidate, pipelineColumns]);
+
+  const handleRestoreRejectedCandidate = useCallback(
+    async (candidate: Candidate, targetStatus: CandidateStatus) => {
+      const updated = await updateCandidateStage(candidate.id, targetStatus);
+      if (!updated) {
+        throw new Error("Restore failed");
+      }
+
+      syncActiveCandidate((current) =>
+        current.id === candidate.id
+          ? {
+              ...current,
+              status: targetStatus,
+              rejectedByAi: false,
+              lastActive: new Date().toISOString(),
+            }
+          : current
+      );
+      toast.success(
+        `Đã khôi phục hồ sơ về ${STAGE_LABELS[STATUS_TO_STAGE[targetStatus]] ?? targetStatus}`
+      );
+    },
+    [syncActiveCandidate, updateCandidateStage]
+  );
+
   const handleMessageStageSync = useCallback(async () => {
     if (!activeCandidate?.id) return;
 
@@ -1097,6 +1156,8 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
         nextStageLabel={nextStageButtonLabel}
         isAdvancingStage={isProcessing}
         onMessageSent={handleMessageStageSync}
+        restoreStageOptions={restoreStageOptions}
+        onRestoreCandidateStage={handleRestoreRejectedCandidate}
         onRejectCandidate={async (candidate) => {
           const updated = await updateCandidateStage(candidate.id, "rejected");
           if (!updated) {
