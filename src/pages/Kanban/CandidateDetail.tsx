@@ -28,6 +28,7 @@ import type {
 import { formatDate } from "@/lib/candidateDataUtils";
 import type { Interview } from "@/types/interview";
 import { Button } from "@/components/ui/button";
+import { STAGE_LABELS, STATUS_TO_STAGE } from "@/lib/recruitmentPipeline";
 
 // CandidateDetail hiển thị panel chi tiết của ứng viên trong Kanban.
 
@@ -39,6 +40,10 @@ type CandidateDetailProps = {
   onRejectCandidate?: (candidate: Candidate) => Promise<void> | void;
   onScheduleInterview?: (candidate: Candidate) => void;
   canScheduleInterview?: boolean;
+  onAdvanceStage?: (candidate: Candidate) => Promise<void> | void;
+  nextStageLabel?: string | null;
+  isAdvancingStage?: boolean;
+  onMessageSent?: () => void | Promise<void>;
 };
 
 export function CandidateDetail({
@@ -49,6 +54,10 @@ export function CandidateDetail({
   onRejectCandidate,
   onScheduleInterview,
   canScheduleInterview = false,
+  onAdvanceStage,
+  nextStageLabel,
+  isAdvancingStage = false,
+  onMessageSent,
 }: CandidateDetailProps) {
   useEffect(() => {
     // Làm mờ header khi panel mở để tạo trọng tâm.
@@ -120,6 +129,16 @@ export function CandidateDetail({
       setRejecting(false);
     }
   }, [candidate, onRejectCandidate, onOpenChange, rejecting]);
+
+  const handleAdvanceStage = useCallback(async () => {
+    if (!candidate || !onAdvanceStage || isAdvancingStage) return;
+    await onAdvanceStage(candidate);
+  }, [candidate, isAdvancingStage, onAdvanceStage]);
+
+  const currentStageLabel = useMemo(() => {
+    if (!candidate?.status) return "Chưa cập nhật";
+    return STAGE_LABELS[STATUS_TO_STAGE[candidate.status]] ?? candidate.status;
+  }, [candidate]);
 
   const loadTab = useCallback(
     async (tab: string) => {
@@ -239,7 +258,7 @@ export function CandidateDetail({
 
                 <div className="w-full rounded-xl border border-slate-200 bg-white bg-gradient-to-r from-[#4f46e5]/15 via-[#7c3aed]/15 to-[#ec4899]/20 p-4 text-sm font-medium text-primary shadow-sm sm:w-auto">
                   <p className="text-lg font-semibold capitalize text-slate-800">
-                    {candidate.status}
+                    {currentStageLabel}
                   </p>
 
                   <p className="mt-2 text-xs text-slate-500">
@@ -248,6 +267,21 @@ export function CandidateDetail({
                       {formatDate(candidate.appliedDate)}
                     </span>
                   </p>
+
+                  {onAdvanceStage && nextStageLabel ? (
+                    <Button
+                      size="sm"
+                      className="mt-3 w-full bg-slate-900 text-white hover:bg-slate-800"
+                      onClick={() => {
+                        void handleAdvanceStage();
+                      }}
+                      disabled={isAdvancingStage}
+                    >
+                      {isAdvancingStage
+                        ? "Đang cập nhật..."
+                        : `Chuyển sang ${nextStageLabel}`}
+                    </Button>
+                  ) : null}
 
                   {onRejectCandidate ? (
                     <Button
@@ -362,7 +396,7 @@ export function CandidateDetail({
                   value="messages"
                   className="flex-1 min-h-0 overflow-hidden"
                 >
-                  <MessagesTab candidate={candidate} />
+                  <MessagesTab candidate={candidate} onMessageSent={onMessageSent} />
                 </TabsContent>
 
                 <TabsContent value="email" className="flex-1 min-h-0 overflow-hidden">

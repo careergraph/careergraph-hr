@@ -30,6 +30,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import {
   canScheduleInterviewAtStage,
   DEFAULT_COMPANY_STAGES,
+  STAGE_LABELS,
   STAGE_TO_STATUS,
   STATUS_TO_STAGE,
   buildColumnsFromStages,
@@ -42,6 +43,163 @@ import {
 interface KanbanBoardProps {
   jobId?: string;
 }
+
+const BACKEND_STAGE_TO_STATUS: Record<string, CandidateStatusType> = {
+  ...STAGE_TO_STATUS,
+  SUBMITTED: "apply",
+  SCHEDULED: "screening",
+  INTERVIEW_SCHEDULED: "interview",
+  PENDING_RESCHEDULE: "interview",
+  INVITED: "interview",
+  OFFER_ACCEPTED: "offer",
+  OFFER_DECLINED: "offer",
+  WITHDRAWN: "rejected",
+} as const;
+
+const normalizeString = (value: unknown, fallback = "") =>
+  typeof value === "string" ? value : fallback;
+
+const mapApplicationToCandidate = (
+  raw: unknown,
+  fallbackJobId?: string
+): Candidate => {
+  const app = raw as Record<string, unknown>;
+  const applicationId = normalizeString(app["applicationId"] || app["id"]);
+  const candidateObj = (app["candidate"] as Record<string, unknown>) || {};
+  const candidateId = normalizeString(candidateObj["candidateId"]);
+  const jobObj = (app["job"] as Record<string, unknown>) || {};
+
+  const firstName = normalizeString(candidateObj["firstName"]);
+  const lastName = normalizeString(candidateObj["lastName"]);
+  const email = normalizeString(candidateObj["email"], "unknown@example.com");
+  const name =
+    [firstName, lastName].filter(Boolean).join(" ") ||
+    (email.includes("@") ? email.split("@")[0] : email);
+
+  const rawStage = normalizeString(app["currentStage"], "APPLIED");
+  const status = BACKEND_STAGE_TO_STATUS[rawStage] || "apply";
+  const stageHistory = Array.isArray(app["stageHistory"])
+    ? (app["stageHistory"] as unknown[])
+    : [];
+
+  return {
+    id: applicationId,
+    candidateId,
+    ticketId: applicationId,
+    jobId: normalizeString(jobObj["id"] || fallbackJobId),
+    name,
+    position: normalizeString(jobObj["title"], "Ứng viên"),
+    email,
+    phone: (() => {
+      const contacts = candidateObj["contacts"];
+      if (Array.isArray(contacts) && contacts.length > 0) {
+        const first = contacts[0] as Record<string, unknown>;
+        return normalizeString(first["value"] || "");
+      }
+      return "";
+    })(),
+    priority: "medium",
+    status,
+    appliedDate: normalizeString(app["appliedDate"], new Date().toISOString()),
+    experienceLevel: "mid",
+    salaryExpectation: normalizeString(jobObj["salaryRange"] || ""),
+    assignee: undefined,
+    labels: [],
+    description: normalizeString(app["stageNote"] || app["coverLetter"] || ""),
+    timeline: stageHistory.map((h, i) => {
+      const evt = (h as Record<string, unknown>) || {};
+      return {
+        id: `${applicationId}-evt-${i}`,
+        action: normalizeString(evt["toStage"] || evt["to"] || ""),
+        description: normalizeString(evt["note"] || ""),
+        date: normalizeString(evt["changedAt"] || new Date().toISOString()),
+        user: normalizeString(evt["changedBy"] || ""),
+      };
+    }),
+    avatar: normalizeString(candidateObj["avatar"] || candidateObj["profilePicture"] || ""),
+    age: 0,
+    experience: `${normalizeString(candidateObj["yearsOfExperience"] || "0")} năm`,
+    lastActive: normalizeString(
+      app["stageChangedAt"] || app["appliedDate"] || new Date().toISOString()
+    ),
+    gender: "Nam",
+    birthYear: 1990,
+    maritalStatus: "",
+    location: {
+      city: normalizeString(jobObj["city"] || ""),
+      province: normalizeString(jobObj["state"] || ""),
+    },
+    address: normalizeString(jobObj["specific"] || ""),
+    education: normalizeString(candidateObj["educationLevel"] || ""),
+    yearsOfExperience: normalizeString(String(candidateObj["yearsOfExperience"] || "0")),
+    currentLevel: "",
+    desiredLevel: "",
+    desiredSalary: normalizeString(String(candidateObj["salaryExpectationMin"] || "")),
+    workLocation: normalizeString(candidateObj["workLocation"] || ""),
+    workType: "",
+    industry: normalizeString(candidateObj["industry"] || ""),
+    skills: Array.isArray(candidateObj["skills"])
+      ? (candidateObj["skills"] as unknown[]).map((s) =>
+          typeof s === "string"
+            ? s
+            : normalizeString((s as Record<string, unknown>)["name"])
+        )
+      : [],
+    languages: [],
+    hasPurchased: false,
+    educationLevel: normalizeString(candidateObj["educationLevel"] || undefined),
+    hasInterviewed: false,
+    interviewScore: undefined,
+  } as Candidate;
+};
+
+const enrichCandidateWithInterviewMeta = async (candidate: Candidate) => {
+  if (candidate.status !== "interview") {
+    return candidate;
+  }
+
+  try {
+    const interviewResp = await interviewService.fetchInterviewsByApplication(candidate.id);
+    const interviews = Array.isArray(interviewResp?.data)
+      ? interviewResp.data
+      : Array.isArray(interviewResp)
+        ? interviewResp
+        : [];
+
+    const completedInterviews = interviews.filter(
+      (iv: { interviewStatus?: string }) => iv?.interviewStatus === "COMPLETED"
+    );
+
+    const ratings = completedInterviews.flatMap(
+      (iv: { feedback?: Array<{ overallRating?: number }> }) =>
+        Array.isArray(iv.feedback)
+          ? iv.feedback
+              .map((f) =>
+                typeof f?.overallRating === "number" ? f.overallRating : null
+              )
+              .filter((value): value is number => value !== null)
+          : []
+    );
+
+    const interviewScore =
+      ratings.length > 0
+        ? ratings.reduce((sum: number, value: number) => sum + value, 0) /
+          ratings.length
+        : undefined;
+
+    return {
+      ...candidate,
+      labels:
+        completedInterviews.length > 0
+          ? [...candidate.labels, "da-phong-van"]
+          : candidate.labels,
+      hasInterviewed: completedInterviews.length > 0,
+      interviewScore,
+    };
+  } catch {
+    return candidate;
+  }
+};
 
 // Component quản lý toàn bộ Kanban board tuyển dụng
 export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
@@ -92,6 +250,190 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     [pipelineStages]
   );
 
+  const syncActiveCandidate = useCallback((updater: (current: Candidate) => Candidate) => {
+    setActiveCandidate((prev) => (prev ? updater(prev) : prev));
+  }, []);
+
+  const loadApplicationsByJob = useCallback(
+    async (currentJobId: string, signal?: AbortSignal) => {
+      const resp = await applicationService.fetchApplicationsByJob(currentJobId, signal);
+      const items = Array.isArray(resp.data) ? resp.data : [];
+      const mapped = items.map((raw) => mapApplicationToCandidate(raw, currentJobId));
+      return Promise.all(mapped.map((candidate) => enrichCandidateWithInterviewMeta(candidate)));
+    },
+    []
+  );
+
+  const syncApplicationFromServer = useCallback(
+    async (applicationId: string) => {
+      if (!applicationId) return null;
+
+      const resp = await applicationService.fetchApplicationById(applicationId);
+      const raw = resp?.data;
+      if (!raw) return null;
+
+      const mapped = await enrichCandidateWithInterviewMeta(
+        mapApplicationToCandidate(raw, jobId)
+      );
+
+      setCandidates((prev) => {
+        const existingIndex = prev.findIndex((item) => item.id === mapped.id);
+        if (existingIndex === -1) {
+          return prev;
+        }
+
+        const next = [...prev];
+        next.splice(existingIndex, 1);
+
+        const sameStatusIndexes = next.reduce<number[]>((acc, item, index) => {
+          if (item.status === mapped.status) {
+            acc.push(index);
+          }
+          return acc;
+        }, []);
+
+        if (sameStatusIndexes.length > 0) {
+          next.splice(sameStatusIndexes[sameStatusIndexes.length - 1] + 1, 0, mapped);
+        } else {
+          next.push(mapped);
+        }
+
+        return next;
+      });
+
+      syncActiveCandidate((current) =>
+        current.id === mapped.id ? mapped : current
+      );
+
+      return mapped;
+    },
+    [jobId, syncActiveCandidate]
+  );
+
+  const updateCandidateStage = useCallback(
+    async (
+      applicationId: string,
+      targetStatus: CandidateStatus,
+      targetCandidateId?: string
+    ) => {
+      setIsProcessing(true);
+
+      const prevCandidates = candidates.map((candidate) => ({ ...candidate }));
+      const current = candidates.find((candidate) => candidate.id === applicationId);
+
+      if (!current) {
+        setIsProcessing(false);
+        return false;
+      }
+
+      const stage = STATUS_TO_STAGE[targetStatus] || "APPLIED";
+      const note = current.description ?? "";
+
+      try {
+        if (targetStatus === "interviewed") {
+          const interviewResp = await interviewService.fetchInterviewsByApplication(current.id);
+          const interviews = Array.isArray(interviewResp?.data)
+            ? interviewResp.data
+            : Array.isArray(interviewResp)
+              ? interviewResp
+              : [];
+          const now = Date.now();
+          const hasCompletedInterview = interviews.some(
+            (item: { interviewStatus?: string }) => item?.interviewStatus === "COMPLETED"
+          );
+          const hasFeedback = interviews.some(
+            (item: { feedback?: unknown[] }) =>
+              Array.isArray(item?.feedback) && item.feedback.length > 0
+          );
+          const hasStartedOfflineInterview = interviews.some(
+            (item: {
+              type?: string;
+              interviewStatus?: string;
+              scheduledAt?: string;
+            }) => {
+              if (item?.type !== "OFFLINE") return false;
+              if (
+                !["SCHEDULED", "CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(
+                  item?.interviewStatus || ""
+                )
+              ) {
+                return false;
+              }
+              const scheduledAtMs = new Date(item.scheduledAt || "").getTime();
+              return Number.isFinite(scheduledAtMs) && scheduledAtMs <= now;
+            }
+          );
+          if (!hasCompletedInterview && !hasFeedback && !hasStartedOfflineInterview) {
+            toast.error("Ứng viên chưa đủ điều kiện hoàn tất vòng phỏng vấn để chuyển trạng thái.");
+            setCandidates(prevCandidates);
+            return false;
+          }
+        }
+
+        const resp = await applicationService.updateApplicationStage(current.id, {
+          stage,
+          note,
+        });
+
+        if (!(resp && resp.status >= 200 && resp.status < 300)) {
+          toast.error("Không thể cập nhật trạng thái (server trả lỗi)");
+          setCandidates(prevCandidates);
+          return false;
+        }
+
+        setCandidates((prev) => {
+          const currentLocal = prev.find((candidate) => candidate.id === applicationId);
+          if (!currentLocal) return prev;
+
+          const filtered = prev.filter((candidate) => candidate.id !== applicationId);
+          const updatedCandidate = {
+            ...currentLocal,
+            status: targetStatus,
+            lastActive: new Date().toISOString(),
+          };
+
+          if (targetCandidateId) {
+            const targetIndex = filtered.findIndex((candidate) => candidate.id === targetCandidateId);
+            if (targetIndex >= 0) {
+              filtered.splice(targetIndex, 0, updatedCandidate);
+              return filtered;
+            }
+          }
+
+          filtered.push(updatedCandidate);
+          return filtered;
+        });
+
+        syncActiveCandidate((candidate) =>
+          candidate.id === applicationId
+            ? { ...candidate, status: targetStatus, lastActive: new Date().toISOString() }
+            : candidate
+        );
+
+        return true;
+      } catch (err: unknown) {
+        console.error("Failed to update application stage:", err);
+
+        const getErrorMessage = (error: unknown) => {
+          if (!error || typeof error !== "object") return "Lỗi khi cập nhật trạng thái";
+          const maybeResp = (error as { response?: unknown }).response;
+          if (!maybeResp || typeof maybeResp !== "object") return "Lỗi khi cập nhật trạng thái";
+          const data = (maybeResp as { data?: unknown }).data;
+          if (!data || typeof data !== "object") return "Lỗi khi cập nhật trạng thái";
+          const message = (data as { message?: unknown }).message;
+          return typeof message === "string" ? message : "Lỗi khi cập nhật trạng thái";
+        };
+
+        toast.error(getErrorMessage(err));
+        setCandidates(prevCandidates);
+        return false;
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [candidates, syncActiveCandidate]
+  );
+
   useEffect(() => {
     setCandidates(filterByJob(initialCandidates));
     setActiveCandidate(null);
@@ -120,240 +462,24 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     };
   }, [jobId]);
 
-  // If a jobId is supplied we should load real applications from the API
-  // instead of the local `initialCandidates` fixture. We keep the mapping
-  // logic here so the rest of the Kanban app continues to work with the
-  // existing `Candidate` type.
   useEffect(() => {
-    if (!jobId) return; // nothing to do when not filtering by job
+    if (!jobId) return;
 
     const controller = new AbortController();
-    const signal = controller.signal;
-
-    (async () => {
-      try {
-        // We don't render a loading UI here in the board; keep silent in console.
-
-        // Call the backend: GET /applications?jobId=...
-        const resp = await applicationService.fetchApplicationsByJob(
-          jobId,
-          signal
-        );
-
-        // The backend returns an envelope { status, message, data: [...] }
-        const items = Array.isArray(resp.data) ? resp.data : [];
-
-        // MAP: application -> Candidate (typed defensively)
-        // Map backend application.currentStage values to local CandidateStatus
-        // The backend may use different stage names (e.g. SCREENING). Ensure
-        // each known backend stage maps to the correct Kanban column. If a
-        // stage is missing it will currently fall back to `apply` (which
-        // caused the bug where SCREENING appeared under "Ứng tuyển").
-        const stageToStatus: Record<string, CandidateStatusType> = {
-          ...STAGE_TO_STATUS,
-          SUBMITTED: "apply",
-          SCHEDULED: "screening",
-          INTERVIEW_SCHEDULED: "interview",
-          PENDING_RESCHEDULE: "interview",
-          INVITED: "interview",
-          OFFER_ACCEPTED: "offer",
-          OFFER_DECLINED: "offer",
-          WITHDRAWN: "rejected",
-        } as const;
-
-        const normalizeString = (v: unknown, fallback = "") =>
-          typeof v === "string" ? v : fallback;
-
-        const mapped: Candidate[] = items.map((raw) => {
-          const app = raw as unknown as Record<string, unknown>;
-          const applicationId = normalizeString(
-            app["applicationId"] || app["id"]
-          );
-          const candidateObj =
-            (app["candidate"] as Record<string, unknown>) || {};
-
-          const candidateId = normalizeString(candidateObj["candidateId"]);
-          const jobObj = (app["job"] as Record<string, unknown>) || {};
-
-          const firstName = normalizeString(candidateObj["firstName"]);
-          const lastName = normalizeString(candidateObj["lastName"]);
-          const email = normalizeString(
-            candidateObj["email"],
-            "unknown@example.com"
-          );
-
-          const name =
-            [firstName, lastName].filter(Boolean).join(" ") ||
-            (email.includes("@") ? email.split("@")[0] : email);
-
-          const rawStage = normalizeString(app["currentStage"], "APPLIED");
-          const status =
-            (stageToStatus[rawStage] as CandidateStatusType) || "apply";
-
-          const stageHistory = Array.isArray(app["stageHistory"])
-            ? (app["stageHistory"] as unknown[])
-            : [];
-
-          const candidate: Candidate = {
-            id: applicationId,
-            candidateId: candidateId,
-            ticketId: applicationId,
-            jobId: normalizeString(jobObj["id"] || jobId),
-            name,
-            position: normalizeString(jobObj["title"], "Ứng viên"),
-            email,
-            phone: ((): string => {
-              const contacts = candidateObj["contacts"];
-              if (Array.isArray(contacts) && contacts.length > 0) {
-                const first = contacts[0] as Record<string, unknown>;
-                return normalizeString(first["value"] || "");
-              }
-              return "";
-            })(),
-            priority: "medium",
-            status,
-            appliedDate: normalizeString(
-              app["appliedDate"],
-              new Date().toISOString()
-            ),
-            experienceLevel: "mid",
-            salaryExpectation: normalizeString(jobObj["salaryRange"] || ""),
-            assignee: undefined,
-            labels: [],
-            description: normalizeString(
-              app["stageNote"] || app["coverLetter"] || ""
-            ),
-            timeline: stageHistory.map((h, i) => {
-              const evt = (h as Record<string, unknown>) || {};
-              return {
-                id: `${applicationId}-evt-${i}`,
-                action: normalizeString(evt["toStage"] || evt["to"] || ""),
-                description: normalizeString(evt["note"] || ""),
-                date: normalizeString(
-                  evt["changedAt"] || new Date().toISOString()
-                ),
-                user: normalizeString(evt["changedBy"] || ""),
-              };
-            }),
-
-            avatar: normalizeString(
-              candidateObj["avatar"] || candidateObj["profilePicture"] || ""
-            ),
-            age: 0,
-            experience: `${normalizeString(
-              candidateObj["yearsOfExperience"] || "0"
-            )} năm`,
-            lastActive: normalizeString(
-              app["stageChangedAt"] ||
-                app["appliedDate"] ||
-                new Date().toISOString()
-            ),
-
-            gender: "Nam",
-            birthYear: 1990,
-            maritalStatus: "",
-            location: {
-              city: normalizeString(jobObj["city"] || ""),
-              province: normalizeString(jobObj["state"] || ""),
-            },
-            address: normalizeString(jobObj["specific"] || ""),
-
-            education: normalizeString(candidateObj["educationLevel"] || ""),
-            yearsOfExperience: normalizeString(
-              String(candidateObj["yearsOfExperience"] || "0")
-            ),
-            currentLevel: "",
-            desiredLevel: "",
-
-            desiredSalary: normalizeString(
-              String(candidateObj["salaryExpectationMin"] || "")
-            ),
-            workLocation: normalizeString(candidateObj["workLocation"] || ""),
-            workType: "",
-            industry: normalizeString(candidateObj["industry"] || ""),
-
-            skills: Array.isArray(candidateObj["skills"])
-              ? (candidateObj["skills"] as unknown[]).map((s) =>
-                  typeof s === "string"
-                    ? s
-                    : normalizeString((s as Record<string, unknown>)["name"])
-                )
-              : [],
-            languages: [],
-            hasPurchased: false,
-            educationLevel: normalizeString(
-              candidateObj["educationLevel"] || undefined
-            ),
-            hasInterviewed: false,
-            interviewScore: undefined,
-          } as Candidate;
-
-          return candidate;
-        });
-
-        const mappedWithInterviewMeta = await Promise.all(
-          mapped.map(async (candidate) => {
-            if (candidate.status !== "interview") {
-              return candidate;
-            }
-
-            try {
-              const interviewResp = await interviewService.fetchInterviewsByApplication(
-                candidate.id
-              );
-              const interviews = Array.isArray(interviewResp?.data)
-                ? interviewResp.data
-                : Array.isArray(interviewResp)
-                  ? interviewResp
-                  : [];
-
-              const completedInterviews = interviews.filter(
-                (iv: { interviewStatus?: string }) => iv?.interviewStatus === "COMPLETED"
-              );
-
-              const ratings = completedInterviews
-                .flatMap((iv: { feedback?: Array<{ overallRating?: number }> }) =>
-                  Array.isArray(iv.feedback)
-                    ? iv.feedback
-                        .map((f) => (typeof f?.overallRating === "number" ? f.overallRating : null))
-                        .filter((v): v is number => v !== null)
-                    : []
-                );
-
-              const interviewScore =
-                ratings.length > 0
-                  ? ratings.reduce((sum: number, value: number) => sum + value, 0) / ratings.length
-                  : undefined;
-
-              const labels = candidate.hasInterviewed
-                ? candidate.labels
-                : completedInterviews.length > 0
-                  ? [...candidate.labels, "da-phong-van"]
-                  : candidate.labels;
-
-              return {
-                ...candidate,
-                labels,
-                hasInterviewed: completedInterviews.length > 0,
-                interviewScore,
-              };
-            } catch {
-              return candidate;
-            }
-          })
-        );
-
-        setCandidates(mappedWithInterviewMeta);
-      } catch (err: unknown) {
-        if (signal.aborted) return;
-        console.error("Error loading applications:", err);
-      } finally {
-        /* no-op; avoid console spam in production */
-      }
-    })();
+    void loadApplicationsByJob(jobId, controller.signal)
+      .then((items) => {
+        if (!controller.signal.aborted) {
+          setCandidates(items);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!controller.signal.aborted) {
+          console.error("Error loading applications:", err);
+        }
+      });
 
     return () => controller.abort();
-  }, [jobId]);
+  }, [jobId, loadApplicationsByJob]);
 
   // Highlight + scroll to targeted applicationId from URL params
   useEffect(() => {
@@ -701,6 +827,20 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
     );
   }, [activeCandidate, pipelineStages]);
 
+  const nextActiveStage = useMemo(() => {
+    if (!activeCandidate) return null;
+    const currentIndex = pipelineColumns.findIndex((column) => column.id === activeCandidate.status);
+    if (currentIndex < 0 || currentIndex >= pipelineColumns.length - 1) {
+      return null;
+    }
+    return pipelineColumns[currentIndex + 1];
+  }, [activeCandidate, pipelineColumns]);
+
+  const nextStageButtonLabel = useMemo(() => {
+    if (!nextActiveStage) return null;
+    return STAGE_LABELS[nextActiveStage.stage] ?? nextActiveStage.title;
+  }, [nextActiveStage]);
+
   useEffect(() => {
     if (!isMobile) return;
     if (!pipelineColumns.length) return;
@@ -716,136 +856,66 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
   const handleConfirmMove = async () => {
     if (!moveRequest) return;
 
-    // Guard double-click while request inflight
-    if (isProcessing) return;
-    setIsProcessing(true);
+    const updated = await updateCandidateStage(
+      moveRequest.candidateId,
+      moveRequest.targetStatus,
+      moveRequest.targetCandidateId
+    );
 
-    // snapshot current list so we can revert if needed (we haven't changed UI yet)
-    const prevCandidates = candidates.map((c) => ({ ...c }));
-
-    // Find candidate being moved
-    const current = candidates.find((c) => c.id === moveRequest.candidateId);
-    if (!current) {
+    if (updated) {
+      dragSnapshotRef.current = null;
+      didConfirmRef.current = true;
       setMoveRequest(null);
-      setIsProcessing(false);
-      return;
-    }
-
-    // Map local status -> backend stage string
-    const stage = STATUS_TO_STAGE[moveRequest.targetStatus] || "APPLIED";
-
-    // Ensure note is not null (backend expects empty string rather than null)
-    const note = (current.description ?? "") as string;
-
-    try {
-      if (moveRequest.targetStatus === "interviewed") {
-        const interviewResp = await interviewService.fetchInterviewsByApplication(current.id);
-        const interviews = Array.isArray(interviewResp?.data)
-          ? interviewResp.data
-          : Array.isArray(interviewResp)
-            ? interviewResp
-            : [];
-        const now = Date.now();
-        const hasCompletedInterview = interviews.some(
-          (item: { interviewStatus?: string }) => item?.interviewStatus === "COMPLETED"
-        );
-        const hasFeedback = interviews.some(
-          (item: { feedback?: unknown[] }) => Array.isArray(item?.feedback) && item.feedback.length > 0
-        );
-        const hasStartedOfflineInterview = interviews.some((item: {
-          type?: string;
-          interviewStatus?: string;
-          scheduledAt?: string;
-        }) => {
-          if (item?.type !== "OFFLINE") return false;
-          if (!["SCHEDULED", "CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(item?.interviewStatus || "")) {
-            return false;
-          }
-          const scheduledAtMs = new Date(item.scheduledAt || "").getTime();
-          return Number.isFinite(scheduledAtMs) && scheduledAtMs <= now;
-        });
-        if (!hasCompletedInterview && !hasFeedback && !hasStartedOfflineInterview) {
-          toast.error("Ứng viên chưa đủ điều kiện hoàn tất vòng phỏng vấn để chuyển trạng thái.");
-          setCandidates(prevCandidates);
-          return;
-        }
-      }
-
-      // Persist change to backend first
-      const resp = await applicationService.updateApplicationStage(current.id, {
-        stage,
-        note,
-      });
-
-      // Check HTTP status code (axios response has `status`)
-      if (resp && resp.status >= 200 && resp.status < 300) {
-        // Backend success -> now update local UI to reflect new status
-        setCandidates((prev) => {
-          const currentLocal = prev.find(
-            (c) => c.id === moveRequest.candidateId
-          );
-          if (!currentLocal) return prev;
-          const filtered = prev.filter((c) => c.id !== moveRequest.candidateId);
-          const updatedCandidate = {
-            ...currentLocal,
-            status: moveRequest.targetStatus,
-          };
-
-          if (moveRequest.targetCandidateId) {
-            const targetIndex = filtered.findIndex(
-              (c) => c.id === moveRequest.targetCandidateId
-            );
-            if (targetIndex >= 0) {
-              // Nếu có ứng viên reference, chèn vào ngay sau họ.
-              filtered.splice(targetIndex, 0, updatedCandidate);
-            } else {
-              filtered.push(updatedCandidate);
-            }
-          } else {
-            // Nếu thả vào vùng trống, thêm cuối danh sách.
-            filtered.push(updatedCandidate);
-          }
-
-          return filtered;
-        });
-
-        // Clear snapshot and dialog state
-        dragSnapshotRef.current = null;
-        didConfirmRef.current = true;
-        setMoveRequest(null);
-        // Friendly success feedback
-        toast.success("Cập nhật trạng thái thành công");
-      } else {
-        // Non-2xx status -> show a generic toast and keep UI unchanged
-        toast.error("Không thể cập nhật trạng thái (server trả lỗi)");
-        // ensure UI stays as before: restore snapshot
-        setCandidates(prevCandidates);
-      }
-    } catch (err: unknown) {
-      // Network / unexpected error -> notify user and keep UI unchanged
-      console.error("Failed to update application stage:", err);
-
-      // Safe extraction of a nested error message without using `any`.
-      const getErrorMessage = (e: unknown) => {
-        if (!e || typeof e !== "object") return "Lỗi khi cập nhật trạng thái";
-        const maybeResp = (e as { response?: unknown }).response;
-        if (!maybeResp || typeof maybeResp !== "object")
-          return "Lỗi khi cập nhật trạng thái";
-        const data = (maybeResp as { data?: unknown }).data;
-        if (!data || typeof data !== "object")
-          return "Lỗi khi cập nhật trạng thái";
-        const message = (data as { message?: unknown }).message;
-        return typeof message === "string"
-          ? message
-          : "Lỗi khi cập nhật trạng thái";
-      };
-
-      toast.error(getErrorMessage(err));
-      setCandidates(prevCandidates);
-    } finally {
-      setIsProcessing(false);
+      toast.success("Cập nhật trạng thái thành công");
     }
   };
+
+  const handleAdvanceStage = useCallback(
+    async (candidate: Candidate) => {
+      const currentIndex = pipelineColumns.findIndex((column) => column.id === candidate.status);
+      if (currentIndex < 0 || currentIndex >= pipelineColumns.length - 1) {
+        return;
+      }
+
+      const nextColumn = pipelineColumns[currentIndex + 1];
+
+      if (nextColumn.id === "interview") {
+        setDetailOpen(false);
+        setScheduleFromDetailCandidate(candidate);
+        return;
+      }
+
+      const updated = await updateCandidateStage(candidate.id, nextColumn.id);
+      if (!updated) {
+        return;
+      }
+
+      syncActiveCandidate((current) =>
+        current.id === candidate.id ? { ...current, status: nextColumn.id } : current
+      );
+      toast.success(`Đã chuyển sang ${STAGE_LABELS[nextColumn.stage] ?? nextColumn.title}`);
+    },
+    [pipelineColumns, syncActiveCandidate, updateCandidateStage]
+  );
+
+  const handleMessageStageSync = useCallback(async () => {
+    if (!activeCandidate?.id) return;
+
+    const previousStatus = activeCandidate.status;
+
+    try {
+      const synced = await syncApplicationFromServer(activeCandidate.id);
+      if (!synced) return;
+
+      if (synced.status !== previousStatus) {
+        toast.success(
+          `Ứng viên đã được chuyển sang ${STAGE_LABELS[STATUS_TO_STAGE[synced.status]] ?? synced.status}`
+        );
+      }
+    } catch (err) {
+      console.error("Failed to sync application after messaging:", err);
+    }
+  }, [activeCandidate, syncApplicationFromServer]);
 
   const handleCancelMove = () => {
     if (dragSnapshotRef.current) {
@@ -916,7 +986,6 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
               setShowInterviewModal(false);
             }}
             onScheduled={async () => {
-              // After interview is scheduled, also update the application stage
               if (!moveRequest) return;
               setIsProcessing(true);
               const current = candidates.find(
@@ -950,7 +1019,17 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
                     filtered.push(updatedCandidate);
                     return filtered;
                   });
+                  syncActiveCandidate((candidate) =>
+                    candidate.id === current.id
+                      ? {
+                          ...candidate,
+                          status: "interview" as CandidateStatusType,
+                          lastActive: new Date().toISOString(),
+                        }
+                      : candidate
+                  );
                   dragSnapshotRef.current = null;
+                  toast.success("Đã chuyển ứng viên sang giai đoạn phỏng vấn");
                 }
               } catch {
                 // Interview was created but stage update failed — still close
@@ -1014,32 +1093,16 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           setDetailOpen(false);
           setScheduleFromDetailCandidate(candidate);
         }}
+        onAdvanceStage={handleAdvanceStage}
+        nextStageLabel={nextStageButtonLabel}
+        isAdvancingStage={isProcessing}
+        onMessageSent={handleMessageStageSync}
         onRejectCandidate={async (candidate) => {
-          const current = candidates.find((item) => item.id === candidate.id);
-          if (!current) return;
-
-          try {
-            const resp = await applicationService.updateApplicationStage(current.id, {
-              stage: "REJECTED",
-              note: current.description ?? "Rejected from Kanban",
-            });
-
-            if (resp && resp.status >= 200 && resp.status < 300) {
-              setCandidates((prev) =>
-                prev.map((item) =>
-                  item.id === candidate.id ? { ...item, status: "rejected" } : item
-                )
-              );
-              setActiveCandidate((prev) =>
-                prev && prev.id === candidate.id ? { ...prev, status: "rejected" } : prev
-              );
-              toast.success("Đã từ chối ứng viên");
-            }
-          } catch (err: unknown) {
-            console.error("Failed to reject application:", err);
-            toast.error("Không thể từ chối ứng viên");
-            throw err;
+          const updated = await updateCandidateStage(candidate.id, "rejected");
+          if (!updated) {
+            throw new Error("Reject failed");
           }
+          toast.success("Đã từ chối ứng viên");
         }}
       />
 
@@ -1047,14 +1110,37 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
         <ScheduleInterviewKanbanModal
           open={!!scheduleFromDetailCandidate}
           onClose={() => setScheduleFromDetailCandidate(null)}
-          onScheduled={() => {
-            setCandidates((prev) =>
-              prev.map((item) =>
-                item.id === scheduleFromDetailCandidate.id
-                  ? { ...item, status: "interview" as CandidateStatusType }
-                  : item
-              )
-            );
+          onScheduled={async (applicationId) => {
+            try {
+              const synced = await syncApplicationFromServer(applicationId);
+
+              if (!synced) {
+                setCandidates((prev) =>
+                  prev.map((item) =>
+                    item.id === applicationId
+                      ? {
+                          ...item,
+                          status: "interview" as CandidateStatusType,
+                          lastActive: new Date().toISOString(),
+                        }
+                      : item
+                  )
+                );
+                syncActiveCandidate((candidate) =>
+                  candidate.id === applicationId
+                    ? {
+                        ...candidate,
+                        status: "interview" as CandidateStatusType,
+                        lastActive: new Date().toISOString(),
+                      }
+                    : candidate
+                );
+              }
+
+              toast.success("Đã chuyển ứng viên sang giai đoạn phỏng vấn");
+            } finally {
+              setScheduleFromDetailCandidate(null);
+            }
           }}
           jobId={scheduleFromDetailCandidate.jobId}
           preselectedApplicationId={scheduleFromDetailCandidate.id}

@@ -33,6 +33,18 @@ const fetchApplicationsByJob = async (jobId: string, signal?: AbortSignal) => {
   return response.data as { status: string; message?: string; data?: unknown[] };
 };
 
+const fetchApplicationById = async (applicationId: string, signal?: AbortSignal) => {
+  if (!applicationId) {
+    throw new Error("fetchApplicationById: applicationId is required");
+  }
+
+  const response = await api.get(`/applications/${applicationId}`, {
+    signal,
+  });
+
+  return response.data as { status: string; message?: string; data?: unknown };
+};
+
 // Update application stage on backend
 const updateApplicationStage = async (
   applicationId: string,
@@ -48,6 +60,7 @@ const updateApplicationStage = async (
 
 export const applicationService = {
   fetchApplicationsByJob,
+  fetchApplicationById,
   updateApplicationStage,
 };
 

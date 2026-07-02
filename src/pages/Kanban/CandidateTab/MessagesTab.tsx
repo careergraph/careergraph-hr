@@ -7,9 +7,10 @@ import type { Candidate } from "@/types/candidate";
 
 type MessagesTabProps = {
   candidate: Candidate;
+  onMessageSent?: () => void | Promise<void>;
 };
 
-export function MessagesTab({ candidate }: MessagesTabProps) {
+export function MessagesTab({ candidate, onMessageSent }: MessagesTabProps) {
   const [threadId, setThreadId] = useState<string | null>(null);
 
   const thread = useMessagingStore(
@@ -70,6 +71,7 @@ export function MessagesTab({ candidate }: MessagesTabProps) {
         candidateId={candidate.candidateId}
         applicationId={candidate.id}
         onThreadReady={setThreadId}
+        onMessageSent={onMessageSent}
       />
     </div>
   );

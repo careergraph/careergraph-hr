@@ -8,12 +8,14 @@ interface CandidateMessageTabProps {
   candidateId: string;
   applicationId?: string;
   onThreadReady?: (threadId: string) => void;
+  onMessageSent?: () => void | Promise<void>;
 }
 
 export function CandidateMessageTab({
   candidateId,
   applicationId,
   onThreadReady,
+  onMessageSent,
 }: CandidateMessageTabProps) {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,7 +102,7 @@ export function CandidateMessageTab({
   return (
     <div className="messaging-page-enter flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1">
-        <ChatWindow threadId={threadId} compact />
+        <ChatWindow threadId={threadId} compact onMessageSent={onMessageSent} />
       </div>
     </div>
   );
