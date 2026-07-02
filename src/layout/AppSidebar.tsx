@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import useThreads from "@/features/messaging/hooks/useThreads";
-import { Shield } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Shield } from "lucide-react";
 
 // Assume these icons are imported from an icon library
 import {
@@ -15,7 +15,6 @@ import {
   VideoIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
-import SidebarWidget from "./SidebarWidget";
 import { useAuthStore } from "@/stores/authStore";
 
 type NavItem = {
@@ -31,62 +30,66 @@ const AppSidebar: React.FC = () => {
   const {
     isExpanded,
     isMobileOpen,
-    isHovered,
-    setIsHovered,
     isMobile,
     isTablet,
+    isDesktop,
+    toggleSidebar,
+    setIsHovered,
     toggleMobileSidebar,
   } = useSidebar();
   const location = useLocation();
   const { totalUnread } = useThreads({ autoLoad: true, archived: false });
   const { company } = useAuthStore();
 
-  const mainNavItems: NavItem[] = [
-    {
-      icon: <GridIcon />,
-      name: "Trang chủ",
-      path: "/dashboard",
-    },
-    {
-      icon: <CalenderIcon />,
-      name: "Lịch",
-      path: "/calendar",
-    },
-    {
-      icon: <UserCircleIcon />,
-      name: "Tìm ứng viên",
-      path: "/candidates",
-    },
-    {
-      icon: <ChatIcon />,
-      name: "Tin nhắn",
-      path: "/messages",
-    },
-    {
-      name: "Công việc",
-      icon: <TableIcon />,
-      path: "/jobs",
-    },
-    {
-      icon: <HorizontaLDots />,
-      name: "Pipeline",
-      path: "/kanbans/pipeline",
-    },
-    {
-      icon: <VideoIcon />,
-      name: "Phỏng vấn",
-      path: "/interviews",
-    },
-  ];
+  const mainNavItems = useMemo<NavItem[]>(() => {
+    const items: NavItem[] = [
+      {
+        icon: <GridIcon />,
+        name: "Trang chủ",
+        path: "/dashboard",
+      },
+      {
+        icon: <CalenderIcon />,
+        name: "Lịch",
+        path: "/calendar",
+      },
+      {
+        icon: <UserCircleIcon />,
+        name: "Tìm ứng viên",
+        path: "/candidates",
+      },
+      {
+        icon: <ChatIcon />,
+        name: "Tin nhắn",
+        path: "/messages",
+      },
+      {
+        name: "Công việc",
+        icon: <TableIcon />,
+        path: "/jobs",
+      },
+      {
+        icon: <HorizontaLDots />,
+        name: "Pipeline",
+        path: "/kanbans/pipeline",
+      },
+      {
+        icon: <VideoIcon />,
+        name: "Phỏng vấn",
+        path: "/interviews",
+      },
+    ];
 
-  const verificationNotApproved = company?.verificationStatus !== "APPROVED";
-  if (verificationNotApproved) {
-    mainNavItems.push({
-      icon: <Shield className="w-5 h-5" />,
-      name: "Xác thực công ty",
-      path: "/company/verification",
-    });
-  }
+    if (company?.verificationStatus !== "APPROVED") {
+      items.push({
+        icon: <Shield className="w-5 h-5" />,
+        name: "Xác thực công ty",
+        path: "/company/verification",
+      });
+    }
+
+    return items;
+  }, [company?.verificationStatus]);
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
@@ -125,7 +128,7 @@ const AppSidebar: React.FC = () => {
     if (!submenuMatched) {
       setOpenSubmenu(null);
     }
-  }, [location, isActive]);
+  }, [location, isActive, mainNavItems]);
 
   useEffect(() => {
     if (openSubmenu !== null) {
@@ -155,10 +158,10 @@ const AppSidebar: React.FC = () => {
   const sidebarWidth = useMemo(() => {
     if (isMobile) return 'w-[290px]';
     if (isTablet) return 'w-16';
-    return isExpanded || isHovered ? 'w-[290px]' : 'w-[100px]';
-  }, [isMobile, isTablet, isExpanded, isHovered]);
+    return isExpanded ? 'w-[290px]' : 'w-[100px]';
+  }, [isMobile, isTablet, isExpanded]);
 
-  const showLabels = isMobile ? isMobileOpen : isTablet ? false : (isExpanded || isHovered);
+  const showLabels = isMobile ? isMobileOpen : isTablet ? false : isExpanded;
 
   const renderMenuItems = (items: NavItem[], menuType: "main" | "others") => (
     <ul className="flex flex-col gap-4">
@@ -311,32 +314,39 @@ const AppSidebar: React.FC = () => {
           ${sidebarWidth}
           ${isMobile ? (isMobileOpen ? "translate-x-0" : "-translate-x-full") : "translate-x-0"}
           ${isTablet ? "px-2" : "px-4 sm:px-5"} mt-0`}
-        onMouseEnter={() => {
-          if (!isExpanded && !isMobileOpen && !isTablet) {
-            setIsHovered(true);
-          }
-        }}
-        onMouseLeave={() => {
-          if (!isExpanded && !isMobileOpen && !isTablet) {
-            setIsHovered(false);
-          }
-        }}
       >
+        {isDesktop && (
+          <button
+            type="button"
+            onClick={() => {
+              setIsHovered(false);
+              toggleSidebar();
+            }}
+            className="absolute top-7 -right-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-brand-200 hover:text-brand-500"
+            aria-label={isExpanded ? "Thu gọn sidebar" : "Mở rộng sidebar"}
+            title={isExpanded ? "Thu gọn sidebar" : "Mở rộng sidebar"}
+          >
+            {isExpanded ? (
+              <ChevronsLeft className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronsRight className="h-3.5 w-3.5" />
+            )}
+          </button>
+        )}
         <div className={`flex items-center ${isTablet ? "justify-center" : "gap-3"} py-6`}>
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex shrink-0 items-center">
             <img
-              className="w-10 h-10"
+              className="h-10 w-10 shrink-0"
               src="/images/logo/logo.svg"
               alt="Logo"
               width={40}
               height={40}
             />
             {showLabels && (
-              <div className="bg-gradient-to-r text-xl font-semibold from-[#583DF2] to-[#F3359D] bg-clip-text text-transparent ml-2">
+              <div className="ml-2 bg-gradient-to-r text-xl font-semibold from-[#583DF2] to-[#F3359D] bg-clip-text text-transparent">
                 CareerGraph
               </div>
             )}
-
           </Link>
         </div>
         <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
@@ -382,7 +392,7 @@ const AppSidebar: React.FC = () => {
               )}
             </div>
           </nav>
-          {showLabels ? <SidebarWidget /> : null}
+          {/* {showLabels ? <SidebarWidget /> : null} */}
         </div>
       </aside>
     </>

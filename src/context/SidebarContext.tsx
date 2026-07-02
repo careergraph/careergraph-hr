@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 
+const DESKTOP_SIDEBAR_STORAGE_KEY = "careergraph.hr.sidebar.expanded";
+
 type SidebarContextType = {
   isExpanded: boolean;
   isMobileOpen: boolean;
@@ -30,7 +32,12 @@ export const useSidebar = () => {
 export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(() => {
+    if (typeof window === "undefined") return true;
+
+    const savedState = window.localStorage.getItem(DESKTOP_SIDEBAR_STORAGE_KEY);
+    return savedState === null ? true : savedState === "true";
+  });
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
@@ -50,7 +57,6 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsTablet(tablet);
 
       if (!mobile) setIsMobileOpen(false);
-      if (tablet) setIsExpanded(false);
     };
 
     handleResize();
@@ -60,6 +66,14 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
       window.removeEventListener("resize", handleResize);
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      DESKTOP_SIDEBAR_STORAGE_KEY,
+      String(isExpanded)
+    );
+  }, [isExpanded]);
 
   const toggleSidebar = () => {
     setIsExpanded((prev) => !prev);
@@ -76,7 +90,7 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <SidebarContext.Provider
       value={{
-        isExpanded: isMobile ? false : isExpanded,
+        isExpanded: isMobile || isTablet ? false : isExpanded,
         isMobileOpen,
         isHovered,
         isMobile,

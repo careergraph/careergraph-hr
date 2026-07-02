@@ -12,7 +12,7 @@ import VerificationStatusBanner from "@/components/company/VerificationStatusBan
 import { useAuthStore } from "@/stores/authStore";
 
 const LayoutContent: React.FC = () => {
-  const { isExpanded, isHovered, isMobileOpen, isMobile, isTablet } = useSidebar();
+  const { isExpanded, isMobileOpen, isMobile, isTablet } = useSidebar();
   const { pathname } = useLocation();
   const { company } = useAuthStore();
   const isMessagesRoute = pathname.startsWith("/messages");
@@ -20,8 +20,8 @@ const LayoutContent: React.FC = () => {
   const mainMargin = useMemo(() => {
     if (isMobile) return '';
     if (isTablet) return 'ml-16';
-    return isExpanded || isHovered ? 'lg:ml-[290px]' : 'lg:ml-[110px]';
-  }, [isMobile, isTablet, isExpanded, isHovered]);
+    return isExpanded ? 'lg:ml-[290px]' : 'lg:ml-[110px]';
+  }, [isMobile, isTablet, isExpanded]);
 
   return (
     <div className="min-h-screen xl:flex">
