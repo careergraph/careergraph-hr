@@ -20,6 +20,9 @@ export function LandingFooter() {
             <p className="max-w-sm text-sm leading-relaxed text-slate-500">
               Nền tảng tuyển dụng toàn diện giúp đội ngũ HR tạo trải nghiệm đáng nhớ và xây dựng đội ngũ tương lai.
             </p>
+            <p className="text-sm text-slate-500">
+              Liên hệ phản hồi: quangthinh06112004@gmail.com
+            </p>
             <p className="text-xs text-slate-400">© {currentYear} CareerGraph. All rights reserved.</p>
           </div>
           <div className="grid flex-1 gap-8 sm:grid-cols-3">
@@ -36,7 +39,7 @@ export function LandingFooter() {
               <ul className="space-y-2">
                 <li><a href="#testimonials" className="transition hover:text-slate-900">Khách hàng</a></li>
                 <li><a href="#workflow" className="transition hover:text-slate-900">Quy trình</a></li>
-                <li><a href="mailto:support@careergraph.vn" className="transition hover:text-slate-900">Hỗ trợ</a></li>
+                <li><a href="mailto:quangthinh06112004@gmail.com" className="transition hover:text-slate-900">Hỗ trợ</a></li>
               </ul>
             </div>
             <div className="space-y-3">
