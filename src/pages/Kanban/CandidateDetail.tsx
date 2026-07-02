@@ -28,6 +28,17 @@ import type {
 import { formatDate } from "@/lib/candidateDataUtils";
 import type { Interview } from "@/types/interview";
 import { Button } from "@/components/ui/button";
+import { STAGE_LABELS, STATUS_TO_STAGE } from "@/lib/recruitmentPipeline";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // CandidateDetail hiển thị panel chi tiết của ứng viên trong Kanban.
 
@@ -39,6 +50,18 @@ type CandidateDetailProps = {
   onRejectCandidate?: (candidate: Candidate) => Promise<void> | void;
   onScheduleInterview?: (candidate: Candidate) => void;
   canScheduleInterview?: boolean;
+  onAdvanceStage?: (candidate: Candidate) => Promise<void> | void;
+  nextStageLabel?: string | null;
+  isAdvancingStage?: boolean;
+  onMessageSent?: () => void | Promise<void>;
+  restoreStageOptions?: Array<{
+    status: Candidate["status"];
+    label: string;
+  }>;
+  onRestoreCandidateStage?: (
+    candidate: Candidate,
+    targetStatus: Candidate["status"]
+  ) => Promise<void> | void;
 };
 
 export function CandidateDetail({
@@ -49,6 +72,12 @@ export function CandidateDetail({
   onRejectCandidate,
   onScheduleInterview,
   canScheduleInterview = false,
+  onAdvanceStage,
+  nextStageLabel,
+  isAdvancingStage = false,
+  onMessageSent,
+  restoreStageOptions = [],
+  onRestoreCandidateStage,
 }: CandidateDetailProps) {
   useEffect(() => {
     // Làm mờ header khi panel mở để tạo trọng tâm.
@@ -108,6 +137,8 @@ export function CandidateDetail({
   );
   const [interviewReviews, setInterviewReviews] = useState<Interview[]>([]);
   const [rejecting, setRejecting] = useState(false);
+  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
+  const [restoringStatus, setRestoringStatus] = useState<Candidate["status"] | null>(null);
 
   const handleRejectCandidate = useCallback(async () => {
     if (!candidate || !onRejectCandidate || rejecting) return;
@@ -115,11 +146,36 @@ export function CandidateDetail({
     setRejecting(true);
     try {
       await onRejectCandidate(candidate);
+      setConfirmRejectOpen(false);
       onOpenChange(false);
     } finally {
       setRejecting(false);
     }
   }, [candidate, onRejectCandidate, onOpenChange, rejecting]);
+
+  const handleRestoreCandidateStage = useCallback(
+    async (targetStatus: Candidate["status"]) => {
+      if (!candidate || !onRestoreCandidateStage || restoringStatus) return;
+
+      setRestoringStatus(targetStatus);
+      try {
+        await onRestoreCandidateStage(candidate, targetStatus);
+      } finally {
+        setRestoringStatus(null);
+      }
+    },
+    [candidate, onRestoreCandidateStage, restoringStatus]
+  );
+
+  const handleAdvanceStage = useCallback(async () => {
+    if (!candidate || !onAdvanceStage || isAdvancingStage) return;
+    await onAdvanceStage(candidate);
+  }, [candidate, isAdvancingStage, onAdvanceStage]);
+
+  const currentStageLabel = useMemo(() => {
+    if (!candidate?.status) return "Chưa cập nhật";
+    return STAGE_LABELS[STATUS_TO_STAGE[candidate.status]] ?? candidate.status;
+  }, [candidate]);
 
   const loadTab = useCallback(
     async (tab: string) => {
@@ -239,7 +295,7 @@ export function CandidateDetail({
 
                 <div className="w-full rounded-xl border border-slate-200 bg-white bg-gradient-to-r from-[#4f46e5]/15 via-[#7c3aed]/15 to-[#ec4899]/20 p-4 text-sm font-medium text-primary shadow-sm sm:w-auto">
                   <p className="text-lg font-semibold capitalize text-slate-800">
-                    {candidate.status}
+                    {currentStageLabel}
                   </p>
 
                   <p className="mt-2 text-xs text-slate-500">
@@ -249,12 +305,48 @@ export function CandidateDetail({
                     </span>
                   </p>
 
+                  {onAdvanceStage && nextStageLabel ? (
+                    <Button
+                      size="sm"
+                      className="mt-3 w-full bg-slate-900 text-white hover:bg-slate-800"
+                      onClick={() => {
+                        void handleAdvanceStage();
+                      }}
+                      disabled={isAdvancingStage}
+                    >
+                      {isAdvancingStage
+                        ? "Đang cập nhật..."
+                        : `Chuyển sang ${nextStageLabel}`}
+                    </Button>
+                  ) : null}
+
+                  {candidate.rejectedByAi && restoreStageOptions.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      {restoreStageOptions.map((option) => (
+                        <Button
+                          key={option.status}
+                          size="sm"
+                          variant="outline"
+                          className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                          onClick={() => {
+                            void handleRestoreCandidateStage(option.status);
+                          }}
+                          disabled={Boolean(restoringStatus) || isAdvancingStage}
+                        >
+                          {restoringStatus === option.status
+                            ? "Đang khôi phục..."
+                            : `Khôi phục về ${option.label}`}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : null}
+
                   {onRejectCandidate ? (
                     <Button
                       size="sm"
                       variant="destructive"
                       className="mt-3 w-full bg-red-600 text-white hover:bg-red-700"
-                      onClick={handleRejectCandidate}
+                      onClick={() => setConfirmRejectOpen(true)}
                       disabled={rejecting || candidate.status === "rejected"}
                     >
                       {rejecting
@@ -362,7 +454,7 @@ export function CandidateDetail({
                   value="messages"
                   className="flex-1 min-h-0 overflow-hidden"
                 >
-                  <MessagesTab candidate={candidate} />
+                  <MessagesTab candidate={candidate} onMessageSent={onMessageSent} />
                 </TabsContent>
 
                 <TabsContent value="email" className="flex-1 min-h-0 overflow-hidden">
@@ -376,6 +468,29 @@ export function CandidateDetail({
               </Tabs>
             </div>
           </div>
+          <AlertDialog open={confirmRejectOpen} onOpenChange={setConfirmRejectOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Xác nhận từ chối ứng viên</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Hồ sơ sẽ được chuyển sang trạng thái từ chối và HR sẽ không thể khôi phục lại
+                  từ quyết định này. Vui lòng xác nhận để tránh thao tác nhầm.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={rejecting}>Huỷ</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-600 text-white hover:bg-red-700"
+                  onClick={() => {
+                    void handleRejectCandidate();
+                  }}
+                  disabled={rejecting}
+                >
+                  {rejecting ? "Đang xử lý..." : "Xác nhận từ chối"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </SheetContent>
         </>
       ) : null}

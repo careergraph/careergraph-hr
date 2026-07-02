@@ -24,6 +24,7 @@ interface ChatWindowProps {
   threadId: string;
   compact?: boolean;
   onBackMobile?: () => void;
+  onMessageSent?: () => void | Promise<void>;
 }
 
 const FIVE_MINUTES = 5 * 60 * 1000;
@@ -144,6 +145,7 @@ export function ChatWindow({
   threadId,
   compact = false,
   onBackMobile,
+  onMessageSent,
 }: ChatWindowProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const previousMessageCountRef = useRef(0);
@@ -391,11 +393,12 @@ export function ChatWindow({
 
       if (result.ok && result.message) {
         broadcastNewMessage(threadId, result.message);
+        await onMessageSent?.();
       }
 
       return result.ok;
     },
-    [broadcastNewMessage, composeJobId, sendMessage, threadId]
+    [broadcastNewMessage, composeJobId, onMessageSent, sendMessage, threadId]
   );
 
   const handleRetryMessage = useCallback(

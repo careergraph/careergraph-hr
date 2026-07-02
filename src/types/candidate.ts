@@ -73,6 +73,7 @@ export interface Candidate {
   educationLevel?: string;
   hasInterviewed?: boolean;
   interviewScore?: number;
+  rejectedByAi?: boolean;
 }
 
 export interface Column {
