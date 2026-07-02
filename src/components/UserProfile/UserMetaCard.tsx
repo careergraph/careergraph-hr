@@ -1,5 +1,5 @@
 import { Facebook, Twitter, Linkedin, Instagram, Globe2, Camera } from "lucide-react";
-import { type ChangeEvent, type ReactNode, useMemo, useRef } from "react";
+import { type ChangeEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import companyService from "@/services/companyService";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ export default function UserMetaCard() {
   const { user, company, setCompany } = useAuthStore();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
+  const [avatarImageError, setAvatarImageError] = useState(false);
 
   const fullName = useMemo(() => {
     const trimmedFirst = user?.firstName?.trim();
@@ -87,7 +88,22 @@ export default function UserMetaCard() {
     return entries;
   }, [company?.contacts, websiteLink]);
 
-  const avatarUrl = company?.avatar ?? user?.avatarUrl ?? "/images/user/owner.jpg";
+  const avatarUrl = company?.avatar ?? user?.avatarUrl ?? "";
+  const avatarFallbackInitial = useMemo(() => {
+    const fallbackSource =
+      company?.name?.trim() ||
+      company?.ceoName?.trim() ||
+      user?.firstName?.trim() ||
+      user?.lastName?.trim() ||
+      "HR";
+
+    return fallbackSource.charAt(0).toUpperCase();
+  }, [company?.name, company?.ceoName, user?.firstName, user?.lastName]);
+  const shouldShowAvatarImage = Boolean(avatarUrl) && !avatarImageError;
+
+  useEffect(() => {
+    setAvatarImageError(false);
+  }, [avatarUrl]);
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>, type: "AVATAR" | "COVER") => {
     const file = event.target.files?.[0];
@@ -148,8 +164,17 @@ export default function UserMetaCard() {
 
       <div className="flex flex-col items-center gap-6 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex w-full flex-col items-center gap-6 xl:flex-row">
-          <div className="relative h-20 w-20 overflow-hidden rounded-full border border-gray-200 shadow-sm dark:border-gray-700">
-            <img src={avatarUrl} alt={fullName} className="h-full w-full object-cover" />
+          <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-indigo-500 text-2xl font-semibold text-white shadow-sm dark:border-gray-700">
+            {shouldShowAvatarImage ? (
+              <img
+                src={avatarUrl}
+                alt={fullName}
+                className="h-full w-full object-cover"
+                onError={() => setAvatarImageError(true)}
+              />
+            ) : (
+              avatarFallbackInitial
+            )}
             <button
               type="button"
               onClick={() => avatarInputRef.current?.click()}

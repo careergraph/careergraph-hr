@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { DropdownItem } from "../custom/dropdown/DropdownItem";
 import { Dropdown } from "../custom/dropdown/Dropdown";
@@ -7,6 +7,7 @@ import { useAuthStore } from "@/stores/authStore";
 export default function UserDropdown() {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const { user, company, logout } = useAuthStore();
 
   const fullName = useMemo(() => {
@@ -25,7 +26,22 @@ export default function UserDropdown() {
 
   const email = user?.email ?? "Chưa cập nhật";
   const title = user?.jobTitle ?? company?.name ?? "Nhà tuyển dụng";
-  const avatarUrl = company?.avatar ?? user?.avatarUrl ?? "/images/user/owner.jpg";
+  const avatarUrl = company?.avatar ?? user?.avatarUrl ?? "";
+  const avatarFallbackInitial = useMemo(() => {
+    const fallbackSource =
+      company?.name?.trim() ||
+      company?.ceoName?.trim() ||
+      user?.firstName?.trim() ||
+      user?.lastName?.trim() ||
+      "HR";
+
+    return fallbackSource.charAt(0).toUpperCase();
+  }, [company?.name, company?.ceoName, user?.firstName, user?.lastName]);
+  const shouldShowAvatarImage = Boolean(avatarUrl) && !imageError;
+
+  useEffect(() => {
+    setImageError(false);
+  }, [avatarUrl]);
 
   const toggleDropdown = () => {
     setIsOpen((prev) => !prev);
@@ -49,8 +65,17 @@ export default function UserDropdown() {
         className="dropdown-toggle flex items-center text-gray-700 dark:text-gray-400"
         aria-haspopup="menu"
       >
-        <span className="mr-2 md:mr-3 h-9 w-9 md:h-11 md:w-11 overflow-hidden rounded-full">
-          <img src={avatarUrl} alt={fullName} className="h-full w-full object-cover" />
+        <span className="mr-2 md:mr-3 flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-indigo-500 text-sm font-semibold text-white md:h-11 md:w-11 md:text-base">
+          {shouldShowAvatarImage ? (
+            <img
+              src={avatarUrl}
+              alt={fullName}
+              className="h-full w-full object-cover"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            avatarFallbackInitial
+          )}
         </span>
 
         <span className="hidden mr-1  lg:block font-medium text-theme-sm truncate max-w-[120px] md:max-w-[180px]">{fullName}</span>
