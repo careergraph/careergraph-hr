@@ -111,7 +111,7 @@ export function CandidateDetail({
             {
               label: "Kinh nghiệm",
               value: candidate.experience
-                ? `${candidate.experience} years`
+                ? candidate.experience
                 : "Chưa có",
               icon: <Sparkles className="h-4 w-4" />,
               accent: "bg-amber-100 text-amber-600",

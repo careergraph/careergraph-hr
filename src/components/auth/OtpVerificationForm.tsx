@@ -81,7 +81,6 @@ export default function OtpVerificationForm() {
     (async () => {
       try {
         const res = await authService.getTtlOtp(initialEmail);
-        // giả sử BE trả số giây còn lại; nếu trả ms thì đổi ở mục 3
         if (!alive) return;
         const ttlSec = Number(res?.data ?? 0);
         startOrSync(ttlSec);
@@ -98,16 +97,16 @@ export default function OtpVerificationForm() {
   const title = useMemo(
     () =>
       initialPurpose === "verify_email"
-        ? "Xác thực email"
-        : "Xác thực OTP quên mật khẩu",
+        ? "Xác thực email CareerGraph HR"
+        : "Xác thực OTP đặt lại mật khẩu",
     [initialPurpose]
   );
 
   const description = useMemo(
     () =>
       initialPurpose === "verify_email"
-        ? `Nhập mã OTP đã gửi tới ${initialEmail} để kích hoạt tài khoản.`
-        : `Nhập mã OTP đã gửi tới ${initialEmail} để tiếp tục đặt lại mật khẩu.`,
+        ? `Nhập mã OTP đã gửi tới ${initialEmail} để kích hoạt tài khoản CareerGraph HR của bạn.`
+        : `Nhập mã OTP đã gửi tới ${initialEmail} để tiếp tục đặt lại mật khẩu cho tài khoản CareerGraph HR.`,
     [initialPurpose,initialEmail]
   );
 
@@ -116,7 +115,7 @@ export default function OtpVerificationForm() {
     try {
       if (values.purpose === "verify_email") {
         await authService.verifyOTPRegister({ email: initialEmail.trim().toLowerCase(), otp: values.otp.trim() });
-        toast.success("Xác thực email thành công! Bạn có thể đăng nhập.");
+        toast.success("Xác thực email thành công! Bạn có thể đăng nhập CareerGraph HR.");
         clearOtpContext();
         navigate(initialRedirectTo, { state: { email: initialEmail } });
       } else {
@@ -134,6 +133,7 @@ export default function OtpVerificationForm() {
       }
     } catch (err) {
       const message = resolveErrorMessage(err);
+      setFormError(message);
       toast.error(message);
     }
   };
@@ -145,13 +145,15 @@ export default function OtpVerificationForm() {
     }
     try {
       setResending(true);
-      const data = await authService.resendOtp({
+      const response = await authService.resendOtp({
         email: initialEmail.trim()
       });
-      startOrSync(data);
+      startOrSync(Number(response?.data ?? 0));
       toast.success("Đã gửi lại OTP! Vui lòng kiểm tra email.");
     } catch (err) {
-      toast.error(resolveErrorMessage(err));
+      const message = resolveErrorMessage(err);
+      setFormError(message);
+      toast.error(message);
     } finally {
       setResending(false);
     }
@@ -250,7 +252,7 @@ export default function OtpVerificationForm() {
                 </p>
               ) : (
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Sau khi xác thực email thành công, bạn có thể đăng nhập.
+                  Sau khi xác thực email thành công, bạn có thể đăng nhập vào CareerGraph HR.
                 </p>
               )}
             </div>
