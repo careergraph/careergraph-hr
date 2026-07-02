@@ -67,10 +67,10 @@ export default function FunnelConversionChart({
       },
     },
     markers: {
-      size: 4,
+      size: 3,
       strokeColors: "#fff",
       strokeWidth: 2,
-      hover: { size: 7 },
+      hover: { sizeOffset: 2 },
     },
     grid: {
       xaxis: { lines: { show: false } },
@@ -78,14 +78,7 @@ export default function FunnelConversionChart({
     },
     dataLabels: { enabled: false },
     tooltip: {
-      enabled: true,
-      shared: true,
-      intersect: false,
-      followCursor: false,
-      y: {
-        formatter: (value: number, opts) =>
-          `${value} ${opts.seriesIndex === 0 ? "buổi phỏng vấn" : "thư mời nhận việc"}`,
-      },
+      enabled: false,
     },
     xaxis: {
       categories,
@@ -133,15 +126,15 @@ export default function FunnelConversionChart({
       <div className="mb-6 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90 md:text-lg">
-            Phễu chuyển đổi tuyển dụng
+            Hiệu quả chuyển đổi tuyển dụng
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            So sánh số buổi phỏng vấn hoàn tất và thư mời nhận việc đã gửi theo từng tháng
+            Theo dõi số buổi phỏng vấn hoàn tất và thư mời nhận việc đã phát hành theo từng tháng
           </p>
         </div>
       </div>
 
-      <div className="custom-scrollbar -ml-3 overflow-x-auto md:-ml-5 xl:ml-0">
+      <div className="custom-scrollbar -ml-3 overflow-x-auto overflow-y-hidden [scrollbar-gutter:stable] md:-ml-5 xl:ml-0">
         <div className="min-w-[400px] md:min-w-[500px] xl:min-w-full">
           <Chart options={options} series={series} type="area" height={320} />
         </div>

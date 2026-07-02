@@ -7,6 +7,11 @@
 - Add explicit confirmation for click-based stage changes in the candidate detail panel.
 - Keep drag-drop behavior unchanged to minimize production risk.
 
+## Additional dashboard review
+
+- Refined recruitment dashboard wording to sound more enterprise and operations-oriented.
+- Adjusted the area chart hover behavior in the funnel chart to reduce tooltip flicker during pointer interaction.
+
 ## Frontend changes
 
 - Updated [`KanbanBoard.tsx`](/home/theron/Desktop/careergraph/careergraph-hr/src/pages/Kanban/KanbanBoard.tsx) to detect AI-originated rejection from application history and expose restore actions only for those candidates.

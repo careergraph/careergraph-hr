@@ -83,16 +83,13 @@ export default function PipelineVelocityChart({
       },
     },
     tooltip: {
-      x: { show: false },
-      y: {
-        formatter: (val: number) => `${val} ứng viên`,
-      },
+      enabled: false,
     },
   };
 
   const series = [
     {
-      name: "Ứng viên chuyển bước",
+      name: "Ứng viên chuyển giai đoạn",
       data: values,
     },
   ];
@@ -147,10 +144,10 @@ export default function PipelineVelocityChart({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90 md:text-lg">
-            Tốc độ quy trình tuyển dụng theo tháng
+            Tiến độ luân chuyển hồ sơ theo tháng
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Số ứng viên chuyển sang giai đoạn tiếp theo trong từng tháng
+            Số lượng hồ sơ được cập nhật sang giai đoạn kế tiếp trong từng tháng
           </p>
         </div>
         <div className="relative inline-block self-end sm:self-auto">
@@ -180,7 +177,7 @@ export default function PipelineVelocityChart({
       </div>
 
       {/* Biểu đồ cột hiển thị tốc độ pipeline theo tháng */}
-      <div className="custom-scrollbar -ml-3 mt-4 overflow-x-auto md:-ml-5 xl:ml-0">
+      <div className="custom-scrollbar -ml-3 mt-4 overflow-x-auto overflow-y-hidden [scrollbar-gutter:stable] md:-ml-5 xl:ml-0">
         <div className="-ml-1 min-w-[350px] pl-2 md:min-w-[450px] xl:min-w-full">
           <Chart options={options} series={series} type="bar" height={220} />
         </div>
