@@ -40,10 +40,11 @@ export default function ForgotPasswordRequestForm() {
   const onSubmit = async (values: FormValues) => {
     setFormError(null);
     try {
-      const res = await authService.forgotPassword({email: values.email.trim()});
+      const normalizedEmail = values.email.trim().toLowerCase();
+      const res = await authService.forgotPassword({email: normalizedEmail});
       if(res?.status === "OK"){
         toast.success("Đã gửi OTP đến email. Vui lòng kiểm tra hộp thư.")
-        saveOtpContext({email: values.email.trim(),purpose: "reset_password",redirectTo: "/reset-password", })
+        saveOtpContext({email: normalizedEmail,purpose: "reset_password",redirectTo: "/reset-password", })
         navigate("/verify-otp", {
           replace: true
         })

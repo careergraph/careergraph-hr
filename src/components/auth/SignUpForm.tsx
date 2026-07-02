@@ -235,8 +235,9 @@ export default function SignUpForm() {
     setFormSuccess(null);
 
     try {
+      const normalizedEmail = values.email.trim().toLowerCase();
       await authService.registerHr({
-        email: values.email.trim(),
+        email: normalizedEmail,
         password: values.password,
         firstName: values.firstName.trim(),
         lastName: values.lastName.trim(),
@@ -249,10 +250,10 @@ export default function SignUpForm() {
       reset({ ...values, password: "", acceptTerms: false });
 
       setTimeout(() => {
-        saveOtpContext({email: values.email.trim(),purpose: "verify_email",redirectTo: "/signin", })
+        saveOtpContext({email: normalizedEmail,purpose: "verify_email",redirectTo: "/signin", })
         navigate("/verify-otp", { 
           replace: true,
-          state: { email: values.email.trim() } });
+          state: { email: normalizedEmail } });
       }, 600);
     } catch (error) {
       const message = resolveErrorMessage(error);

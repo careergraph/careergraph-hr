@@ -8,8 +8,8 @@ export default function Verify() {
     <>
       {/* Metadata và bố cục dùng chung cho trang Xác thực OTP. */}
       <PageMeta
-        title="HR - CareerGraph"
-        description=""
+        title="Xác thực OTP | CareerGraph HR"
+        description="Xác thực email hoặc OTP đặt lại mật khẩu cho tài khoản CareerGraph HR"
       />
       <AuthLayout>
         <OtpVerificationForm />
