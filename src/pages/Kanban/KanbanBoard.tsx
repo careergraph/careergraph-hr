@@ -867,7 +867,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex min-h-[calc(100vh-220px)] items-start gap-4 overflow-x-auto pb-4 custom-scrollbar md:gap-5 px-1 snap-x snap-mandatory md:snap-none">
+          <div className="kanban-board-scrollbar flex min-h-[calc(100vh-220px)] items-start gap-4 overflow-x-auto px-1 pb-4 snap-x snap-mandatory md:gap-5 md:snap-none">
             {pipelineColumns.map((column) => (
               <div key={column.id} className="snap-start shrink-0">
                 <Column
