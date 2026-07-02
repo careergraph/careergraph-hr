@@ -469,7 +469,7 @@ export function CandidateDetail({
             </div>
           </div>
           <AlertDialog open={confirmRejectOpen} onOpenChange={setConfirmRejectOpen}>
-            <AlertDialogContent>
+            <AlertDialogContent className="border-slate-200 bg-white opacity-100 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
               <AlertDialogHeader>
                 <AlertDialogTitle>Xác nhận từ chối ứng viên</AlertDialogTitle>
                 <AlertDialogDescription>
