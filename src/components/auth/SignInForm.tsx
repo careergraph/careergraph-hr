@@ -140,6 +140,10 @@ const toVietnameseMessage = (raw?: string | null) => {
 
   const normalized = raw.trim().toLowerCase();
 
+  if (normalized.includes("email") && normalized.includes("not verified")) {
+    return "Email chưa được xác thực. Vui lòng nhập OTP để tiếp tục.";
+  }
+
   if (normalized.includes("account") && normalized.includes("not found")) {
     return "Tài khoản không tồn tại.";
   }
@@ -174,24 +178,20 @@ const resolveErrorMessage = (error: unknown): string => {
   return "Đăng nhập thất bại. Vui lòng thử lại.";
 };
 
-const resolveErrorStatus = (error: unknown): number | null => {
-  if (isAxiosError(error)) {
-    return typeof error.response?.status === "number"
-      ? error.response.status
-      : null;
+const isUnverifiedEmailError = (error: unknown): boolean => {
+  if (!isAxiosError(error)) {
+    return false;
   }
 
-  if (isObject(error) && typeof error.status === "number") {
-    return error.status;
-  }
+  const data = error.response?.data as ApiErrorPayload | undefined;
+  const message = (data?.message ?? data?.error ?? "").trim().toLowerCase();
+  const code = resolveApiErrorCode(data)?.trim().toUpperCase();
 
-  return null;
+  return (
+    error.response?.status === 403 &&
+    (code === "UNVERIFIED" || message === "email not verified")
+  );
 };
-
-const resolveErrorCode = (error: unknown): string | null =>
-  isAxiosError(error)
-    ? resolveApiErrorCode(error.response?.data as ApiErrorPayload | undefined)
-    : null;
 
 const isBlockedCompanyProfile = (company?: CompanyProfile | null): boolean =>
   company?.operationalStatus === "BLOCKED" || company?.operationalStatus === "SUSPENDED";
@@ -381,16 +381,22 @@ export default function SignInForm() {
           return;
         }
 
-        const status = resolveErrorStatus(error);
-        const errorCode = resolveErrorCode(error);
-        if ((status === 403 || status === 505) && errorCode === "UNVERIFIED") {
-          saveOtpContext({email: values.email.trim(),purpose: "verify_email",redirectTo: "/signin", })
+        if (isUnverifiedEmailError(error)) {
+          const normalizedEmail = values.email.trim().toLowerCase();
+          saveOtpContext({
+            email: normalizedEmail,
+            purpose: "verify_email",
+            redirectTo: "/signin",
+          });
           navigate("/verify-otp", {
             replace: true,
             state: {
-              email: values.email.trim()
-            }
-          })
+              email: normalizedEmail,
+              purpose: "verify_email",
+              redirectTo: "/signin",
+            },
+          });
+          return;
         }
         const message = resolveErrorMessage(error);
         toast.error(message);
