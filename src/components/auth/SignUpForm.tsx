@@ -10,6 +10,7 @@ import Label from "@/components/form/Label";
 import Input from "@/components/form/input/InputField";
 import Checkbox from "@/components/form/input/Checkbox";
 import GoogleAuth from "./GoogleAuth";
+import TermsModal from "@/components/legal/TermsModal";
 import authService, { LoginResponse } from "@/services/authService";
 import companyService from "@/services/companyService";
 import { useAuthStore } from "@/stores/authStore";
@@ -23,9 +24,11 @@ const signUpSchema = z.object({
   password: z
     .string({ required_error: "Mật khẩu là bắt buộc" })
     .min(6, "Mật khẩu tối thiểu 6 ký tự"),
-  acceptTerms: z.literal(true, {
-    errorMap: () => ({ message: "Vui lòng đồng ý với điều khoản và chính sách." }),
-  }),
+  acceptTerms: z
+    .boolean()
+    .refine((value) => value === true, {
+      message: "Vui lòng đồng ý với điều khoản sử dụng để tiếp tục.",
+    }),
 });
 
 type SignUpFormValues = z.infer<typeof signUpSchema>;
@@ -129,6 +132,7 @@ export default function SignUpForm() {
   const [googlePromptPending, setGooglePromptPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [openTerms, setOpenTerms] = useState(false);
   const googlePromptTimerRef = useRef<number | null>(null);
 
   const { setAccessToken, setUser, updateUser, setCompany, setIsAuthenticating, isAuthenticating } =
@@ -210,7 +214,7 @@ export default function SignUpForm() {
       lastName: "",
       email: "",
       password: "",
-      acceptTerms: true,
+      acceptTerms: false,
     },
   });
 
@@ -242,7 +246,7 @@ export default function SignUpForm() {
         "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận OTP trước khi đăng nhập.";
       toast.success(successMessage);
       setFormSuccess(successMessage);
-      reset({ ...values, password: "", acceptTerms: true });
+      reset({ ...values, password: "", acceptTerms: false });
 
       setTimeout(() => {
         saveOtpContext({email: values.email.trim(),purpose: "verify_email",redirectTo: "/signin", })
@@ -423,17 +427,24 @@ export default function SignUpForm() {
                       name="acceptTerms"
                       render={({ field }) => (
                         <Checkbox
-                          className="w-5 h-5 mt-1"
+                          className="h-5 w-5"
+                          containerClassName="my-0 min-h-0 shrink-0 items-start py-0 pt-0.5"
                           checked={field.value ?? false}
                           onChange={(checked) => field.onChange(checked)}
                           disabled={authBusy}
                         />
                       )}
                     />
-                    <p className="inline-block font-normal text-gray-500 dark:text-gray-400 text-xs">
-                      Tạo tài khoản HR với CareerGraph bằng cách đồng ý với{" "}
-                      <span className="text-gray-800 dark:text-white/90">Điều khoản dịch vụ</span>, và{" "}
-                      <span className="text-gray-800 dark:text-white">Chính sách</span> của chúng tôi.
+                    <p className="pt-0.5 text-xs font-normal leading-5 text-gray-500 dark:text-gray-400">
+                      Tôi xác nhận đồng ý tạo tài khoản trên CareerGraph HR và chấp nhận{" "}
+                      <button
+                        type="button"
+                        onClick={() => setOpenTerms(true)}
+                        className="font-semibold text-brand-500 transition hover:text-brand-600 hover:underline"
+                      >
+                        Điều khoản sử dụng
+                      </button>
+                      .
                     </p>
                   </div>
                   {errors.acceptTerms && (
@@ -480,6 +491,7 @@ export default function SignUpForm() {
           </div>
         </div>
       </div>
+      <TermsModal open={openTerms} onClose={() => setOpenTerms(false)} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ interface CheckboxProps {
   label?: string;
   checked: boolean;
   className?: string;
+  containerClassName?: string;
   id?: string;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
@@ -15,13 +16,14 @@ const Checkbox: React.FC<CheckboxProps> = ({
   id,
   onChange,
   className = "",
+  containerClassName = "",
   disabled = false,
 }) => {
   return (
     <label
       className={`flex items-center gap-3 group cursor-pointer min-h-11 py-2 -my-2 ${
         disabled ? "cursor-not-allowed opacity-60" : ""
-      }`}
+      } ${containerClassName}`}
     >
       <div className="relative w-5 h-5">
         <input

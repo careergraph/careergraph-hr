@@ -514,7 +514,7 @@ export default function SignInForm() {
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
-                    <Controller
+                    {/* <Controller
                       control={control}
                       name="rememberMe"
                       render={({ field }) => (
@@ -527,7 +527,7 @@ export default function SignInForm() {
                     />
                     <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
                       Ghi nhớ đăng nhập
-                    </span>
+                    </span> */}
                   </div>
                   <Link
                     to="/forgot-password"
