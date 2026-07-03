@@ -48,6 +48,12 @@ import {
   type CompanyRecruitmentStage,
 } from "@/lib/recruitmentPipeline";
 import { toast } from "sonner";
+import {
+  buildInterviewRoomPath,
+  canAccessInterviewRoom,
+  getInterviewRoomCode,
+  isInterviewRoomExpired,
+} from "@/lib/interviewRoomAccess";
 
 interface UnscheduledApp {
   applicationId: string;
@@ -585,15 +591,19 @@ export const CalendarModalForm = ({
       }
 
       if (timeChanged) {
-        await interviewService.rescheduleInterview(editingEvent.id, {
+        const rescheduledResponse = await interviewService.rescheduleInterview(editingEvent.id, {
           newDate: eventStartDate,
           newStartTime: startTime,
           durationMinutes: duration,
           notes: nextNotes || undefined,
         });
+        const rescheduledInterviewId =
+          typeof rescheduledResponse?.data?.id === "string"
+            ? rescheduledResponse.data.id
+            : undefined;
 
-        if (currentStatus && currentStatus !== nextStatus) {
-          await interviewService.updateInterviewStatus(editingEvent.id, {
+        if (rescheduledInterviewId && currentStatus && currentStatus !== nextStatus) {
+          await interviewService.updateInterviewStatus(rescheduledInterviewId, {
             status: nextStatus,
           });
         }
@@ -1093,18 +1103,62 @@ export const CalendarModalForm = ({
                 </label>
                 {(() => {
                   const loc = editingEvent.extendedProps.location;
-                  const isLink = loc.startsWith("http") || loc.startsWith("/interview/room/");
+                  const roomCode = getInterviewRoomCode(editingEvent.extendedProps.meetingLink);
+                  const roomPath = roomCode ? buildInterviewRoomPath(roomCode) : "";
+                  const href = roomPath
+                    ? `${window.location.origin}${roomPath}`
+                    : loc.startsWith("http")
+                      ? loc
+                      : loc.startsWith("/interview/room/")
+                        ? `${window.location.origin}${loc}`
+                        : "";
+                  const roomSource = {
+                    type: editingEvent.extendedProps.interviewType,
+                    meetingLink: editingEvent.extendedProps.meetingLink,
+                    interviewStatus: editingEvent.extendedProps.interviewStatus,
+                    endAt: editingEvent.end,
+                  };
+                  const canOpenRoom = canAccessInterviewRoom(roomSource);
+                  const roomExpired = isInterviewRoomExpired(roomSource);
+                  const isLink = Boolean(href);
                   return isLink ? (
-                    <div className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-                      <Video className="h-4 w-4 shrink-0 text-blue-600" />
-                      <a
-                        href={loc.startsWith("http") ? loc : `${window.location.origin}${loc}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 truncate text-sm text-blue-700 underline dark:text-blue-300"
-                      >
-                        {loc}
-                      </a>
+                    <div
+                      className={`rounded-xl border p-3 ${
+                        roomExpired
+                          ? "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20"
+                          : "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20"
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <Video
+                          className={`mt-0.5 h-4 w-4 shrink-0 ${
+                            roomExpired ? "text-amber-600 dark:text-amber-300" : "text-blue-600"
+                          }`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                            Mã phòng phỏng vấn
+                          </p>
+                          <p className="mt-1 truncate font-mono text-sm text-slate-900 dark:text-slate-100">
+                            {roomCode || loc}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            {roomExpired
+                              ? "Đã quá giờ phỏng vấn nên link phòng đã bị vô hiệu hóa ở giao diện này."
+                              : ""}
+                          </p>
+                          {canOpenRoom ? (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-2 inline-flex items-center text-sm font-medium text-blue-700 underline underline-offset-2 dark:text-blue-300"
+                            >
+                              Mở phòng phỏng vấn
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <Input value={loc} readOnly className="bg-muted" />

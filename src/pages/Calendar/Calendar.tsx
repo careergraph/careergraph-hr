@@ -7,6 +7,7 @@ import {
   EventHoveringArg,
   DatesSetArg,
 } from "@fullcalendar/core";
+import { useNavigate } from "react-router";
 import { CalendarClock, CalendarDays, Clock3, UserRound } from "lucide-react";
 
 import PageMeta from "@/components/common/PageMeta";
@@ -34,6 +35,7 @@ import { CalendarEvent } from "@/types/calendar";
 import { useInterviewStore } from "@/stores/interviewStore";
 import type { Interview, InterviewStatus } from "@/types/interview";
 import { toast } from "sonner";
+import { buildInterviewRoomPath, canAccessInterviewRoom } from "@/lib/interviewRoomAccess";
 
 const STATUS_TO_CALENDAR_LEVEL: Record<InterviewStatus, CalendarLevel> = {
   SCHEDULED: "Primary",
@@ -57,6 +59,107 @@ const buildInterviewTitle = (round: number) => {
   return `Phỏng vấn vòng ${round}`;
 };
 
+const CALENDAR_VIEW_OPTIONS = new Set(["dayGridMonth", "timeGridWeek", "timeGridDay", "listWeek"]);
+const UPCOMING_EXCLUDED_STATUSES = new Set(["CANCELLED", "NO_SHOW", "COMPLETED"]);
+
+const getDefaultCalendarView = () => {
+  if (typeof window !== "undefined" && window.innerWidth < 768) return "listWeek";
+  if (typeof window !== "undefined" && window.innerWidth < 1024) return "timeGridWeek";
+  return "dayGridMonth";
+};
+
+const normalizeCalendarView = (value: string | null) =>
+  value && CALENDAR_VIEW_OPTIONS.has(value) ? value : getDefaultCalendarView();
+
+const buildCalendarUrlStateKey = (view: string, date: Date) =>
+  `${view}::${formatDateParam(date)}`;
+
+const getCalendarSearchParams = () => {
+  if (typeof window === "undefined") {
+    return new URLSearchParams();
+  }
+
+  return new URLSearchParams(window.location.search);
+};
+
+const formatDateParam = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateParam = (value: string | null) => {
+  if (!value) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+};
+
+const getWeekInputValue = (anchorDate: Date) => {
+  const monday = new Date(anchorDate);
+  const day = monday.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  monday.setDate(monday.getDate() + diff);
+
+  const tmp = new Date(Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate()));
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - (tmp.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+
+  return `${tmp.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+};
+
+const getPeriodInputValue = (view: string, anchorDate: Date) => {
+  if (view === "dayGridMonth") {
+    return `${anchorDate.getFullYear()}-${String(anchorDate.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  if (view === "timeGridWeek" || view === "listWeek") {
+    return getWeekInputValue(anchorDate);
+  }
+
+  return formatDateParam(anchorDate);
+};
+
+const parseWeekInputValue = (value: string) => {
+  const [yearPart, weekPart] = value.split("-W");
+  const year = Number(yearPart);
+  const week = Number(weekPart);
+  if (!Number.isFinite(year) || !Number.isFinite(week)) return null;
+
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay() || 7;
+  const monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - jan4Day + 1 + (week - 1) * 7);
+
+  const localDate = new Date(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate());
+  return Number.isFinite(localDate.getTime()) ? localDate : null;
+};
+
+const getInitialCalendarState = () => {
+  const params = getCalendarSearchParams();
+  return {
+    view: normalizeCalendarView(params.get("view")),
+    date: parseDateParam(params.get("date")) ?? new Date(),
+  };
+};
+
+const replaceCalendarUrl = (view: string, date: Date) => {
+  if (typeof window === "undefined") return;
+
+  const currentUrl = new URL(window.location.href);
+  const nextKey = buildCalendarUrlStateKey(view, date);
+  const currentView = normalizeCalendarView(currentUrl.searchParams.get("view"));
+  const currentDate = parseDateParam(currentUrl.searchParams.get("date")) ?? new Date();
+  const currentKey = buildCalendarUrlStateKey(currentView, currentDate);
+
+  if (nextKey === currentKey) return;
+
+  currentUrl.searchParams.set("view", view);
+  currentUrl.searchParams.set("date", formatDateParam(date));
+  window.history.replaceState(window.history.state, "", currentUrl.toString());
+};
+
 const mapInterviewToCalendarEvent = (interview: Interview, round: number): CalendarEvent => {
   const level = STATUS_TO_CALENDAR_LEVEL[interview.interviewStatus] ?? DEFAULT_EVENT_LEVEL;
 
@@ -74,45 +177,13 @@ const mapInterviewToCalendarEvent = (interview: Interview, round: number): Calen
       interviewStatus: interview.interviewStatus,
       location: interview.location ?? interview.meetingLink,
       notes: interview.notes,
+      meetingLink: interview.meetingLink,
+      interviewType: interview.type,
     },
   };
 };
 
 // Calendar điều phối bảng lịch, sidebar thống kê và modal chỉnh sửa lịch hẹn.
-
-const renderEventContent = (eventInfo: EventContentArg) => {
-  const variant = getCalendarVariant(eventInfo.event.extendedProps.calendar);
-  const styles = CALENDAR_VARIANT_STYLES[variant];
-  const start = toDate(eventInfo.event.start);
-  const timeLabel = start
-    ? start.toLocaleTimeString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
-  const isPastEvent = start ? start.getTime() < Date.now() : false;
-
-  return (
-    <div
-      className={`calendar-event-card flex min-w-0 items-start gap-2 rounded-2xl border px-2.5 py-2 text-left transition ${styles.chip} ${styles.text} ${
-        isPastEvent ? "calendar-event-card--past" : ""
-      }`}
-      title={eventInfo.event.title}
-    >
-      <span className={`mt-1 size-2 rounded-full ${styles.indicator}`} />
-      <div className="min-w-0 flex-1">
-        {timeLabel ? (
-          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-current/70">
-            {timeLabel}
-          </p>
-        ) : null}
-        <p className="truncate text-[11px] font-semibold leading-4">
-          {eventInfo.event.title}
-        </p>
-      </div>
-    </div>
-  );
-};
 
 const mapCalendarApiEventToCalendarEvent = (eventArg: {
   id: string;
@@ -137,12 +208,15 @@ const mapCalendarApiEventToCalendarEvent = (eventArg: {
     notes: eventArg.extendedProps.notes as string | undefined,
     jobTitle: eventArg.extendedProps.jobTitle as string | undefined,
     interviewStatus: eventArg.extendedProps.interviewStatus as string | undefined,
+    meetingLink: eventArg.extendedProps.meetingLink as string | undefined,
+    interviewType: eventArg.extendedProps.interviewType as Interview["type"] | undefined,
   },
 });
 
 const Calendar = () => {
+  const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const isTablet = useMediaQuery("(min-width: 768px) and (max-width: 1023px)");
+  const initialCalendarStateRef = useRef(getInitialCalendarState());
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
   const [eventTitle, setEventTitle] = useState("");
@@ -163,17 +237,93 @@ const Calendar = () => {
     cursorY?: number;
   } | null>(null);
   const [activeView, setActiveView] = useState(() =>
-    typeof window !== "undefined" && window.innerWidth < 768
-      ? "listWeek"
-      : typeof window !== "undefined" && window.innerWidth < 1024
-        ? "timeGridWeek"
-        : "dayGridMonth"
+    initialCalendarStateRef.current.view
   );
+  const [activeDate, setActiveDate] = useState<Date>(() => initialCalendarStateRef.current.date);
 
   const calendarRef = useRef<FullCalendar | null>(null);
   const { isOpen, openModal, closeModal } = useModal();
 
   const { calendarEvents: interviewEvents, fetchCalendarEvents } = useInterviewStore();
+
+  const handleJoinEventRoom = useCallback(
+    (event: CalendarEvent) => {
+      const meetingLink = event.extendedProps?.meetingLink;
+      if (!meetingLink) return;
+
+      const canJoin = canAccessInterviewRoom({
+        type: event.extendedProps?.interviewType,
+        meetingLink,
+        interviewStatus: event.extendedProps?.interviewStatus,
+        endAt: event.end,
+      });
+
+      if (!canJoin) {
+        toast.warning("Hiện chưa thể vào phòng phỏng vấn này.");
+        return;
+      }
+
+      navigate(buildInterviewRoomPath(meetingLink));
+    },
+    [navigate]
+  );
+
+  const renderEventContent = useCallback(
+    (eventInfo: EventContentArg) => {
+      const variant = getCalendarVariant(eventInfo.event.extendedProps.calendar);
+      const styles = CALENDAR_VARIANT_STYLES[variant];
+      const start = toDate(eventInfo.event.start);
+      const eventView = eventInfo.view.type;
+      const isMonthView = eventView === "dayGridMonth";
+      const timeLabel = start
+        ? start.toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "";
+      const isPastEvent = start ? start.getTime() < Date.now() : false;
+      const canJoinRoom = canAccessInterviewRoom({
+        type: eventInfo.event.extendedProps.interviewType as Interview["type"] | undefined,
+        meetingLink: eventInfo.event.extendedProps.meetingLink as string | undefined,
+        interviewStatus: eventInfo.event.extendedProps.interviewStatus as string | undefined,
+        endAt: eventInfo.event.end,
+      });
+
+      return (
+        <div
+          className={`calendar-event-card flex min-w-0 rounded-[18px] border px-2 py-1.5 text-left transition ${styles.chip} ${styles.text} ${
+            isPastEvent ? "calendar-event-card--past" : ""
+          }`}
+          title={eventInfo.event.title}
+        >
+          <div className="min-w-0 flex-1">
+            {timeLabel ? (
+              <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-current/70">
+                {timeLabel}
+              </p>
+            ) : null}
+            <p className={`${isMonthView ? "truncate" : "line-clamp-2"} text-[11px] font-semibold leading-4`}>
+              {eventInfo.event.title}
+            </p>
+            {!isMonthView && canJoinRoom ? (
+              <button
+                type="button"
+                className="mt-1 inline-flex max-w-full truncate rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-current/90 underline-offset-2 hover:bg-white/90"
+                onClick={(clickEvent) => {
+                  clickEvent.preventDefault();
+                  clickEvent.stopPropagation();
+                  handleJoinEventRoom(mapCalendarApiEventToCalendarEvent(eventInfo.event));
+                }}
+              >
+                Vào phòng phỏng vấn
+              </button>
+            ) : null}
+          </div>
+        </div>
+      );
+    },
+    [handleJoinEventRoom]
+  );
 
   const loadCalendarData = useCallback((year?: number, month?: number) => {
     const now = new Date();
@@ -183,6 +333,10 @@ const Calendar = () => {
   useEffect(() => {
     loadCalendarData();
   }, [loadCalendarData]);
+
+  useEffect(() => {
+    replaceCalendarUrl(activeView, activeDate);
+  }, [activeDate, activeView]);
 
   useEffect(() => {
     const completedRoundsByApplication = new Map<string, number>();
@@ -232,21 +386,25 @@ const Calendar = () => {
 
     sortedEvents.forEach((event) => {
       const date = normalizeDate(event.start);
+      const endTime = toDate(event.end)?.getTime() ?? toDate(event.start)?.getTime() ?? 0;
+      const isExpired = Number.isFinite(endTime) && endTime < now.getTime();
+      const status = String(event.extendedProps?.interviewStatus ?? "");
+      const isUpcomingEligible = !UPCOMING_EXCLUDED_STATUSES.has(status);
       if (event.extendedProps?.candidate) {
         candidateTotal += 1;
       }
 
       if (!date) return;
 
-      if (date >= start) {
+      if (!isExpired && date >= start && isUpcomingEligible) {
         upcoming.push(event);
       }
 
-      if (date >= start && date < tomorrow) {
+      if (!isExpired && date >= start && date < tomorrow && isUpcomingEligible) {
         todayEvents.push(event);
       }
 
-      if (date >= start && date <= weekAhead) {
+      if (!isExpired && date >= start && date <= weekAhead && isUpcomingEligible) {
         week.push(event);
       }
     });
@@ -280,14 +438,32 @@ const Calendar = () => {
   }, [upcomingEvents, sortedEvents]);
 
   useEffect(() => {
-    if (!activeEvent && firstUpcomingEvent) {
-      setActiveEvent(firstUpcomingEvent);
+    if (!activeEvent) {
+      if (firstUpcomingEvent) {
+        setActiveEvent(firstUpcomingEvent);
+      }
+      return;
     }
-  }, [activeEvent, firstUpcomingEvent]);
+
+    const matched = events.find((event) => event.id === activeEvent.id);
+    if (matched) {
+      if (matched !== activeEvent) {
+        setActiveEvent(matched);
+      }
+      return;
+    }
+
+    setActiveEvent(firstUpcomingEvent ?? null);
+  }, [activeEvent, events, firstUpcomingEvent]);
 
   const handleDatesSet = (arg: DatesSetArg) => {
     setCurrentRangeTitle(arg.view.title);
     setActiveView(arg.view.type);
+    const currentDate =
+      "currentStart" in arg.view && arg.view.currentStart instanceof Date
+        ? arg.view.currentStart
+        : arg.start;
+    setActiveDate(currentDate);
     const midDate = new Date((arg.start.getTime() + arg.end.getTime()) / 2);
     loadCalendarData(midDate.getFullYear(), midDate.getMonth());
   };
@@ -368,7 +544,7 @@ const Calendar = () => {
     });
   };
 
-  const handleEventMouseLeave = (_hoverInfo: EventHoveringArg) => {
+  const handleEventMouseLeave = () => {
     setHoveredEvent(null);
     setHoveredEventPosition(null);
   };
@@ -376,7 +552,7 @@ const Calendar = () => {
   const handleViewChange = (view: string) => {
     const api = calendarRef.current?.getApi();
     if (!api || api.view.type === view) return;
-    api.changeView(view);
+    api.changeView(view, activeDate);
   };
 
   const handleNavigate = (direction: "prev" | "next") => {
@@ -392,6 +568,28 @@ const Calendar = () => {
   const handleToday = () => {
     const api = calendarRef.current?.getApi();
     api?.today();
+  };
+
+  const handlePeriodChange = (value: string) => {
+    const api = calendarRef.current?.getApi();
+    if (!api || !value) return;
+
+    if (activeView === "dayGridMonth") {
+      const parsed = parseDateParam(`${value}-01`);
+      if (parsed) api.gotoDate(parsed);
+      return;
+    }
+
+    if (activeView === "timeGridWeek" || activeView === "listWeek") {
+      const parsed = parseWeekInputValue(value);
+      if (parsed) api.gotoDate(parsed);
+      return;
+    }
+
+    const parsed = parseDateParam(value);
+    if (parsed) {
+      api.gotoDate(parsed);
+    }
   };
 
   const handleEditEvent = (event: CalendarEvent) => {
@@ -454,13 +652,16 @@ const Calendar = () => {
               onToday={handleToday}
             />
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
               <CalendarBoard
                 calendarRef={calendarRef}
                 currentRangeTitle={currentRangeTitle}
                 activeView={activeView}
                 onChangeView={handleViewChange}
                 onNavigate={handleNavigate}
+                onToday={handleToday}
+                periodValue={getPeriodInputValue(activeView, activeDate)}
+                onPeriodChange={handlePeriodChange}
                 onSelectDate={handleDateSelect}
                 onEventClick={handleEventClick}
                 onEventMouseEnter={handleEventMouseEnter}
@@ -468,7 +669,8 @@ const Calendar = () => {
                 onDatesSet={handleDatesSet}
                 events={sortedEvents}
                 renderEventContent={renderEventContent}
-                initialView={isMobile ? "listWeek" : isTablet ? "timeGridWeek" : "dayGridMonth"}
+                initialView={initialCalendarStateRef.current.view}
+                initialDate={initialCalendarStateRef.current.date}
                 headerToolbar={
                   isMobile
                     ? { left: "prev,next", center: "title", right: "listWeek,timeGridDay" }
@@ -478,14 +680,28 @@ const Calendar = () => {
 
               {!isMobile && (
                 <CalendarSidebar
+                  variant="detail"
                   calendarCounts={calendarCounts}
                   activeEvent={activeEvent}
                   onSelectEvent={setActiveEvent}
                   onEditEvent={handleEditEvent}
+                  onJoinEventRoom={handleJoinEventRoom}
                   upcomingEvents={upcomingEvents}
                 />
               )}
             </div>
+
+            {!isMobile ? (
+              <CalendarSidebar
+                variant="status"
+                calendarCounts={calendarCounts}
+                activeEvent={activeEvent}
+                onSelectEvent={setActiveEvent}
+                onEditEvent={handleEditEvent}
+                onJoinEventRoom={handleJoinEventRoom}
+                upcomingEvents={upcomingEvents}
+              />
+            ) : null}
           </div>
         </div>
       </div>

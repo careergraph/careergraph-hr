@@ -14,6 +14,7 @@ import {
   EventInput,
   EventHoveringArg,
 } from "@fullcalendar/core";
+import viLocale from "@fullcalendar/core/locales/vi";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,9 @@ interface CalendarBoardProps {
   activeView: string;
   onChangeView: (view: string) => void;
   onNavigate: (direction: "prev" | "next") => void;
+  onToday: () => void;
+  periodValue: string;
+  onPeriodChange: (value: string) => void;
   onSelectDate: (selectInfo: DateSelectArg) => void;
   onEventClick: (event: EventClickArg) => void;
   onEventMouseEnter?: (event: EventHoveringArg) => void;
@@ -34,13 +38,15 @@ interface CalendarBoardProps {
   events: EventInput[];
   renderEventContent: (eventInfo: EventContentArg) => React.JSX.Element;
   initialView?: string;
+  initialDate?: Date;
   headerToolbar?: Record<string, string> | false;
 }
 
 const VIEW_LABELS: Record<string, string> = {
-  dayGridMonth: "Tháng",
-  timeGridWeek: "Tuần",
-  timeGridDay: "Ngày",
+  dayGridMonth: "Lịch theo tháng",
+  timeGridWeek: "Lịch theo tuần",
+  timeGridDay: "Lịch theo ngày",
+  listWeek: "Lịch theo danh sách",
 };
 
 export const CalendarBoard = ({
@@ -49,6 +55,9 @@ export const CalendarBoard = ({
   activeView,
   onChangeView,
   onNavigate,
+  onToday,
+  periodValue,
+  onPeriodChange,
   onSelectDate,
   onEventClick,
   onEventMouseEnter,
@@ -57,9 +66,16 @@ export const CalendarBoard = ({
   events,
   renderEventContent,
   initialView,
+  initialDate,
   headerToolbar,
 }: CalendarBoardProps) => {
   const activeViewLabel = VIEW_LABELS[activeView] ?? "Lịch phỏng vấn";
+  const periodInputType =
+    activeView === "dayGridMonth"
+      ? "month"
+      : activeView === "timeGridWeek" || activeView === "listWeek"
+        ? "week"
+        : "date";
 
   const toTime = (value: unknown) => {
     if (value instanceof Date) return value.getTime();
@@ -71,7 +87,7 @@ export const CalendarBoard = ({
   };
 
   return (
-    <section className="overflow-hidden overflow-y-auto max-h-3/4 rounded-3xl border border-border/60 bg-card/80 p-4 shadow-md shadow-brand-950/5 backdrop-blur-sm dark:bg-slate-950/40 sm:p-6">
+    <section className="overflow-hidden rounded-[28px] border border-border/60 bg-card/80 p-4 shadow-md shadow-brand-950/5 backdrop-blur-sm dark:bg-slate-950/40 sm:p-6">
       {/* Lưới lịch kèm thanh điều hướng, chuyển chế độ xem và thao tác sự kiện. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -121,7 +137,17 @@ export const CalendarBoard = ({
               Ngày
             </Button>
           </div>
+          <input
+            type={periodInputType}
+            value={periodValue}
+            onChange={(event) => onPeriodChange(event.target.value)}
+            aria-label="Chọn mốc thời gian lịch"
+            className="h-9 rounded-lg border border-border/70 bg-background px-3 text-sm text-foreground outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+          />
           <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" onClick={onToday}>
+              Hôm nay
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -145,7 +171,9 @@ export const CalendarBoard = ({
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+          locale={viLocale}
           initialView={initialView ?? "dayGridMonth"}
+          initialDate={initialDate}
           headerToolbar={headerToolbar ?? false}
           height="auto"
           events={events}

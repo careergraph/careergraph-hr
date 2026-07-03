@@ -947,7 +947,7 @@ span.flatpickr-weekday,
 }
 
 .calendar-enterprise .fc-daygrid-day-frame {
-  min-height: 132px;
+  min-height: 156px;
 }
 
 .calendar-enterprise .fc-daygrid-day,
@@ -972,6 +972,10 @@ span.flatpickr-weekday,
 
 .calendar-enterprise .fc-daygrid-day-top {
   @apply items-start justify-between px-1 pt-1;
+}
+
+.calendar-enterprise .fc-daygrid-body-natural .fc-daygrid-day-events {
+  margin-bottom: 0.4rem;
 }
 
 .calendar-enterprise .fc-daygrid-day-number,
@@ -1015,7 +1019,7 @@ span.flatpickr-weekday,
 .calendar-enterprise .fc-daygrid-event,
 .calendar-enterprise .fc-timegrid-event-harness .fc-timegrid-event,
 .calendar-enterprise .fc-list-event {
-  margin: 0 0 6px;
+  margin: 0 0 7px;
 }
 
 .calendar-enterprise .fc-timegrid-event .fc-event-main,
@@ -1025,6 +1029,24 @@ span.flatpickr-weekday,
 
 .calendar-enterprise .calendar-event-card {
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+  min-height: 48px;
+}
+
+.calendar-enterprise .fc-daygrid-event-harness {
+  margin-inline: 0.35rem;
+}
+
+.calendar-enterprise .fc-timegrid-event-harness {
+  inset-inline: 2px;
+}
+
+.calendar-enterprise .fc-timegrid-event .calendar-event-card {
+  min-height: 100%;
+}
+
+.calendar-enterprise .fc-list-event .calendar-event-card {
+  min-height: 56px;
 }
 
 .calendar-enterprise .fc-day-past .calendar-event-card,
@@ -1150,6 +1172,12 @@ span.flatpickr-weekday,
   background: rgba(30, 41, 59, 0.95);
   border-color: rgba(51, 65, 85, 0.95);
   color: rgba(191, 219, 254, 0.96);
+}
+
+@media (max-width: 1279px) {
+  .calendar-enterprise .fc-daygrid-day-frame {
+    min-height: 142px;
+  }
 }
 
 .simplebar-scrollbar::before {

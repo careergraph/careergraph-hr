@@ -1,6 +1,7 @@
 import { EventInput } from "@fullcalendar/core";
 
 import { CalendarLevel } from "@/lib/calendar-utils";
+import type { InterviewType } from "@/types/interview";
 
 export interface CalendarEvent extends EventInput {
   extendedProps: {
@@ -11,5 +12,7 @@ export interface CalendarEvent extends EventInput {
     notes?: string;
     jobTitle?: string;
     interviewStatus?: string;
+    meetingLink?: string;
+    interviewType?: InterviewType;
   };
 }
