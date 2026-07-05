@@ -8,9 +8,8 @@ import {
   Eye,
   MapPin,
   MoreVertical,
-  Share2,
   Sparkles,
-  ThumbsUp,
+  Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatDateYMD } from "@/lib/dateUtils";
@@ -231,6 +230,7 @@ export const JobCard = ({
               disabled={isClosed || isActionLoading}
               onClick={() =>
                 handleMenuAction(() => {
+                  // eslint-disable-next-line no-extra-boolean-cast
                   onToggleAiScreening?.(job.id, !Boolean(job.aiScreeningEnabled));
                 })
               }
@@ -328,21 +328,17 @@ export const JobCard = ({
       </div>
 
       <div className="mt-auto flex items-center justify-between text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" title={`${job.saved ?? 0} lượt lưu`}>
           <Bookmark className="h-4 w-4" />
-          <span>{job.applicants}</span>
+          <span>{job.saved ?? 0}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" title={`${job.views ?? 0} lượt xem`}>
           <Eye className="h-4 w-4" />
-          <span>{job.views}</span>
+          <span>{job.views ?? 0}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <ThumbsUp className="h-4 w-4" />
-          <span>{job.likes}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Share2 className="h-4 w-4" />
-          <span>{job.shares}</span>
+        <div className="flex items-center gap-2" title={`${job.applicants ?? 0} lượt ứng tuyển`}>
+          <Users className="h-4 w-4" />
+          <span>{job.applicants ?? 0}</span>
         </div>
       </div>
     </div>
