@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { ClipboardList, Sparkles, Users2, Workflow } from "lucide-react";
 import { ScrollReveal } from "./ScrollReveal";
 
