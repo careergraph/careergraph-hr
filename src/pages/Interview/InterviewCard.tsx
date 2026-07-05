@@ -5,6 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, Monitor, MoreVertical, ExternalLink } from "lucide-react";
 import { canAddInterviewFeedback, canCompleteByStatus } from "./interviewCompletionRules";
+import {
+  buildInterviewRoomPath,
+  canAccessInterviewRoomFromInterview,
+  getInterviewRoomAccessLabel,
+} from "@/lib/interviewRoomAccess";
 
 interface InterviewCardProps {
   interview: Interview;
@@ -47,12 +52,11 @@ export default function InterviewCard({
 }: InterviewCardProps) {
   const scheduledDate = new Date(interview.scheduledAt);
   const endDate = new Date(interview.endAt);
-  const hasTimeExpired = Number.isFinite(endDate.getTime()) && Date.now() > endDate.getTime();
   const canCancel = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"].includes(interview.interviewStatus);
   const canComplete = canCompleteByStatus(interview.interviewStatus);
   const canAddFeedback = canAddInterviewFeedback(interview);
-  const canJoinRoom = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(interview.interviewStatus) && !hasTimeExpired;
-  const showJoinRoomButton = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(interview.interviewStatus);
+  const canJoinRoom = canAccessInterviewRoomFromInterview(interview);
+  const showJoinRoomButton = interview.type === "ONLINE" && Boolean(interview.meetingLink);
   const navigate = useNavigate();
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const actionMenuRef = useRef<HTMLDivElement | null>(null);
@@ -214,17 +218,15 @@ export default function InterviewCard({
           onClick={(e) => {
             e.stopPropagation();
             if (!canJoinRoom) return;
-            navigate(`/interview/room/${interview.meetingLink}`);
+            navigate(buildInterviewRoomPath(interview.meetingLink));
           }}
           disabled={!canJoinRoom}
           className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ExternalLink className="h-3.5 w-3.5" />
-          {!canJoinRoom
-            ? "Đã quá giờ phỏng vấn"
-            : interview.interviewStatus === "IN_PROGRESS"
-            ? "Tham gia lại"
-            : "Tham gia phỏng vấn"}
+          {canJoinRoom
+            ? getInterviewRoomAccessLabel(interview)
+            : "Đã quá giờ phỏng vấn"}
         </button>
       )}
 

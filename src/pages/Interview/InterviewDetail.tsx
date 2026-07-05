@@ -33,6 +33,15 @@ import {
   type RoomParticipantLike,
 } from "./interviewCompletionRules";
 import { getFeedbackRecommendationLabel } from "./feedbackRecommendationOptions";
+import {
+  buildInterviewRoomPath,
+  getInterviewRoomAccessLabel,
+  getInterviewRoomCode,
+  buildInterviewRoomUrl,
+  canAccessInterviewRoomFromInterview,
+  hasInterviewRoomLink,
+  isInterviewRoomExpired,
+} from "@/lib/interviewRoomAccess";
 
 const STATUS_STYLES: Record<string, string> = {
   SCHEDULED: "bg-blue-100 text-blue-700",
@@ -153,15 +162,15 @@ export default function InterviewDetail() {
   const scheduledDate = new Date(iv.scheduledAt);
   const endDate = new Date(iv.endAt);
   const canCancelFromDetail = ["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"].includes(iv.interviewStatus);
-  const roomLink = iv.meetingLink ? `${window.location.origin}/interview/room/${iv.meetingLink}` : "";
+  const roomLink = buildInterviewRoomUrl(iv.meetingLink);
+  const roomCode = getInterviewRoomCode(iv.meetingLink);
   const hasFeedback = Array.isArray(iv.feedback) && iv.feedback.length > 0;
   const canAddFeedback =
     canAddInterviewFeedback(iv, roomParticipants) &&
     (iv.type !== "ONLINE" || !loadingRoomParticipants);
-  const isPastEndTime = Number.isFinite(endDate.getTime()) && Date.now() > endDate.getTime();
-  const canOpenRoomFromDetail =
-    ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(iv.interviewStatus) && !isPastEndTime;
-  const showRoomActionFromDetail = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(iv.interviewStatus);
+  const canOpenRoomFromDetail = canAccessInterviewRoomFromInterview(iv);
+  const showRoomActionFromDetail = hasInterviewRoomLink(iv);
+  const isRoomExpired = isInterviewRoomExpired(iv);
   const completeBlockReason = getInterviewCompletionBlockReason(iv, roomParticipants);
   const canCompleteFromDetail =
     canCompleteInterview(iv, roomParticipants) &&
@@ -290,40 +299,69 @@ export default function InterviewDetail() {
               </div>
               <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                 {iv.type === "ONLINE" ? (
-                  <>
-                    <Monitor className="h-4 w-4" /> Online
-                    {iv.meetingLink && showRoomActionFromDetail && (
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-2">
+                      <Monitor className="h-4 w-4" />
+                      Online
+                    </span>
+                    {iv.meetingLink && showRoomActionFromDetail ? (
                       <button
                         onClick={() => {
                           if (!canOpenRoomFromDetail) return;
-                          navigate(`/interview/room/${iv.meetingLink}`);
+                          navigate(buildInterviewRoomPath(iv.meetingLink));
                         }}
                         disabled={!canOpenRoomFromDetail}
-                        className="ml-2 inline-flex items-center gap-1 font-mono text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex max-w-full items-center gap-1 rounded-md bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <Monitor className="h-3 w-3" /> Vào phòng
+                        <Monitor className="h-3 w-3 shrink-0" />
+                        <span className="truncate">
+                          {canOpenRoomFromDetail ? getInterviewRoomAccessLabel(iv) : "Đã quá giờ phỏng vấn"}
+                        </span>
                       </button>
-                    )}
-                  </>
+                    ) : null}
+                  </div>
                 ) : (
                   <>
                     <MapPin className="h-4 w-4" /> {iv.location ?? "Offline"}
                   </>
                 )}
               </div>
-              {roomLink && (
-                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                  <LinkIcon className="h-4 w-4" />
-                  <span className="truncate font-mono">{roomLink}</span>
-                  <button
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(roomLink);
-                      toast.success("Đã sao chép link phòng");
-                    }}
-                    className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-                  >
-                    <Copy className="h-3 w-3" /> Sao chép
-                  </button>
+              {roomCode && roomLink && (
+                <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-900/40">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                        Phòng phỏng vấn
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 font-mono text-xs text-gray-800 shadow-sm dark:bg-gray-800 dark:text-gray-100">
+                          <LinkIcon className="h-3.5 w-3.5" />
+                          {roomCode}
+                        </span>
+                        <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-medium ${
+                          isRoomExpired
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                        }`}>
+                          {isRoomExpired ? "Đã quá giờ phỏng vấn" : "Còn hiệu lực"}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        {isRoomExpired
+                          ? "Phòng đã quá thời gian phỏng vấn nên chỉ có thể xem mã phòng, không thể truy cập lại từ đây."
+                          : "Sao chép link đầy đủ nếu cần gửi lại cho người tham gia."}
+                      </p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(roomLink);
+                        toast.success("Đã sao chép link phòng");
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                    >
+                      <Copy className="h-3 w-3" /> Sao chép link
+                    </button>
+                  </div>
                 </div>
               )}
               {iv.notes && (
@@ -533,7 +571,7 @@ export default function InterviewDetail() {
               className="bg-blue-600 hover:bg-blue-700"
               onClick={() => {
                 if (!canOpenRoomFromDetail) return;
-                navigate(`/interview/room/${iv.meetingLink}`);
+                navigate(buildInterviewRoomPath(iv.meetingLink));
               }}
               disabled={!canOpenRoomFromDetail}
             >

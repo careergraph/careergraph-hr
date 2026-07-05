@@ -16,6 +16,16 @@ import { Briefcase, Calendar, Clock, ExternalLink, RotateCcw, Users, X } from "l
 import { formatDateYMD, formatTimeHM } from "@/lib/dateUtils";
 import { canAddInterviewFeedback, canCompleteByStatus } from "./interviewCompletionRules";
 import JobMultiSelectFilter, { type JobFilterOption } from "./JobMultiSelectFilter";
+import {
+  buildInterviewRoomPath,
+  canAccessInterviewRoomFromInterview,
+  getInterviewRoomCode,
+} from "@/lib/interviewRoomAccess";
+import {
+  compareRepresentativePriority,
+  groupInterviewsByChain,
+  resolveDisplayInterviews,
+} from "@/lib/interviewDisplay";
 
 const STATUS_TABS: { value: string; label: string }[] = [
   { value: "", label: "Tất cả" },
@@ -68,6 +78,8 @@ export default function InterviewList() {
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [jobOptions, setJobOptions] = useState<JobFilterOption[]>([]);
   const dateFilterInputRef = useRef<HTMLInputElement | null>(null);
+
+  const displayInterviews = useMemo(() => resolveDisplayInterviews(interviews), [interviews]);
 
   useEffect(() => {
     fetchInterviews({
@@ -227,14 +239,6 @@ export default function InterviewList() {
     []
   );
 
-  const getKnownFeedbackStatus = useCallback(
-    (interview: Interview) => {
-      if (hasLocalFeedback(interview)) return true;
-      return feedbackStatusByInterviewId[interview.id];
-    },
-    [feedbackStatusByInterviewId, hasLocalFeedback]
-  );
-
   const groupedOnlineRooms = useMemo(() => {
     const toMs = (value?: string) => {
       if (!value) return 0;
@@ -261,20 +265,10 @@ export default function InterviewList() {
         const sorted = [...sortedFromStore].sort(
           (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
         );
+        const representatives = groupInterviewsByChain(sorted)
+          .map((group) => [...group].sort(compareRepresentativePriority)[0])
+          .sort((a, b) => toMs(a.scheduledAt) - toMs(b.scheduledAt));
 
-        const latestByApplicationMap = new Map<string, Interview>();
-        [...sorted]
-          .sort((a, b) => {
-            const slotDiff = toMs(b.scheduledAt) - toMs(a.scheduledAt);
-            if (slotDiff !== 0) return slotDiff;
-            return toMs(b.lastModifiedDate || b.createdDate) - toMs(a.lastModifiedDate || a.createdDate);
-          })
-          .forEach((iv) => {
-            if (!iv.applicationId || latestByApplicationMap.has(iv.applicationId)) return;
-            latestByApplicationMap.set(iv.applicationId, iv);
-          });
-
-        const latestByApplication = Array.from(latestByApplicationMap.values());
         const roomParticipants = roomParticipantsByCode[roomCode] ?? [];
         const joinedApplicationIds = new Set(
           roomParticipants.filter((participant) => participant.joinedAt && participant.applicationId).map((participant) => participant.applicationId as string)
@@ -282,26 +276,35 @@ export default function InterviewList() {
         const first = sorted[0];
         const latestEnd = [...sorted].sort((a, b) => new Date(b.endAt).getTime() - new Date(a.endAt).getTime())[0];
 
-        const resolvedStatus = [...latestByApplication]
+        const activeInterviews = sorted
+          .filter((iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW")
+          .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
+        const scheduledAt = activeInterviews.length > 0 ? activeInterviews[0].scheduledAt : first.scheduledAt;
+        const endAt = activeInterviews.length > 0
+          ? [...activeInterviews].sort((a, b) => new Date(b.endAt).getTime() - new Date(a.endAt).getTime())[0].endAt
+          : latestEnd.endAt;
+
+        const resolvedStatus = [...representatives]
           .filter((iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW")
           .sort((a, b) => STATUS_PRIORITY[a.interviewStatus] - STATUS_PRIORITY[b.interviewStatus])[0]
           ?.interviewStatus
-          ?? [...latestByApplication]
+          ?? [...representatives]
           .sort((a, b) => STATUS_PRIORITY[a.interviewStatus] - STATUS_PRIORITY[b.interviewStatus])[0]
           ?.interviewStatus;
 
-        const activeCandidateInterviews = latestByApplication
+        const activeCandidateInterviews = representatives
           .filter((iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW")
           .sort((a, b) => toMs(a.scheduledAt) - toMs(b.scheduledAt));
 
-        const cancelledCandidateInterviews = latestByApplication
+        const cancelledCandidateInterviews = sorted
           .filter((iv) => iv.interviewStatus === "CANCELLED" || iv.interviewStatus === "NO_SHOW")
           .sort((a, b) => toMs(b.scheduledAt) - toMs(a.scheduledAt));
 
         const cancelledCount = cancelledCandidateInterviews.length;
-        const totalCandidates = latestByApplication.length;
+        const totalCandidates = new Set(sorted.map((iv) => iv.applicationId).filter(Boolean)).size;
 
-        const feedbackCandidates = latestByApplication
+        const feedbackCandidates = representatives
           .filter(
             (iv) =>
               joinedApplicationIds.has(iv.applicationId) &&
@@ -312,37 +315,28 @@ export default function InterviewList() {
             candidateName: iv.candidateName,
           }));
 
-        const canJoinRoom = activeCandidateInterviews.length > 0 && ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"].includes(resolvedStatus);
-        const now = Date.now();
-        const canJoinRoomByTime = activeCandidateInterviews.some((iv) => {
-          if (!["SCHEDULED", "CONFIRMED", "PENDING_RESCHEDULE", "IN_PROGRESS"].includes(iv.interviewStatus)) {
-            return false;
-          }
-          const endTime = new Date(iv.endAt).getTime();
-          return Number.isFinite(endTime) && endTime >= now;
-        });
-
         return {
           roomCode,
+          roomLabel: getInterviewRoomCode(roomCode),
           jobTitle: first.jobTitle,
           status: resolvedStatus,
-          scheduledAt: first.scheduledAt,
-          endAt: latestEnd.endAt,
+          scheduledAt,
+          endAt,
           interviews: activeCandidateInterviews,
           cancelledInterviews: cancelledCandidateInterviews,
           totalCandidates,
           cancelledCount,
-          canJoinRoom: canJoinRoom && canJoinRoomByTime,
+          canJoinRoom: activeCandidateInterviews.some((iv) => canAccessInterviewRoomFromInterview(iv)),
           feedbackCandidates,
         };
       })
       .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
-  }, [getKnownFeedbackStatus, interviews, roomParticipantsByCode]);
+  }, [interviews, roomParticipantsByCode]);
 
   const feedbackCheckInterviews = useMemo(() => {
     const candidates: Interview[] = [];
 
-    for (const interview of interviews) {
+    for (const interview of displayInterviews) {
       if (interview.interviewStatus !== "COMPLETED") continue;
       if (hasLocalFeedback(interview)) continue;
       if (feedbackStatusByInterviewId[interview.id] !== undefined) continue;
@@ -361,17 +355,17 @@ export default function InterviewList() {
     }
 
     return candidates;
-  }, [feedbackStatusByInterviewId, hasLocalFeedback, interviews, roomParticipantsByCode]);
+  }, [displayInterviews, feedbackStatusByInterviewId, hasLocalFeedback, roomParticipantsByCode]);
 
   const groupedOnlineRoomCodes = useMemo(() => {
     return Array.from(
       new Set(
-        interviews
+        displayInterviews
           .filter((interview) => interview.type === "ONLINE" && Boolean(interview.meetingLink))
           .map((interview) => interview.meetingLink as string)
       )
     );
-  }, [interviews]);
+  }, [displayInterviews]);
 
   useEffect(() => {
     const roomCodes = groupedOnlineRoomCodes;
@@ -487,8 +481,8 @@ export default function InterviewList() {
   );
 
   const standaloneInterviews = useMemo(
-    () => interviews.filter((iv) => !(iv.type === "ONLINE" && !!iv.meetingLink)),
-    [interviews]
+    () => displayInterviews.filter((iv) => !(iv.type === "ONLINE" && !!iv.meetingLink)),
+    [displayInterviews]
   );
 
   const selectedJobs = useMemo(
@@ -754,7 +748,7 @@ export default function InterviewList() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{room.jobTitle}</p>
-                            <p className="mt-1 text-xs font-mono text-gray-500 dark:text-gray-400">Room: {room.roomCode}</p>
+                            <p className="mt-1 text-xs font-mono text-gray-500 dark:text-gray-400">Room: {room.roomLabel}</p>
                           </div>
                           <Badge className={STATUS_STYLES[room.status] ?? ""} variant="secondary">
                             {STATUS_LABELS[room.status] ?? room.status}
@@ -806,7 +800,7 @@ export default function InterviewList() {
                                 }
                                 className="text-[11px] font-medium text-red-500 hover:underline dark:text-red-400"
                               >
-                                {room.cancelledCount} ứng viên đã hủy/không tham gia - {expandedCancelledByRoom[room.roomCode] ? "Ẩn" : "Xem chi tiết"}
+                                {room.cancelledCount} lịch đã hủy/không tham gia - {expandedCancelledByRoom[room.roomCode] ? "Ẩn" : "Xem chi tiết"}
                               </button>
 
                               {expandedCancelledByRoom[room.roomCode] && (
@@ -828,17 +822,16 @@ export default function InterviewList() {
                         </div>
 
                         <div className="mt-3 flex flex-wrap gap-2">
-                          {room.canJoinRoom && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="h-8 bg-blue-600 hover:bg-blue-700"
-                              onClick={() => navigate(`/interview/room/${room.roomCode}`)}
-                            >
-                              <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                              Vào phòng
-                            </Button>
-                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-8 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-600"
+                            onClick={() => navigate(buildInterviewRoomPath(room.roomCode))}
+                            disabled={!room.canJoinRoom}
+                          >
+                            <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                            {room.canJoinRoom ? "Vào phòng" : "Đã quá giờ phỏng vấn"}
+                          </Button>
 
                           {room.feedbackCandidates.length > 0 && (
                             <Button
