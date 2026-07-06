@@ -49,7 +49,7 @@ export const Column = ({
     <div className={`relative flex flex-col ${
       isMobileView
         ? 'w-full'
-        : 'min-w-[220px] flex-1 md:min-w-[250px] lg:min-w-[280px]'
+        : 'min-w-55 flex-1 md:min-w-62.5 lg:min-w-70'
     }`}>
       {/* Hiệu ứng gradient đầu cột. */}
       <div
