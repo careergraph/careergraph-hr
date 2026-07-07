@@ -22,19 +22,19 @@ HR portal hiện bao gồm các nhóm chức năng:
 
 Dashboard thống kê:
 
-![CareerGraph HR Dashboard](./docs/assets/readme/dashboard.png)
+![CareerGraph HR Dashboard](./public/assets/readme/dashboard.png)
 
 Kanban ứng viên theo pipeline:
 
-![CareerGraph HR Kanban](./docs/assets/readme/kanban.png)
+![CareerGraph HR Kanban](./public/assets/readme/kanban.png)
 
 Interview room cho điều phối phỏng vấn:
 
-![CareerGraph HR Interview Room](./docs/assets/readme/interview-room.png)
+![CareerGraph HR Interview Room](./public/assets/readme/interview-room.png)
 
 Workflow xác thực doanh nghiệp:
 
-![CareerGraph HR Company Verification](./docs/assets/readme/company-verification.png)
+![CareerGraph HR Company Verification](./public/assets/readme/company-verification.png)
 
 ## Core capabilities
 
