@@ -9,54 +9,70 @@ export function LandingFooter() {
 
   return (
     <>
-      <footer className="border-t border-slate-200 bg-white/80">
-        {/* Bố cục gồm khối giới thiệu và các cột liên kết. */}
-        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10 text-sm text-slate-500 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <img src="/images/logo/logo.svg" alt="CareerGraph" className="h-8 w-8" loading="lazy" />
-              <span className="text-lg font-semibold text-slate-800">CareerGraph</span>
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto max-w-6xl px-6 py-9 lg:py-10">
+          <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr]">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <img src="/images/logo/logo.svg" alt="CareerGraph" className="h-9 w-9" loading="lazy" />
+                <span className="text-lg font-semibold text-slate-900">CareerGraph</span>
+              </div>
+
+              <p className="max-w-md text-sm leading-6 text-slate-600">
+                Nền tảng tuyển dụng toàn diện giúp đội ngũ HR tạo trải nghiệm đáng nhớ và xây dựng đội ngũ tương lai.
+              </p>
+
+              <a
+                href="mailto:quangthinh06112004@gmail.com"
+                className="inline-flex text-sm text-slate-600 transition hover:text-slate-900"
+              >
+                Liên hệ phản hồi: quangthinh06112004@gmail.com
+              </a>
             </div>
-            <p className="max-w-sm text-sm leading-relaxed text-slate-500">
-              Nền tảng tuyển dụng toàn diện giúp đội ngũ HR tạo trải nghiệm đáng nhớ và xây dựng đội ngũ tương lai.
-            </p>
-            <p className="text-sm text-slate-500">
-              Liên hệ phản hồi: quangthinh06112004@gmail.com
-            </p>
-            <p className="text-xs text-slate-400">© {currentYear} CareerGraph. All rights reserved.</p>
+
+            <div className="grid gap-6 sm:grid-cols-3">
+              <div className="space-y-2.5">
+                <h4 className="text-sm font-semibold text-slate-900">Sản phẩm</h4>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  <li><a href="#features" className="transition hover:text-slate-900">Tính năng</a></li>
+                  <li><a href="#solutions" className="transition hover:text-slate-900">Giải pháp</a></li>
+                  <li><a href="#pricing" className="transition hover:text-slate-900">Bảng giá</a></li>
+                </ul>
+              </div>
+
+              <div className="space-y-2.5">
+                <h4 className="text-sm font-semibold text-slate-900">Tài nguyên</h4>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  <li><a href="#testimonials" className="transition hover:text-slate-900">Khách hàng</a></li>
+                  <li><a href="#workflow" className="transition hover:text-slate-900">Quy trình</a></li>
+                  <li><a href="mailto:quangthinh06112004@gmail.com" className="transition hover:text-slate-900">Hỗ trợ</a></li>
+                </ul>
+              </div>
+
+              <div className="space-y-2.5">
+                <h4 className="text-sm font-semibold text-slate-900">Pháp lý</h4>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  <li><a href="#" className="transition hover:text-slate-900">Chính sách bảo mật</a></li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setOpenTerms(true)}
+                      className="transition hover:text-slate-900"
+                    >
+                      Điều khoản sử dụng
+                    </button>
+                  </li>
+                  <li><a href="#" className="transition hover:text-slate-900">Cookie</a></li>
+                </ul>
+              </div>
+            </div>
           </div>
-          <div className="grid flex-1 gap-8 sm:grid-cols-3">
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-slate-800">Sản phẩm</h4>
-              <ul className="space-y-2">
-                <li><a href="#features" className="transition hover:text-slate-900">Tính năng</a></li>
-                <li><a href="#solutions" className="transition hover:text-slate-900">Giải pháp</a></li>
-                <li><a href="#pricing" className="transition hover:text-slate-900">Bảng giá</a></li>
-              </ul>
-            </div>
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-slate-800">Tài nguyên</h4>
-              <ul className="space-y-2">
-                <li><a href="#testimonials" className="transition hover:text-slate-900">Khách hàng</a></li>
-                <li><a href="#workflow" className="transition hover:text-slate-900">Quy trình</a></li>
-                <li><a href="mailto:quangthinh06112004@gmail.com" className="transition hover:text-slate-900">Hỗ trợ</a></li>
-              </ul>
-            </div>
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-slate-800">Pháp lý</h4>
-              <ul className="space-y-2">
-                <li><a href="#" className="transition hover:text-slate-900">Chính sách bảo mật</a></li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => setOpenTerms(true)}
-                    className="transition hover:text-slate-900"
-                  >
-                    Điều khoản sử dụng
-                  </button>
-                </li>
-                <li><a href="#" className="transition hover:text-slate-900">Cookie</a></li>
-              </ul>
+
+          <div className="mt-8 border-t border-slate-200 pt-4 text-xs leading-6 text-slate-400">
+            <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+              <p>© {currentYear} CareerGraph. All rights reserved.</p>
+              <p>Graduation Project • HCMUTE</p>
+              <p>Developed by Luong Quang Thinh &amp; Nguyen Cong Quy</p>
             </div>
           </div>
         </div>
