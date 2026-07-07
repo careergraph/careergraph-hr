@@ -276,6 +276,15 @@ export default function InterviewList() {
         const first = sorted[0];
         const latestEnd = [...sorted].sort((a, b) => new Date(b.endAt).getTime() - new Date(a.endAt).getTime())[0];
 
+        const activeInterviews = sorted
+          .filter((iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW")
+          .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
+        const scheduledAt = activeInterviews.length > 0 ? activeInterviews[0].scheduledAt : first.scheduledAt;
+        const endAt = activeInterviews.length > 0
+          ? [...activeInterviews].sort((a, b) => new Date(b.endAt).getTime() - new Date(a.endAt).getTime())[0].endAt
+          : latestEnd.endAt;
+
         const resolvedStatus = [...representatives]
           .filter((iv) => iv.interviewStatus !== "CANCELLED" && iv.interviewStatus !== "NO_SHOW")
           .sort((a, b) => STATUS_PRIORITY[a.interviewStatus] - STATUS_PRIORITY[b.interviewStatus])[0]
@@ -311,8 +320,8 @@ export default function InterviewList() {
           roomLabel: getInterviewRoomCode(roomCode),
           jobTitle: first.jobTitle,
           status: resolvedStatus,
-          scheduledAt: first.scheduledAt,
-          endAt: latestEnd.endAt,
+          scheduledAt,
+          endAt,
           interviews: activeCandidateInterviews,
           cancelledInterviews: cancelledCandidateInterviews,
           totalCandidates,

@@ -5,6 +5,7 @@ import {
   CALENDAR_VARIANT_STYLES,
   CalendarLevel,
   formatTimeForInput,
+  toDate,
 } from "../../lib/calendar-utils";
 import { CalendarEvent } from "@/types/calendar";
 import type { InterviewType, InterviewStatus } from "@/types/interview";
@@ -282,9 +283,9 @@ export const CalendarModalForm = ({
       return 60;
     }
 
-    const startMs = new Date(String(editingEvent.start)).getTime();
-    const endMs = new Date(String(editingEvent.end)).getTime();
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+    const startMs = toDate(editingEvent.start)?.getTime() ?? 0;
+    const endMs = toDate(editingEvent.end)?.getTime() ?? 0;
+    if (!startMs || !endMs || endMs <= startMs) {
       return 60;
     }
 
@@ -469,8 +470,8 @@ export const CalendarModalForm = ({
 
   const getEditingStartFromEvent = useCallback(() => {
     if (!editingEvent?.start) return "";
-    const dateObj = new Date(String(editingEvent.start));
-    if (!Number.isFinite(dateObj.getTime())) return "";
+    const dateObj = toDate(editingEvent.start);
+    if (!dateObj || !Number.isFinite(dateObj.getTime())) return "";
     const yyyy = dateObj.getFullYear();
     const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
     const dd = String(dateObj.getDate()).padStart(2, "0");

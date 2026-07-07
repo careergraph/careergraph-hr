@@ -166,8 +166,8 @@ const mapInterviewToCalendarEvent = (interview: Interview, round: number): Calen
   return {
     id: interview.id,
     title: `${buildInterviewTitle(round)} - ${interview.candidateName}`,
-    start: interview.scheduledAt,
-    end: interview.endAt,
+    start: toDate(interview.scheduledAt) || undefined,
+    end: toDate(interview.endAt) || undefined,
     allDay: false,
     extendedProps: {
       calendar: level,
@@ -341,7 +341,11 @@ const Calendar = () => {
   useEffect(() => {
     const completedRoundsByApplication = new Map<string, number>();
     const mapped = [...interviewEvents]
-      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+      .sort((a, b) => {
+        const timeA = toDate(a.scheduledAt)?.getTime() ?? 0;
+        const timeB = toDate(b.scheduledAt)?.getTime() ?? 0;
+        return timeA - timeB;
+      })
       .map((interview) => {
         const completedRounds = completedRoundsByApplication.get(interview.applicationId) ?? 0;
         const currentRound = interview.roundNumber ?? (completedRounds + 1);
@@ -352,10 +356,7 @@ const Calendar = () => {
       });
 
     setEvents(mapped);
-    if (mapped.length > 0 && !activeEvent) {
-      setActiveEvent(mapped[0]);
-    }
-  }, [activeEvent, interviewEvents]);
+  }, [interviewEvents]);
 
   const sortedEvents = useMemo(() => {
     return [...events].sort((a, b) => {

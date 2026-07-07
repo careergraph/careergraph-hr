@@ -79,8 +79,8 @@ export const toDate = (
   if (value === null || value === undefined) return null;
   if (Array.isArray(value)) {
     if (value.length === 0) return null;
-    const [year, month = 0, day = 1, hours = 0, minutes = 0, seconds = 0, milliseconds = 0] = value;
-    const date = new Date(year, month, day, hours, minutes, seconds, milliseconds);
+    const [year, month = 1, day = 1, hours = 0, minutes = 0, seconds = 0, milliseconds = 0] = value;
+    const date = new Date(year, month - 1, day, hours, minutes, seconds, milliseconds);
     return Number.isNaN(date.getTime()) ? null : date;
   }
   const date = value instanceof Date ? value : new Date(value);

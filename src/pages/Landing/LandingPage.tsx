@@ -8,7 +8,6 @@ import { WorkflowSection } from "./WorkflowSection";
 import { SolutionsSection } from "./SolutionsSection";
 import { TestimonialsSection } from "./TestimonialsSection";
 import { IntegrationsSection } from "./IntegrationsSection";
-import { CallToActionSection } from "./CallToActionSection";
 import { LandingFooter } from "./LandingFooter";
 
 // LandingPage kết hợp các section giới thiệu sản phẩm và điều hướng theo trạng thái đăng nhập.
