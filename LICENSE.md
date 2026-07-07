@@ -1,21 +1,21 @@
-MIT License
+Educational Use License
 
-Copyright (c) 2025 CareerGraph
+Copyright (c) 2026 CareerGraph Project
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Developed by:
+- Luong Quang Thinh
+- Nguyen Cong Quy
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Ho Chi Minh City University of Technology and Engineering (HCMUTE)
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+All rights reserved.
+
+Permission is granted to any person obtaining a copy of this software to:
+
+- View the source code.
+- Clone the repository.
+- Use, build, and modify the software for personal learning, educational, or research purposes only.
+
+Commercial use of this software, including selling, licensing, integrating into commercial products or services, or using it for business purposes, is prohibited without prior written permission from the copyright holders.
+
+This software is provided "AS IS", without warranty of any kind. The authors shall not be liable for any damages arising from the use of this software.
