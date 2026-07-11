@@ -18,6 +18,7 @@ const toStage = (raw: Record<string, unknown>): CompanyRecruitmentStage | null =
 
   return {
     stage,
+    label: typeof raw.label === "string" ? raw.label : undefined,
     displayOrder:
       typeof raw.displayOrder === "number" ? raw.displayOrder : Number(raw.displayOrder) || 0,
     active: typeof raw.active === "boolean" ? raw.active : Boolean(raw.active),

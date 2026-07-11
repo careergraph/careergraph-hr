@@ -10,10 +10,16 @@ export type ApplicationStageCode =
   | "OFFER_EXTENDED"
   | "HIRED"
   | "OFFBOARDED"
-  | "REJECTED";
+  | "REJECTED"
+  | "CUSTOM_1"
+  | "CUSTOM_2"
+  | "CUSTOM_3"
+  | "CUSTOM_4"
+  | "CUSTOM_5";
 
 export interface CompanyRecruitmentStage {
   stage: ApplicationStageCode;
+  label?: string;
   displayOrder: number;
   active: boolean;
   required?: boolean;
@@ -30,6 +36,11 @@ export const STAGE_TO_STATUS: Record<ApplicationStageCode, CandidateStatus> = {
   HIRED: "hired",
   OFFBOARDED: "offboarded",
   REJECTED: "rejected",
+  CUSTOM_1: "custom_1" as CandidateStatus,
+  CUSTOM_2: "custom_2" as CandidateStatus,
+  CUSTOM_3: "custom_3" as CandidateStatus,
+  CUSTOM_4: "custom_4" as CandidateStatus,
+  CUSTOM_5: "custom_5" as CandidateStatus,
 };
 
 export const STATUS_TO_STAGE: Record<CandidateStatus, ApplicationStageCode> = {
@@ -43,7 +54,12 @@ export const STATUS_TO_STAGE: Record<CandidateStatus, ApplicationStageCode> = {
   hired: "HIRED",
   offboarded: "OFFBOARDED",
   rejected: "REJECTED",
-};
+  custom_1: "CUSTOM_1",
+  custom_2: "CUSTOM_2",
+  custom_3: "CUSTOM_3",
+  custom_4: "CUSTOM_4",
+  custom_5: "CUSTOM_5",
+} as Record<string, ApplicationStageCode>;
 
 export const STAGE_LABELS: Record<ApplicationStageCode, string> = {
   APPLIED: "Ứng tuyển",
@@ -56,6 +72,26 @@ export const STAGE_LABELS: Record<ApplicationStageCode, string> = {
   HIRED: "Nhận chính thức",
   OFFBOARDED: "Nghỉ việc",
   REJECTED: "Từ chối",
+  CUSTOM_1: "Tùy chỉnh 1",
+  CUSTOM_2: "Tùy chỉnh 2",
+  CUSTOM_3: "Tùy chỉnh 3",
+  CUSTOM_4: "Tùy chỉnh 4",
+  CUSTOM_5: "Tùy chỉnh 5",
+};
+
+export const getRecruitmentStageLabel = (
+  stage: Pick<CompanyRecruitmentStage, "stage" | "label">
+): string => {
+  const customLabel = typeof stage.label === "string" ? stage.label.trim() : "";
+  return customLabel || STAGE_LABELS[stage.stage];
+};
+
+export const getStageLabelByCode = (
+  stageCode: ApplicationStageCode,
+  stages?: CompanyRecruitmentStage[]
+): string => {
+  const matchedStage = stages?.find((stage) => stage.stage === stageCode);
+  return matchedStage ? getRecruitmentStageLabel(matchedStage) : STAGE_LABELS[stageCode];
 };
 
 export const REQUIRED_STAGES: ApplicationStageCode[] = ["APPLIED", "REJECTED"];
@@ -71,13 +107,18 @@ export const DEFAULT_STAGE_ORDER: ApplicationStageCode[] = [
   "HIRED",
   "OFFBOARDED",
   "REJECTED",
+  "CUSTOM_1",
+  "CUSTOM_2",
+  "CUSTOM_3",
+  "CUSTOM_4",
+  "CUSTOM_5",
 ];
 
 export const DEFAULT_COMPANY_STAGES: CompanyRecruitmentStage[] = DEFAULT_STAGE_ORDER.map(
   (stage, index) => ({
     stage,
     displayOrder: index + 1,
-    active: stage !== "OFFBOARDED",
+    active: stage !== "OFFBOARDED" && !stage.startsWith("CUSTOM_"),
     required: REQUIRED_STAGES.includes(stage),
   })
 );
@@ -93,7 +134,7 @@ export const buildColumnsFromStages = (
     .filter((stage) => stage.active)
     .map((stage) => ({
       id: STAGE_TO_STATUS[stage.stage],
-      title: STAGE_LABELS[stage.stage],
+      title: getRecruitmentStageLabel(stage),
       stage: stage.stage,
     }));
 };
@@ -126,32 +167,22 @@ export const canScheduleInterviewAtStage = (
     return false;
   }
 
-  if (stage === "INTERVIEW_COMPLETED") {
+  if (stage === "INTERVIEW_COMPLETED" || stage === "INTERVIEW_SCHEDULED" || stage === "INTERVIEW") {
     return true;
   }
 
-  const normalized = normalizeStageConfig(
+  const activeStages = normalizeStageConfig(
     stages && stages.length > 0 ? stages : DEFAULT_COMPANY_STAGES
-  );
-  const stageOrderMap = new Map<ApplicationStageCode, number>();
+  ).filter(s => s.active !== false);
 
-  normalized.forEach((item, index) => {
-    stageOrderMap.set(item.stage, item.displayOrder ?? index + 1);
-  });
+  const interviewIndex = activeStages.findIndex(s => s.stage === "INTERVIEW");
+  if (interviewIndex < 0) return false;
 
-  const interviewFallbackIndex = DEFAULT_STAGE_ORDER.indexOf("INTERVIEW");
-  const interviewStageOrder =
-    stageOrderMap.get("INTERVIEW") ??
-    (interviewFallbackIndex >= 0 ? interviewFallbackIndex + 1 : 0);
-  const order = stageOrderMap.get(stage as ApplicationStageCode);
-
-  if (typeof order !== "number") {
-    return false;
+  if (interviewIndex > 0) {
+    if (stage === activeStages[interviewIndex - 1].stage) {
+      return true;
+    }
   }
 
-  if (interviewStageOrder <= 0) {
-    return order === interviewStageOrder;
-  }
-
-  return order === interviewStageOrder || order === interviewStageOrder - 1;
+  return false;
 };
