@@ -858,7 +858,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
 
   const nextStageButtonLabel = useMemo(() => {
     if (!nextActiveStage) return null;
-    return STAGE_LABELS[nextActiveStage.stage] ?? nextActiveStage.title;
+    return  nextActiveStage.title ?? STAGE_LABELS[nextActiveStage.stage];
   }, [nextActiveStage]);
 
   useEffect(() => {
