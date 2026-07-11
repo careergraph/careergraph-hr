@@ -132,9 +132,7 @@ export const CalendarModalForm = ({
   const [interviewType, setInterviewType] = useState<InterviewType>("ONLINE");
   const [selectedRound, setSelectedRound] = useState<number>(1);
   const [availableRounds, setAvailableRounds] = useState<number[]>([1]);
-  const [pipelineStages, setPipelineStages] = useState<CompanyRecruitmentStage[]>(
-    DEFAULT_COMPANY_STAGES
-  );
+  const [pipelineStages, setPipelineStages] = useState<CompanyRecruitmentStage[]>([]);
   const [startTime, setStartTime] = useState("09:00");
   const [duration, setDuration] = useState<number>(60);
   const [loadingJobs, setLoadingJobs] = useState(false);
@@ -236,7 +234,7 @@ export const CalendarModalForm = ({
 
   // Fetch unscheduled candidates when job changes
   useEffect(() => {
-    if (!selectedJobId) {
+    if (!selectedJobId || pipelineStages.length === 0) {
       setUnscheduledApps([]);
       setSelectedAppId("");
       setAvailableRounds([1]);
@@ -805,7 +803,7 @@ export const CalendarModalForm = ({
                           <Users className="h-4 w-4" />
                           Chọn ứng viên
                         </Label>
-                        {loadingApps ? (
+                        {loadingApps || pipelineStages.length === 0 ? (
                           <div className="rounded-lg border p-3 text-center text-sm text-muted-foreground">
                             Đang tải danh sách ứng viên...
                           </div>

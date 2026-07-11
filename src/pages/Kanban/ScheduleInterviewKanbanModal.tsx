@@ -71,9 +71,7 @@ export default function ScheduleInterviewKanbanModal({
 
   const [unscheduledApps, setUnscheduledApps] = useState<UnscheduledApp[]>([]);
   const [loadingApps, setLoadingApps] = useState(false);
-  const [pipelineStages, setPipelineStages] = useState<CompanyRecruitmentStage[]>(
-    DEFAULT_COMPANY_STAGES
-  );
+  const [pipelineStages, setPipelineStages] = useState<CompanyRecruitmentStage[]>([]);
   const [selectedAppId, setSelectedAppId] = useState(preselectedApplicationId || "");
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
@@ -126,7 +124,7 @@ export default function ScheduleInterviewKanbanModal({
 
   // Load unscheduled applications when modal opens
   useEffect(() => {
-    if (!open || !jobId) return;
+    if (!open || !jobId || pipelineStages.length === 0) return;
     setLoadingApps(true);
     interviewService
       .fetchUnscheduledByJob(jobId)
@@ -139,12 +137,14 @@ export default function ScheduleInterviewKanbanModal({
             : [];
         const eligibleApps = apps.filter(isAppEligible);
         setUnscheduledApps(eligibleApps);
-        if (
-          preselectedApplicationId &&
-          !eligibleApps.find((a) => a.applicationId === preselectedApplicationId)
-        ) {
-          setFormError("Ứng viên không đủ điều kiện để lên lịch ở giai đoạn hiện tại.");
-          setSelectedAppId("");
+        if (preselectedApplicationId) {
+          if (!eligibleApps.find((a) => a.applicationId === preselectedApplicationId)) {
+            setFormError("Ứng viên không đủ điều kiện để lên lịch ở giai đoạn hiện tại.");
+            setSelectedAppId("");
+          } else {
+            setFormError("");
+            setSelectedAppId(preselectedApplicationId);
+          }
         }
       })
       .catch(() => {
@@ -180,6 +180,7 @@ export default function ScheduleInterviewKanbanModal({
     setOverwritePromptMessage("");
     setScheduledResult(null);
     setCopied(false);
+    setPipelineStages([]);
   };
 
   const handleClose = () => {
@@ -411,7 +412,7 @@ export default function ScheduleInterviewKanbanModal({
                   <Users className="h-4 w-4" />
                   Chọn ứng viên
                 </Label>
-                {loadingApps ? (
+                {loadingApps || pipelineStages.length === 0 ? (
                   <div className="rounded-lg border p-3 text-center text-sm text-muted-foreground">
                     Đang tải danh sách ứng viên...
                   </div>

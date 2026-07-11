@@ -70,4 +70,34 @@ export const KANBAN_STAGE_META: Record<
     badge: "bg-rose-500/10 text-rose-600",
     icon: <Ban className="h-5 w-5 text-rose-500" />,
   },
+  custom_1: {
+    accent: "from-slate-400/60 via-slate-300/20 to-transparent",
+    border: "border-slate-200/70",
+    badge: "bg-slate-100 text-slate-700",
+    icon: <CheckCircle className="h-5 w-5 text-slate-500" />,
+  },
+  custom_2: {
+    accent: "from-slate-400/60 via-slate-300/20 to-transparent",
+    border: "border-slate-200/70",
+    badge: "bg-slate-100 text-slate-700",
+    icon: <CheckCircle className="h-5 w-5 text-slate-500" />,
+  },
+  custom_3: {
+    accent: "from-slate-400/60 via-slate-300/20 to-transparent",
+    border: "border-slate-200/70",
+    badge: "bg-slate-100 text-slate-700",
+    icon: <CheckCircle className="h-5 w-5 text-slate-500" />,
+  },
+  custom_4: {
+    accent: "from-slate-400/60 via-slate-300/20 to-transparent",
+    border: "border-slate-200/70",
+    badge: "bg-slate-100 text-slate-700",
+    icon: <CheckCircle className="h-5 w-5 text-slate-500" />,
+  },
+  custom_5: {
+    accent: "from-slate-400/60 via-slate-300/20 to-transparent",
+    border: "border-slate-200/70",
+    badge: "bg-slate-100 text-slate-700",
+    icon: <CheckCircle className="h-5 w-5 text-slate-500" />,
+  },
 };
