@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { Lock, Save, Plus, Edit2, Check, Trash2, GripVertical } from "lucide-react";
 import {
   DndContext,
@@ -26,7 +26,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import {
   DEFAULT_COMPANY_STAGES,
-  STAGE_LABELS,
+  getRecruitmentStageLabel,
   STAGE_TO_STATUS,
   normalizeStageConfig,
   type CompanyRecruitmentStage,
@@ -34,6 +34,17 @@ import {
 } from "@/lib/recruitmentPipeline";
 import { KANBAN_STAGE_META } from "@/lib/kanbanStageMeta";
 import { companyPipelineService } from "@/services/companyPipelineService";
+
+interface SortableStageItemProps {
+  stage: CompanyRecruitmentStage;
+  editingStage: ApplicationStageCode | null;
+  editingLabel: string;
+  setEditingStage: Dispatch<SetStateAction<ApplicationStageCode | null>>;
+  setEditingLabel: Dispatch<SetStateAction<string>>;
+  handleSaveLabel: (stageCode: ApplicationStageCode) => void;
+  handleToggle: (stageCode: ApplicationStageCode) => void;
+  handleDeleteCustomStage: (stageCode: ApplicationStageCode) => void;
+}
 
 function SortableStageItem({
   stage,
@@ -44,7 +55,7 @@ function SortableStageItem({
   handleSaveLabel,
   handleToggle,
   handleDeleteCustomStage,
-}: any) {
+}: SortableStageItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: stage.stage,
   });
@@ -61,6 +72,7 @@ function SortableStageItem({
   return (
     <Card
       ref={setNodeRef}
+      data-stage-code={stage.stage}
       style={style}
       className={`relative overflow-hidden rounded-2xl border ${meta.border} bg-white/95 p-4 shadow-sm ${
         isDragging ? "opacity-50 ring-2 ring-emerald-500" : ""
@@ -73,6 +85,7 @@ function SortableStageItem({
             {...attributes}
             {...listeners}
             className="flex h-8 w-8 cursor-grab items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
+            title="Kéo để sắp xếp"
           >
             <GripVertical className="h-5 w-5" />
           </div>
@@ -92,20 +105,23 @@ function SortableStageItem({
                     if (e.key === "Escape") setEditingStage(null);
                   }}
                 />
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-600" onClick={() => handleSaveLabel(stage.stage)}>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-emerald-600"
+                  onClick={() => handleSaveLabel(stage.stage)}
+                >
                   <Check className="h-4 w-4" />
                 </Button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-slate-800">
-                  {stage.label || STAGE_LABELS[stage.stage]}
-                </p>
+                <p className="text-sm font-semibold text-slate-800">{getRecruitmentStageLabel(stage)}</p>
                 {stage.stage.startsWith("CUSTOM_") && (
                   <button
                     onClick={() => {
                       setEditingStage(stage.stage);
-                      setEditingLabel(stage.label || STAGE_LABELS[stage.stage]);
+                      setEditingLabel(getRecruitmentStageLabel(stage));
                     }}
                     className="text-slate-400 hover:text-slate-600"
                   >
@@ -114,9 +130,7 @@ function SortableStageItem({
                 )}
               </div>
             )}
-            {!stage.stage.startsWith("CUSTOM_") && (
-              <p className="text-xs text-slate-400">{stage.stage}</p>
-            )}
+            {!stage.stage.startsWith("CUSTOM_") && <p className="text-xs text-slate-400">{stage.stage}</p>}
           </div>
           {stage.required ? (
             <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
@@ -131,7 +145,7 @@ function SortableStageItem({
             checked={stage.active}
             onCheckedChange={() => handleToggle(stage.stage)}
             disabled={stage.required}
-            aria-label={`Bật/tắt trạng thái ${STAGE_LABELS[stage.stage]}`}
+            aria-label={`Bật/tắt trạng thái ${getRecruitmentStageLabel(stage)}`}
             className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-200/80 ring-1 ring-slate-200"
           />
 
@@ -177,7 +191,9 @@ export default function PipelineSettings() {
       active: true,
       required: false,
     };
-    setStages([...stages, newStage]);
+    setStages(normalizeStageConfig([...stages, newStage]));
+    setEditingStage(available);
+    setEditingLabel(newStage.label ?? "");
   };
 
   const handleSaveLabel = (stageCode: ApplicationStageCode) => {
@@ -192,8 +208,22 @@ export default function PipelineSettings() {
   };
 
   const handleDeleteCustomStage = (stageCode: ApplicationStageCode) => {
-    setStages((prev) => prev.filter((s) => s.stage !== stageCode));
+    setStages((prev) => normalizeStageConfig(prev.filter((s) => s.stage !== stageCode)));
   };
+
+  useEffect(() => {
+    if (!editingStage) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`[data-stage-code="${editingStage}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [editingStage]);
 
   useEffect(() => {
     let mounted = true;
@@ -222,10 +252,7 @@ export default function PipelineSettings() {
     };
   }, []);
 
-  const activeStages = useMemo(
-    () => stages.filter((stage) => stage.active),
-    [stages]
-  );
+  const activeStages = useMemo(() => stages.filter((stage) => stage.active), [stages]);
 
   const handleToggle = (stageCode: ApplicationStageCode) => {
     setStages((prev) =>
@@ -295,8 +322,11 @@ export default function PipelineSettings() {
       setStages((prev) => {
         const oldIndex = prev.findIndex((s) => s.stage === active.id);
         const newIndex = prev.findIndex((s) => s.stage === over.id);
-        const next = arrayMove(prev, oldIndex, newIndex);
-        return next.map((stage, idx) => ({ ...stage, displayOrder: idx + 1 }));
+        const reordered = arrayMove(prev, oldIndex, newIndex).map((stage, index) => ({
+          ...stage,
+          displayOrder: index + 1,
+        }));
+        return normalizeStageConfig(reordered);
       });
     }
   };
@@ -328,20 +358,12 @@ export default function PipelineSettings() {
 
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <div className="space-y-4">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={stages.map((s) => s.stage)}
-                strategy={verticalListSortingStrategy}
-              >
-                {stages.map((stage, index) => (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={stages.map((s) => s.stage)} strategy={verticalListSortingStrategy}>
+                {stages.map((stage) => (
                   <SortableStageItem
                     key={stage.stage}
                     stage={stage}
-                    index={index}
                     editingStage={editingStage}
                     editingLabel={editingLabel}
                     setEditingStage={setEditingStage}
@@ -358,9 +380,7 @@ export default function PipelineSettings() {
           <div className="space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
               <h3 className="text-sm font-semibold text-slate-800">Xem trước Kanban</h3>
-              <p className="mt-1 text-xs text-slate-500">
-                Các cột đang bật sẽ hiển thị như bên dưới.
-              </p>
+              <p className="mt-1 text-xs text-slate-500">Các cột đang bật sẽ hiển thị như bên dưới.</p>
 
               <div className="mt-4 space-y-3">
                 {activeStages.map((stage) => {
@@ -379,9 +399,7 @@ export default function PipelineSettings() {
                           {meta.icon}
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-slate-700">
-                            {stage.label || STAGE_LABELS[stage.stage]}
-                          </p>
+                          <p className="text-sm font-semibold text-slate-700">{getRecruitmentStageLabel(stage)}</p>
                           {!stage.stage.startsWith("CUSTOM_") && (
                             <p className="text-xs text-slate-400">{stage.stage}</p>
                           )}

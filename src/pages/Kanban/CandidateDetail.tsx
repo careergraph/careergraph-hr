@@ -28,7 +28,11 @@ import type {
 import { formatDate } from "@/lib/candidateDataUtils";
 import type { Interview } from "@/types/interview";
 import { Button } from "@/components/ui/button";
-import { STAGE_LABELS, STATUS_TO_STAGE } from "@/lib/recruitmentPipeline";
+import {
+  getStageLabelByCode,
+  STATUS_TO_STAGE,
+  type CompanyRecruitmentStage,
+} from "@/lib/recruitmentPipeline";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +58,7 @@ type CandidateDetailProps = {
   nextStageLabel?: string | null;
   isAdvancingStage?: boolean;
   onMessageSent?: () => void | Promise<void>;
+  pipelineStages?: CompanyRecruitmentStage[];
   restoreStageOptions?: Array<{
     status: Candidate["status"];
     label: string;
@@ -86,6 +91,7 @@ export function CandidateDetail({
   nextStageLabel,
   isAdvancingStage = false,
   onMessageSent,
+  pipelineStages,
   restoreStageOptions = [],
   onRestoreCandidateStage,
 }: CandidateDetailProps) {
@@ -202,8 +208,8 @@ export function CandidateDetail({
 
   const currentStageLabel = useMemo(() => {
     if (!candidate?.status) return "Chưa cập nhật";
-    return STAGE_LABELS[STATUS_TO_STAGE[candidate.status]] ?? candidate.status;
-  }, [candidate]);
+    return getStageLabelByCode(STATUS_TO_STAGE[candidate.status], pipelineStages);
+  }, [candidate, pipelineStages]);
 
   const loadTab = useCallback(
     async (tab: string) => {

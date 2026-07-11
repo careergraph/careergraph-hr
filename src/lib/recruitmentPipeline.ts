@@ -79,6 +79,21 @@ export const STAGE_LABELS: Record<ApplicationStageCode, string> = {
   CUSTOM_5: "Tùy chỉnh 5",
 };
 
+export const getRecruitmentStageLabel = (
+  stage: Pick<CompanyRecruitmentStage, "stage" | "label">
+): string => {
+  const customLabel = typeof stage.label === "string" ? stage.label.trim() : "";
+  return customLabel || STAGE_LABELS[stage.stage];
+};
+
+export const getStageLabelByCode = (
+  stageCode: ApplicationStageCode,
+  stages?: CompanyRecruitmentStage[]
+): string => {
+  const matchedStage = stages?.find((stage) => stage.stage === stageCode);
+  return matchedStage ? getRecruitmentStageLabel(matchedStage) : STAGE_LABELS[stageCode];
+};
+
 export const REQUIRED_STAGES: ApplicationStageCode[] = ["APPLIED", "REJECTED"];
 
 export const DEFAULT_STAGE_ORDER: ApplicationStageCode[] = [
@@ -119,7 +134,7 @@ export const buildColumnsFromStages = (
     .filter((stage) => stage.active)
     .map((stage) => ({
       id: STAGE_TO_STATUS[stage.stage],
-      title: stage.label || STAGE_LABELS[stage.stage],
+      title: getRecruitmentStageLabel(stage),
       stage: stage.stage,
     }));
 };

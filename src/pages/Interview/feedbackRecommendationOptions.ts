@@ -1,6 +1,6 @@
 import {
   DEFAULT_COMPANY_STAGES,
-  STAGE_LABELS,
+  getRecruitmentStageLabel,
   normalizeStageConfig,
   type CompanyRecruitmentStage,
 } from "@/lib/recruitmentPipeline";
@@ -48,7 +48,7 @@ export const buildFeedbackRecommendationOptions = (
   if (nextStage) {
     options.push({
       value: "ADVANCE_NEXT_STAGE",
-      label: `Chuyển sang ${STAGE_LABELS[nextStage.stage]}`,
+      label: `Chuyển sang ${getRecruitmentStageLabel(nextStage)}`,
       description:
         "Đưa hồ sơ sang stage active kế tiếp theo pipeline hiện tại của công ty.",
     });

@@ -48,7 +48,7 @@ const BACKEND_STAGE_TO_STATUS: Record<string, CandidateStatusType> = {
   ...STAGE_TO_STATUS,
   SUBMITTED: "apply",
   SCHEDULED: "screening",
-  INTERVIEW_SCHEDULED: "interview",
+  INTERVIEW: "interview",
   PENDING_RESCHEDULE: "interview",
   INVITED: "interview",
   OFFER_ACCEPTED: "offer",
@@ -1060,7 +1060,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
                 const resp =
                   await applicationService.updateApplicationStage(
                     current.id,
-                    { stage: "INTERVIEW_SCHEDULED", note: current.description ?? "" }
+                    { stage: "INTERVIEW", note: current.description ?? "" }
                   );
                 if (resp && resp.status >= 200 && resp.status < 300) {
                   setCandidates((prev) => {
@@ -1146,6 +1146,7 @@ export const KanbanBoard = ({ jobId }: KanbanBoardProps) => {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         candidate={activeCandidate}
+        pipelineStages={pipelineStages}
         canScheduleInterview={canScheduleActiveCandidate}
         setHeaderBlur={() => {}}
         onScheduleInterview={(candidate) => {
