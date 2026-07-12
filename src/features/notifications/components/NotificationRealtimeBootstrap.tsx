@@ -158,10 +158,10 @@ export function NotificationRealtimeBootstrap() {
       return;
     }
 
-    if (unreadCount > 0 && items.length === 0) {
+    if (!initialized && unreadCount > 0 && items.length === 0) {
       void fetchNotifications({ reset: true });
     }
-  }, [fetchNotifications, items.length, token, unreadCount]);
+  }, [fetchNotifications, initialized, items.length, token, unreadCount]);
 
   return null;
 }

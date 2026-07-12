@@ -142,8 +142,7 @@ export const useNotifications = () => {
     const shouldLoadNotifications =
       !initialized ||
       items.length === 0 ||
-      nextUnreadCount > localUnreadCount ||
-      (initialized && nextUnreadCount > 0);
+      nextUnreadCount > localUnreadCount;
 
     if (shouldLoadNotifications) {
       await fetchNotifications({ reset: true });
@@ -210,17 +209,6 @@ export const useNotifications = () => {
 
     void refreshUnreadCount();
   }, [refreshUnreadCount, token]);
-
-  useEffect(() => {
-    if (!token || !initialized || loading) {
-      return;
-    }
-
-    const localUnreadCount = countUnreadItems(items);
-    if (unreadCount > localUnreadCount) {
-      void fetchNotifications({ reset: true });
-    }
-  }, [fetchNotifications, initialized, items, loading, token, unreadCount]);
 
   return {
     items,
