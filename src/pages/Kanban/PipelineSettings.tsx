@@ -37,6 +37,8 @@ import { companyPipelineService } from "@/services/companyPipelineService";
 
 interface SortableStageItemProps {
   stage: CompanyRecruitmentStage;
+  index: number;
+  totalStages: number;
   editingStage: ApplicationStageCode | null;
   editingLabel: string;
   setEditingStage: Dispatch<SetStateAction<ApplicationStageCode | null>>;
@@ -48,6 +50,8 @@ interface SortableStageItemProps {
 
 function SortableStageItem({
   stage,
+  index,
+  totalStages,
   editingStage,
   editingLabel,
   setEditingStage,
@@ -56,8 +60,11 @@ function SortableStageItem({
   handleToggle,
   handleDeleteCustomStage,
 }: SortableStageItemProps) {
+  const isFixed = index === 0 || index === 1 || index === totalStages - 1;
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: stage.stage,
+    disabled: isFixed,
   });
 
   const style = {
@@ -81,14 +88,19 @@ function SortableStageItem({
       <div className={`pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${meta.accent} opacity-60`} />
       <div className="relative flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <div
-            {...attributes}
-            {...listeners}
-            className="flex h-8 w-8 cursor-grab items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
-            title="Kéo để sắp xếp"
-          >
-            <GripVertical className="h-5 w-5" />
-          </div>
+          {isFixed ? (
+            <div className="flex h-8 w-8 items-center justify-center rounded-md text-slate-300">
+              <Lock className="h-4 w-4" />
+            </div>
+          ) : (
+            <div
+              {...attributes}
+              {...listeners}
+              className="flex h-8 w-8 cursor-grab items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
+            >
+              <GripVertical className="h-5 w-5" />
+            </div>
+          )}
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/80 shadow-sm">
             {meta.icon}
           </div>
@@ -132,23 +144,15 @@ function SortableStageItem({
             )}
             {!stage.stage.startsWith("CUSTOM_") && <p className="text-xs text-slate-400">{stage.stage}</p>}
           </div>
-          {stage.required ? (
+          {stage.required || isFixed ? (
             <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
               <Lock className="h-3 w-3" />
-              Bắt buộc
+              Mặc định
             </span>
           ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Switch
-            checked={stage.active}
-            onCheckedChange={() => handleToggle(stage.stage)}
-            disabled={stage.required}
-            aria-label={`Bật/tắt trạng thái ${getRecruitmentStageLabel(stage)}`}
-            className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-200/80 ring-1 ring-slate-200"
-          />
-
           <div className="flex items-center gap-1">
             {stage.stage.startsWith("CUSTOM_") && (
               <Button
@@ -162,6 +166,14 @@ function SortableStageItem({
               </Button>
             )}
           </div>
+
+          <Switch
+            checked={stage.active}
+            onCheckedChange={() => handleToggle(stage.stage)}
+            disabled={stage.required || isFixed}
+            aria-label={`Bật/tắt trạng thái ${getRecruitmentStageLabel(stage)}`}
+            className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-200/80 ring-1 ring-slate-200"
+          />
         </div>
       </div>
     </Card>
@@ -187,11 +199,18 @@ export default function PipelineSettings() {
     const newStage: CompanyRecruitmentStage = {
       stage: available,
       label: "Bước tùy chỉnh",
-      displayOrder: stages.length + 1,
+      displayOrder: 0,
       active: true,
       required: false,
     };
-    setStages(normalizeStageConfig([...stages, newStage]));
+    const nextStages = [...stages];
+    if (nextStages.length > 0) {
+      nextStages.splice(nextStages.length - 1, 0, newStage);
+    } else {
+      nextStages.push(newStage);
+    }
+    const properlyOrdered = nextStages.map((stage, idx) => ({ ...stage, displayOrder: idx + 1 }));
+    setStages(normalizeStageConfig(properlyOrdered));
     setEditingStage(available);
     setEditingLabel(newStage.label ?? "");
   };
@@ -322,6 +341,12 @@ export default function PipelineSettings() {
       setStages((prev) => {
         const oldIndex = prev.findIndex((s) => s.stage === active.id);
         const newIndex = prev.findIndex((s) => s.stage === over.id);
+        
+        if (newIndex === 0 || newIndex === 1 || newIndex === prev.length - 1) {
+          toast.error("Không thể thay đổi vị trí của bước mặc định");
+          return prev;
+        }
+
         const reordered = arrayMove(prev, oldIndex, newIndex).map((stage, index) => ({
           ...stage,
           displayOrder: index + 1,
@@ -360,10 +385,12 @@ export default function PipelineSettings() {
           <div className="space-y-4">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={stages.map((s) => s.stage)} strategy={verticalListSortingStrategy}>
-                {stages.map((stage) => (
+                {stages.map((stage, index) => (
                   <SortableStageItem
                     key={stage.stage}
                     stage={stage}
+                    index={index}
+                    totalStages={stages.length}
                     editingStage={editingStage}
                     editingLabel={editingLabel}
                     setEditingStage={setEditingStage}
