@@ -150,7 +150,7 @@ const CandidateHorizontalList = ({
               </div>
 
               {/* Score indicator nếu có */}
-              {candidate.score !== undefined && candidate.score > 0 && (
+              {/* {candidate.score !== undefined && candidate.score > 0 && (
                 <div className="mt-2 flex items-center gap-1">
                   <div className="h-1 flex-1 bg-gray-200 rounded-full overflow-hidden">
                     <div
@@ -162,7 +162,7 @@ const CandidateHorizontalList = ({
                     {(candidate.score * 10 >= 100 ? 100 : (candidate.score*10 <= 20 ? 20 : candidate.score*10)).toFixed(0)}%
                   </span>
                 </div>
-              )}
+              )} */}
               </div>
             ))}
           </div>

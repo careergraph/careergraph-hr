@@ -358,7 +358,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
           )}
 
           {/* Score indicator nếu có */}
-          {candidate.score !== undefined && candidate.score > 0 && (
+          {/* {candidate.score !== undefined && candidate.score > 0 && (
             <>
               <div>
                 <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-400">
@@ -406,7 +406,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
               </div>
               <Separator />
             </>
-          )}
+          )} */}
 
           {/* Kỹ năng nổi bật của ứng viên */}
           {candidate.skills && candidate.skills.length > 0 && (
