@@ -113,7 +113,7 @@ const CandidateHorizontalList = ({
 
               {/* Thông tin bổ sung */}
               <div className="text-xs text-muted-foreground mb-2">
-                <p className="truncate">{candidate.experience}</p>
+                {/* <p className="truncate">{candidate.experience}</p> */}
                 <p className="truncate">{candidate.location}</p>
               </div>
 
